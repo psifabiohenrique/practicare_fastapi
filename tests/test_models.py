@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from src.models import User
 from tests.factories import UserFactory
 
@@ -18,5 +20,5 @@ def test_create_user(db_session):
 
 def test_root_endpoint(client):
     response = client.get("/")
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert response.json() == {"Hello": "World"}
