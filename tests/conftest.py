@@ -4,8 +4,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from src.database import Base, get_db
-from src.main import app
+from database import Base, get_db
+from main import app
+from security import create_access_token
 from tests.factories import UserFactory
 
 # Use in-memory SQLite for testing
@@ -48,3 +49,10 @@ def client(db_session):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def auth_header(db_session):
+    user = UserFactory()
+    access_token = create_access_token(subject=user.id)
+    return {"Authorization": f"Bearer {access_token}"}

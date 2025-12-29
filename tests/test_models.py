@@ -1,6 +1,6 @@
 from http import HTTPStatus
 
-from src.models import User
+from models import User
 from tests.factories import UserFactory
 
 

@@ -2,7 +2,7 @@ import uuid as uuid_pkg
 
 import factory
 
-from src.models import User
+from models import User
 
 
 class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -15,4 +15,6 @@ class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
     uuid = factory.LazyFunction(lambda: str(uuid_pkg.uuid4()))
     name = factory.Faker("name")
     email = factory.Faker("email")
-    hashed_password = factory.Faker("password")
+    hashed_password = factory.LazyFunction(
+        lambda: "hashed_password"
+    )  # Mocked for tests
