@@ -1,5 +1,3 @@
-from typing import Any
-
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from models import User
@@ -26,7 +24,7 @@ def create_patient_with_treatment(
     db: SessionDB,
     current_user: User = Depends(get_current_user),
     schema: PatientWithTreatmentCreate,
-) -> Any:
+) -> any:
     """
     Create a new patient and their associated treatment.
     """
@@ -42,7 +40,7 @@ def create_patient_with_treatment(
 def get_patients_with_treatment(
     db: SessionDB,
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> any:
     """
     Retrieve all treatments (with patient data) for the current user.
     """
@@ -57,7 +55,7 @@ def get_patient_with_treatment(
     db: SessionDB,
     current_user: User = Depends(get_current_user),
     treatment_id: int,
-) -> Any:
+) -> any:
     """
     Get a specific treatment-patient record by treatment ID.
     Only allows access if the treatment belongs to the current user.
@@ -65,10 +63,15 @@ def get_patient_with_treatment(
     db_treatment = PatientWithTreatmentService.get_treatment_with_treatment_id(
         db=db, treatment_id=treatment_id
     )
-    if not db_treatment or db_treatment.user_uuid != current_user.uuid:
+    if not db_treatment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Treatment not found or access denied",
+            detail="Treatment not found",
+        )
+    if db_treatment.user_uuid != current_user.uuid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
         )
     return db_treatment
 
@@ -80,7 +83,7 @@ def update_patient_with_treatment(
     current_user: User = Depends(get_current_user),
     treatment_id: int,
     schema: PatientWithTreatmentUpdate,
-) -> Any:
+) -> any:
     """
     Update both patient and treatment data.
     Only allows update if the treatment belongs to the current user.
@@ -89,10 +92,15 @@ def update_patient_with_treatment(
     db_treatment = PatientWithTreatmentService.get_treatment_with_treatment_id(
         db=db, treatment_id=treatment_id
     )
-    if not db_treatment or db_treatment.user_uuid != current_user.uuid:
+    if not db_treatment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Treatment not found or access denied",
+            detail="Treatment not found",
+        )
+    if db_treatment.user_uuid != current_user.uuid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
         )
 
     # Perform update

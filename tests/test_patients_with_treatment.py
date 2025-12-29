@@ -81,7 +81,14 @@ def test_get_treatment_details_unauthorized(client, db_session):
     response = client.get(
         f"/patients-with-treatment/{treatment.id}", headers=headers2
     )
+    assert response.status_code == HTTPStatus.FORBIDDEN
+
+
+def test_get_treatment_details_not_found(user_client):
+    client, user, headers = user_client
+    response = client.get("/patients-with-treatment/1", headers=headers)
     assert response.status_code == HTTPStatus.NOT_FOUND
+    assert "detail" in response.json()
 
 
 def test_update_patient_with_treatment(user_client):
@@ -104,7 +111,7 @@ def test_update_patient_with_treatment(user_client):
     assert data["weekday"] == "Wednesday"
 
 
-def test_update_treatment_unauthorized(client, db_session):
+def test_update_treatment_unauthorized(client):
 
     user1 = UserFactory()
     user2 = UserFactory()
@@ -120,4 +127,14 @@ def test_update_treatment_unauthorized(client, db_session):
         json=payload,
         headers=headers2,
     )
+    assert response.status_code == HTTPStatus.FORBIDDEN
+
+
+def test_update_treatment_not_found(user_client):
+    client, user, headers = user_client
+    payload = {"patient_schema": {}, "treatment_schema": {"weekday": "Friday"}}
+    response = client.patch(
+        "/patients-with-treatment/1", json=payload, headers=headers
+    )
     assert response.status_code == HTTPStatus.NOT_FOUND
+    assert "detail" in response.json()
