@@ -7,7 +7,7 @@ from sqlalchemy.pool import StaticPool
 from database import Base, get_db
 from main import app
 from security import create_access_token
-from tests.factories import UserFactory
+from tests.factories import PatientFactory, TreatmentFactory, UserFactory
 
 # Use in-memory SQLite for testing
 SQLALCHEMY_DATABASE_URL = "sqlite://"
@@ -28,6 +28,8 @@ def db_session():
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
     UserFactory._meta.sqlalchemy_session = session
+    PatientFactory._meta.sqlalchemy_session = session
+    TreatmentFactory._meta.sqlalchemy_session = session
     try:
         yield session
     finally:

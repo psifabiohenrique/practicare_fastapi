@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
-from models import User
-from tests.factories import UserFactory
+from models import Patient, Treatment, User
+from tests.factories import PatientFactory, TreatmentFactory, UserFactory
 
 
 def test_create_user(db_session):
@@ -16,6 +16,40 @@ def test_create_user(db_session):
     # Verify persistence
     db_user = db_session.query(User).filter(User.id == user.id).first()
     assert db_user.email == user.email
+
+
+def test_create_patient(db_session):
+    patient = PatientFactory()
+    assert patient.id is not None
+    assert patient.uuid is not None
+    assert patient.first_name is not None
+
+    db_patient = (
+        db_session.query(Patient).filter(Patient.id == patient.id).first()
+    )
+    assert db_patient.uuid == patient.uuid
+
+
+def test_create_treatment(db_session):
+    treatment = TreatmentFactory()
+    assert treatment.id is not None
+    assert treatment.user_uuid is not None
+    assert treatment.patient_id is not None
+
+    db_treatment = (
+        db_session
+        .query(Treatment)
+        .filter(Treatment.id == treatment.id)
+        .first()
+    )
+    assert db_treatment.user_uuid == treatment.user_uuid
+    assert db_treatment.patient_id == treatment.patient_id
+
+    # Test relationships
+    assert treatment.user is not None
+    assert treatment.patient is not None
+    assert treatment in treatment.user.treatments
+    assert treatment in treatment.patient.treatments
 
 
 def test_root_endpoint(client):
