@@ -35,6 +35,8 @@ class User(Base):
         onupdate=datetime.now,
     )
 
+    treatments = relationship("Treatment", back_populates="user")
+
 
 class Patient(Base):
     __tablename__ = "patients"
@@ -53,6 +55,8 @@ class Patient(Base):
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
 
+    treatments = relationship("Treatment", back_populates="patient")
+
 
 class Treatment(Base):
     __tablename__ = "treatments"
@@ -67,4 +71,4 @@ class Treatment(Base):
     end_time = Column(Time)
 
     user = relationship("User")
-    patient = relationship("Patient")
+    patient = relationship("Patient", back_populates="treatments")
