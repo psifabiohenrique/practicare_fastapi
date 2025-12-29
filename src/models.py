@@ -1,8 +1,21 @@
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import (
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Time,
+)
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import relationship
 
 from database import Base
+from utils.enums import Weekdays
 
 
 class User(Base):
@@ -15,3 +28,43 @@ class User(Base):
     name = Column(String)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(
+        DateTime,
+        default=datetime.now,
+        onupdate=datetime.now,
+    )
+
+
+class Patient(Base):
+    __tablename__ = "patients"
+
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(
+        String, default=lambda: str(uuid.uuid4()), unique=True, index=True
+    )
+    first_name = Column(String)
+    last_name = Column(String)
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    birth_date = Column(Date, nullable=True)
+
+    @hybrid_property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
+
+
+class Treatment(Base):
+    __tablename__ = "treatments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.uuid"))
+    patient_id = Column(String, ForeignKey("patients.uuid"))
+    weekday = Column(
+        SQLEnum(Weekdays), default=Weekdays.MONDAY, nullable=False
+    )
+    start_time = Column(Time)
+    end_time = Column(Time)
+
+    user = relationship("User")
+    patient = relationship("Patient")
