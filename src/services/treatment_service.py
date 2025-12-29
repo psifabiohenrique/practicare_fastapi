@@ -19,23 +19,33 @@ class TreatmentService:
     def create_treatment(
         db: Session, treatment_in: TreatmentCreate
     ) -> Treatment:
-        db_treatment = Treatment(**treatment_in.model_dump())
+        db_treatment = TreatmentService._create_treatment_model(treatment_in)
         db.add(db_treatment)
         db.commit()
         db.refresh(db_treatment)
         return db_treatment
 
     @staticmethod
+    def _create_treatment_model(treatment_in: TreatmentCreate) -> Treatment:
+        return Treatment(**treatment_in.model_dump())
+
+    @staticmethod
     def update_treatment(
         db: Session, db_treatment: Treatment, treatment_in: TreatmentUpdate
     ) -> Treatment:
-        update_data = treatment_in.model_dump(exclude_unset=True)
-        for field, value in update_data.items():
-            setattr(db_treatment, field, value)
+        TreatmentService._apply_update(db_treatment, treatment_in)
         db.add(db_treatment)
         db.commit()
         db.refresh(db_treatment)
         return db_treatment
+
+    @staticmethod
+    def _apply_update(
+        db_treatment: Treatment, treatment_in: TreatmentUpdate
+    ) -> None:
+        update_data = treatment_in.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(db_treatment, field, value)
 
     @staticmethod
     def delete_treatment(db: Session, treatment_id: int) -> Treatment | None:

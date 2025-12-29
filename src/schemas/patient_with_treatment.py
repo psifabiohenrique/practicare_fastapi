@@ -15,7 +15,13 @@ class PatientWithTreatmentUpdate(BaseModel):
 
 
 class PatientWithTreatmentRead(BaseModel):
-    patient_schema: PatientRead
-    treatment_schema: TreatmentRead
+    patient: PatientRead
+    treatment: TreatmentRead
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TreatmentWithPatientRead(TreatmentRead):
+    patient: PatientRead
 
     model_config = ConfigDict(from_attributes=True)
