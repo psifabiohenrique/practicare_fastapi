@@ -61,6 +61,19 @@ def test_create_user_preexisting_email(client):
     assert "detail" in data
 
 
+def test_create_user_with_mismatched_passwords(client):
+    user_data = {
+        "email": "newuser@example.com",
+        "name": "New User",
+        "password": "newpassword123",
+        "password_confirmation": "mismatchedpassword",
+    }
+    response = client.post("/users/", json=user_data)
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    data = response.json()
+    assert "detail" in data
+
+
 def test_update_user(client, auth_header):
     user = UserFactory()
     update_data = {"name": "Updated Name"}
@@ -83,6 +96,21 @@ def test_update_user_password(client, auth_header):
         f"/users/{user.id}", json=update_data, headers=auth_header
     )
     assert response.status_code == HTTPStatus.OK
+
+
+def test_update_user_password_mismatched(client, auth_header):
+    user = UserFactory()
+    update_data = {
+        "password": "newpassword123",
+        "password_confirmation": "mismatchedpassword",
+    }
+
+    response = client.patch(
+        f"/users/{user.id}", json=update_data, headers=auth_header
+    )
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    data = response.json()
+    assert "detail" in data
 
 
 def test_update_user_not_found(client, auth_header):
