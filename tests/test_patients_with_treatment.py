@@ -138,3 +138,36 @@ def test_update_treatment_not_found(user_client):
     )
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert "detail" in response.json()
+
+
+def test_update_treatment_restricted_fields(user_client):
+    client, user, headers = user_client
+    treatment = TreatmentFactory(user=user, user_uuid=user.uuid)
+
+    initial_user_uuid = treatment.user_uuid
+    initial_patient_id = treatment.patient_id
+
+    payload = {
+        "patient_schema": {},
+        "treatment_schema": {
+            "user_uuid": "some-other-uuid",
+            "patient_id": "some-other-patient-id",
+            "weekday": "Thursday",
+        },
+    }
+
+    response = client.patch(
+        f"/patients-with-treatment/{treatment.id}",
+        json=payload,
+        headers=headers,
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+
+    # Verify that the allowed field was updated
+    assert data["weekday"] == "Thursday"
+
+    # Verify that restricted fields remained unchanged
+    assert data["user_uuid"] == initial_user_uuid
+    assert data["patient"]["uuid"] == initial_patient_id
