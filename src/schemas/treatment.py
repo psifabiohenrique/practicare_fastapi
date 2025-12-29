@@ -18,8 +18,6 @@ class TreatmentCreate(TreatmentBase):
 
 
 class TreatmentUpdate(BaseModel):
-    user_uuid: str | None = None
-    patient_id: str | None = None
     weekday: Weekdays | None = None
     start_time: time | None = None
     end_time: time | None = None
