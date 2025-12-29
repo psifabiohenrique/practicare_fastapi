@@ -63,3 +63,12 @@ def auth_header(db_session):
 @pytest.fixture
 def user(db_session):
     return UserFactory()
+
+
+@pytest.fixture
+def user_client(client, db_session):
+    """Returns a client and the user it's authenticated as."""
+    user_obj = UserFactory()
+    token = create_access_token(subject=user_obj.id)
+    headers = {"Authorization": f"Bearer {token}"}
+    return client, user_obj, headers

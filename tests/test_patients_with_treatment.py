@@ -1,18 +1,7 @@
 from http import HTTPStatus
 
-import pytest
-
 from security import create_access_token
 from tests.factories import TreatmentFactory, UserFactory
-
-
-@pytest.fixture
-def user_client(client, db_session):
-    """Returns a client and the user it's authenticated as."""
-    user = UserFactory()
-    token = create_access_token(subject=user.id)
-    headers = {"Authorization": f"Bearer {token}"}
-    return client, user, headers
 
 
 def test_create_patient_with_treatment(user_client):
@@ -81,6 +70,7 @@ def test_get_treatment_details(user_client):
 
 
 def test_get_treatment_details_unauthorized(client, db_session):
+
     user1 = UserFactory()
     user2 = UserFactory()
     treatment = TreatmentFactory(user=user1, user_uuid=user1.uuid)
@@ -115,6 +105,7 @@ def test_update_patient_with_treatment(user_client):
 
 
 def test_update_treatment_unauthorized(client, db_session):
+
     user1 = UserFactory()
     user2 = UserFactory()
     treatment = TreatmentFactory(user=user1, user_uuid=user1.uuid)
