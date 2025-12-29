@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import auth, users
+from routers import auth, patients_with_treatment, users
 
 app = FastAPI(title="Practicare FastAPI")
 
@@ -13,6 +13,7 @@ origins = [
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(patients_with_treatment.router)
 
 app.add_middleware(
     CORSMiddleware,

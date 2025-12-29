@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
+
 from models import Patient, Treatment
 from schemas.patient_with_treatment import (
     PatientWithTreatmentCreate,
@@ -14,7 +15,8 @@ class PatientWithTreatmentService:
         """Returns the patient associated with a specific treatment ID,
         including treatment data."""
         return (
-            db.query(Patient)
+            db
+            .query(Patient)
             .join(Treatment, Patient.uuid == Treatment.patient_id)
             .filter(Treatment.id == treatment_id)
             .options(joinedload(Patient.treatments))
@@ -26,9 +28,10 @@ class PatientWithTreatmentService:
         """Returns all patients for a specific user,
         including their treatment data."""
         return (
-            db.query(Patient)
+            db
+            .query(Patient)
             .join(Treatment, Patient.uuid == Treatment.patient_id)
-            .filter(Treatment.user_id == user_uuid)
+            .filter(Treatment.user_uuid == user_uuid)
             .options(joinedload(Patient.treatments))
             .all()
         )
@@ -38,7 +41,8 @@ class PatientWithTreatmentService:
         """Returns the treatment for a specific patient UUID,
         including patient data."""
         return (
-            db.query(Treatment)
+            db
+            .query(Treatment)
             .filter(Treatment.patient_id == patient_uuid)
             .options(joinedload(Treatment.patient))
             .first()
@@ -48,7 +52,8 @@ class PatientWithTreatmentService:
     def get_treatment_with_treatment_id(db: Session, treatment_id: int):
         """Returns a specific treatment by ID, including patient data."""
         return (
-            db.query(Treatment)
+            db
+            .query(Treatment)
             .filter(Treatment.id == treatment_id)
             .options(joinedload(Treatment.patient))
             .first()
@@ -59,8 +64,9 @@ class PatientWithTreatmentService:
         """Returns all treatments for a specific user,
         including patient data."""
         return (
-            db.query(Treatment)
-            .filter(Treatment.user_id == user_uuid)
+            db
+            .query(Treatment)
+            .filter(Treatment.user_uuid == user_uuid)
             .options(joinedload(Treatment.patient))
             .all()
         )
@@ -82,7 +88,7 @@ class PatientWithTreatmentService:
             schema.treatment_schema
         )
         db_treatment.patient_id = db_patient.uuid
-        db_treatment.user_id = user_uuid
+        db_treatment.user_uuid = user_uuid
         db.add(db_treatment)
 
         db.commit()
