@@ -1,3 +1,4 @@
+from fastapi.exceptions import HTTPException
 from sqlalchemy.orm import Session
 
 from models import User
@@ -20,6 +21,10 @@ class UserService:
 
     @staticmethod
     def create_user(db: Session, user_in: UserCreate) -> User:
+        if user_in.password != user_in.password_confirmation:
+            raise HTTPException(
+                status_code=400, detail="Passwords do not match"
+            )
         db_user = User(
             email=user_in.email,
             name=user_in.name,
@@ -33,7 +38,14 @@ class UserService:
     @staticmethod
     def update_user(db: Session, db_user: User, user_in: UserUpdate) -> User:
         update_data = user_in.model_dump(exclude_unset=True)
-        if "password" in update_data:
+        if (
+            "password" in update_data
+            and "password_confirmation" in update_data
+        ):
+            if update_data["password"] != update_data["password_confirmation"]:
+                raise HTTPException(
+                    status_code=400, detail="Passwords do not match"
+                )
             update_data["hashed_password"] = get_password_hash(
                 update_data.pop("password")
             )

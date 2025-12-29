@@ -38,6 +38,7 @@ def test_create_user(client):
         "email": "newuser@example.com",
         "name": "New User",
         "password": "newpassword123",
+        "password_confirmation": "newpassword123",
     }
     response = client.post("/users/", json=user_data)
     assert response.status_code == HTTPStatus.CREATED
@@ -52,6 +53,7 @@ def test_create_user_preexisting_email(client):
         "email": "olduser@example.com",
         "name": "New User",
         "password": "newpassword123",
+        "password_confirmation": "newpassword123",
     }
     response = client.post("/users/", json=user_data)
     assert response.status_code == HTTPStatus.BAD_REQUEST
@@ -72,7 +74,10 @@ def test_update_user(client, auth_header):
 
 def test_update_user_password(client, auth_header):
     user = UserFactory()
-    update_data = {"password": "newpassword123"}
+    update_data = {
+        "password": "newpassword123",
+        "password_confirmation": "newpassword123",
+    }
 
     response = client.patch(
         f"/users/{user.id}", json=update_data, headers=auth_header
