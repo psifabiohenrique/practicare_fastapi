@@ -24,8 +24,9 @@ def test_login_success(client, db_session):
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert "access_token" in data
-    assert "refresh_token" in data
+    assert "refresh_token" not in data
     assert data["token_type"] == "bearer"
+    assert "refresh_token" in response.cookies
 
 
 def test_login_invalid_credentials(client):
@@ -50,13 +51,15 @@ def test_refresh_token(client, db_session):
     login_response = client.post(
         "/auth/login", data={"username": user.email, "password": password}
     )
-    refresh_token = login_response.json()["refresh_token"]
+    refresh_token = login_response.cookies["refresh_token"]
 
-    response = client.post(f"/auth/refresh?refresh_token={refresh_token}")
+    client.cookies.set("refresh_token", refresh_token)
+    response = client.post("/auth/refresh")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert "access_token" in data
-    assert "refresh_token" in data
+    assert "refresh_token" not in data
+    assert "refresh_token" in response.cookies
 
 
 def test_refresh_token_invalid_type(client, db_session):
@@ -73,7 +76,7 @@ def test_refresh_token_invalid_type(client, db_session):
     login_response = client.post(
         "/auth/login", data={"username": user.email, "password": password}
     )
-    refresh_token = login_response.json()["refresh_token"]
+    refresh_token = login_response.cookies["refresh_token"]
     payload = decode(
         refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
     )
@@ -82,7 +85,8 @@ def test_refresh_token_invalid_type(client, db_session):
         payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM
     )
 
-    response = client.post(f"/auth/refresh?refresh_token={refresh_token}")
+    client.cookies.set("refresh_token", refresh_token)
+    response = client.post("/auth/refresh")
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     data = response.json()
     assert "detail" in data
@@ -92,7 +96,8 @@ def test_refresh_token_invalid_secret(client):
     payload = {"sub": "1", "type": "refresh"}
     refresh_token = encode(payload, "wrong", algorithm=settings.ALGORITHM)
 
-    response = client.post(f"/auth/refresh?refresh_token={refresh_token}")
+    client.cookies.set("refresh_token", refresh_token)
+    response = client.post("/auth/refresh")
     assert response.status_code == HTTPStatus.FORBIDDEN
     data = response.json()
     assert "detail" in data

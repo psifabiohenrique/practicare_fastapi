@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -18,6 +18,7 @@ SessionDB = Annotated[Session, Depends(get_db)]
 @router.post("/login", response_model=Token)
 def login(
     db: SessionDB,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> any:
     user = AuthService.authenticate_user(
@@ -29,11 +30,34 @@ def login(
             detail="Incorrect email or password",
         )
 
-    return AuthService.create_tokens(user.id)
+    tokens = AuthService.create_tokens(user.id)
+
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens.refresh_token,
+        httponly=True,
+        secure=True,  # Set to False only for local development
+        samesite="lax",
+    )
+
+    return Token(
+        access_token=tokens.access_token,
+        token_type=tokens.token_type,
+    )
 
 
 @router.post("/refresh", response_model=Token)
-def refresh_token(refresh_token: str, db: SessionDB) -> any:
+def refresh_token(
+    db: SessionDB,
+    response: Response,
+    refresh_token: Annotated[str | None, Cookie()] = None,
+) -> any:
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing refresh token",
+        )
+
     try:
         payload = jwt.decode(
             refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -52,4 +76,17 @@ def refresh_token(refresh_token: str, db: SessionDB) -> any:
             detail="Could not validate credentials",
         )
 
-    return AuthService.create_tokens(int(token_data.sub))
+    tokens = AuthService.create_tokens(int(token_data.sub))
+
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens.refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
+
+    return Token(
+        access_token=tokens.access_token,
+        token_type=tokens.token_type,
+    )

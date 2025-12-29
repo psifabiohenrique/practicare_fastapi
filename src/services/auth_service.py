@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from models import User
-from schemas.token import Token
+from schemas.token import Internal_Tokens
 from security import (
     create_access_token,
     create_refresh_token,
@@ -21,8 +21,8 @@ class AuthService:
         return user
 
     @staticmethod
-    def create_tokens(user_id: int) -> Token:
-        return Token(
+    def create_tokens(user_id: int) -> Internal_Tokens:
+        return Internal_Tokens(
             access_token=create_access_token(subject=user_id),
             refresh_token=create_refresh_token(subject=user_id),
             token_type="bearer",
