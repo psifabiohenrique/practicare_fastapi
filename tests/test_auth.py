@@ -101,3 +101,36 @@ def test_refresh_token_invalid_secret(client):
     assert response.status_code == HTTPStatus.FORBIDDEN
     data = response.json()
     assert "detail" in data
+
+
+def test_refresh_token_without_cookie(client):
+    response = client.post("/auth/refresh")
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    data = response.json()
+    assert "detail" in data
+
+
+def test_logout_success(client, db_session):
+    password = "testpassword"
+    user = User(
+        email="logout@example.com",
+        name="Logout User",
+        hashed_password=get_password_hash(password),
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    # Login to get the cookie
+    login_response = client.post(
+        "/auth/login", data={"username": user.email, "password": password}
+    )
+    assert "refresh_token" in login_response.cookies
+
+    # Logout
+    response = client.post("/auth/logout")
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["detail"] == "Successfully logged out"
+
+    # Check if cookie is cleared
+    # FastAPI delete_cookie sets it to empty and expired
+    assert not response.cookies.get("refresh_token")

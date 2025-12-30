@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from database import get_db
+from schemas.message import Details
 from schemas.token import Token, TokenPayload
 from services.auth_service import AuthService
 from settings import settings
@@ -90,3 +91,9 @@ def refresh_token(
         access_token=tokens.access_token,
         token_type=tokens.token_type,
     )
+
+
+@router.post("/logout", response_model=Details)
+def logout(response: Response) -> any:
+    response.delete_cookie("refresh_token")
+    return Details(detail="Successfully logged out")
