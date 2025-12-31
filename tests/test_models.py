@@ -28,6 +28,7 @@ def test_create_patient(db_session):
         db_session.query(Patient).filter(Patient.id == patient.id).first()
     )
     assert db_patient.uuid == patient.uuid
+    assert db_patient.gender == patient.gender
 
 
 def test_create_treatment(db_session):

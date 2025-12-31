@@ -9,3 +9,9 @@ class Weekdays(str, Enum):
     FRIDAY = "Friday"
     SATURDAY = "Saturday"
     SUNDAY = "Sunday"
+
+
+class Gender(str, Enum):
+    MALE = "Male"
+    FEMALE = "Female"
+    OTHERS = "Others"

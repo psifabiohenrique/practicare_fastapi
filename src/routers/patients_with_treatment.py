@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from models import User
 from routers.deps import SessionDB, get_current_user
@@ -10,6 +10,7 @@ from schemas.patient_with_treatment import (
     TreatmentWithPatientRead,
 )
 from services.patient_with_treatment_service import PatientWithTreatmentService
+from utils.enums import Gender, Weekdays
 
 router = APIRouter(
     prefix="/patients-with-treatment", tags=["Patients with Treatment"]
@@ -38,16 +39,50 @@ def create_patient_with_treatment(
     return db_treatment
 
 
-@router.get("/", response_model=list[TreatmentWithPatientRead])
-def get_patients_with_treatment(
+@router.get("/daily", response_model=list[TreatmentWithPatientRead])
+def get_daily_patients_with_treatment(
+    *,
     db: SessionDB,
     current_user: User = Depends(get_current_user),
+    weekday: Weekdays | None = Query(None),
+) -> any:
+    """
+    Retrieve all treatments (with patient data) for the current user for
+    today or a specific weekday. Ordered by start_time.
+    """
+    return PatientWithTreatmentService.get_daily_treatments(
+        db=db, user_uuid=current_user.uuid, weekday=weekday
+    )
+
+
+@router.get("/", response_model=list[TreatmentWithPatientRead])
+def get_patients_with_treatment(  # noqa: PLR0913
+    *,
+    db: SessionDB,
+    current_user: User = Depends(get_current_user),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    order_by: str | None = Query(None, pattern="^(name|birth_date)$"),
+    order_dir: str = Query("asc", pattern="^(asc|desc)$"),
+    gender: Gender | None = Query(None),
+    weekday: Weekdays | None = Query(None),
+    search: str | None = Query(None),
 ) -> any:
     """
     Retrieve all treatments (with patient data) for the current user.
+    Supports pagination, filtering by gender/weekday,
+    sorting by name/birth_date, and searching by name.
     """
     return PatientWithTreatmentService.get_treatments_with_user_uuid(
-        db=db, user_uuid=current_user.uuid
+        db=db,
+        user_uuid=current_user.uuid,
+        skip=skip,
+        limit=limit,
+        order_by=order_by,
+        order_dir=order_dir,
+        gender=gender,
+        weekday=weekday,
+        search=search,
     )
 
 

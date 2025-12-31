@@ -15,7 +15,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
 from database import Base
-from utils.enums import Weekdays
+from utils.enums import Gender, Weekdays
 
 
 class User(Base):
@@ -50,6 +50,7 @@ class Patient(Base):
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     birth_date = Column(Date, nullable=True)
+    gender = Column(SQLEnum(Gender), nullable=True)
 
     @hybrid_property
     def full_name(self):

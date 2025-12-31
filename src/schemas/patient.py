@@ -2,6 +2,8 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict
 
+from utils.enums import Gender
+
 
 class PatientBase(BaseModel):
     first_name: str
@@ -9,6 +11,7 @@ class PatientBase(BaseModel):
     email: str | None = None
     phone: str | None = None
     birth_date: date | None = None
+    gender: Gender | None = None
 
 
 class PatientCreate(PatientBase):
@@ -21,6 +24,7 @@ class PatientUpdate(BaseModel):
     email: str | None = None
     phone: str | None = None
     birth_date: date | None = None
+    gender: Gender | None = None
 
 
 class PatientRead(PatientBase):

@@ -4,6 +4,7 @@ import uuid as uuid_pkg
 import factory
 
 from models import Patient, Treatment, User
+from utils.enums import Gender
 
 
 class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -33,6 +34,7 @@ class PatientFactory(factory.alchemy.SQLAlchemyModelFactory):
     last_name = factory.Faker("last_name")
     email = factory.Faker("email")
     phone = factory.Faker("phone_number")
+    gender = factory.Iterator([Gender.MALE, Gender.FEMALE, Gender.OTHERS])
 
 
 class TreatmentFactory(factory.alchemy.SQLAlchemyModelFactory):
