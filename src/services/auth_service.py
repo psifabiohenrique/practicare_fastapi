@@ -21,9 +21,9 @@ class AuthService:
         return user
 
     @staticmethod
-    def create_tokens(user_id: int) -> Internal_Tokens:
+    def create_tokens(user_uuid: str) -> Internal_Tokens:
         return Internal_Tokens(
-            access_token=create_access_token(subject=user_id),
-            refresh_token=create_refresh_token(subject=user_id),
+            access_token=create_access_token(subject=user_uuid),
+            refresh_token=create_refresh_token(subject=user_uuid),
             token_type="bearer",
         )

@@ -31,7 +31,7 @@ def login(
             detail="Incorrect email or password",
         )
 
-    tokens = AuthService.create_tokens(user.id)
+    tokens = AuthService.create_tokens(user.uuid)
 
     response.set_cookie(
         key="refresh_token",
@@ -77,7 +77,7 @@ def refresh_token(
             detail="Could not validate credentials",
         )
 
-    tokens = AuthService.create_tokens(int(token_data.sub))
+    tokens = AuthService.create_tokens(token_data.sub)
 
     response.set_cookie(
         key="refresh_token",

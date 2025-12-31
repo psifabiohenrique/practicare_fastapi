@@ -8,8 +8,12 @@ from security import get_password_hash
 
 class UserService:
     @staticmethod
-    def get_user(db: Session, user_id: int) -> User | None:
+    def get_user_by_id(db: Session, user_id: int) -> User | None:
         return db.query(User).filter(User.id == user_id).first()
+
+    @staticmethod
+    def get_user_by_uuid(db: Session, user_uuid: str) -> User | None:
+        return db.query(User).filter(User.uuid == str(user_uuid)).first()
 
     @staticmethod
     def get_user_by_email(db: Session, email: str) -> User | None:
@@ -59,8 +63,8 @@ class UserService:
         return db_user
 
     @staticmethod
-    def delete_user(db: Session, user_id: int) -> User | None:
-        db_user = db.query(User).filter(User.id == user_id).first()
+    def delete_user(db: Session, user_uuid: str) -> User | None:
+        db_user = db.query(User).filter(User.uuid == str(user_uuid)).first()
         if db_user:
             db.delete(db_user)
             db.commit()

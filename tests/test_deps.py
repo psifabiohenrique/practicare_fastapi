@@ -1,3 +1,4 @@
+import uuid
 from http import HTTPStatus
 
 import jwt
@@ -10,13 +11,13 @@ from settings import settings
 
 
 def test_get_current_user_valid_token(db_session, user):
-    access_token = create_access_token(subject=user.id)
+    access_token = create_access_token(subject=user.uuid)
     current_user = get_current_user(db=db_session, token=access_token)
-    assert current_user.id == user.id
+    assert current_user.uuid == user.uuid
 
 
 def test_get_current_user_invalid_token_type(db_session, user):
-    refresh_token = create_refresh_token(subject=user.id)
+    refresh_token = create_refresh_token(subject=user.uuid)
     with pytest.raises(HTTPException) as exc:
         get_current_user(db=db_session, token=refresh_token)
     assert exc.value.status_code == HTTPStatus.UNAUTHORIZED
@@ -44,7 +45,8 @@ def test_get_current_user_expired_token(db_session):
 
 
 def test_get_current_user_not_found(db_session):
-    token = create_access_token(subject=999)
+    random_uuid = str(uuid.uuid4())
+    token = create_access_token(subject=random_uuid)
     with pytest.raises(HTTPException) as exc:
         get_current_user(db=db_session, token=token)
     assert exc.value.status_code == HTTPStatus.NOT_FOUND

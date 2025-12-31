@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy.orm import Session, joinedload
 
 from models import Patient, Treatment
@@ -11,14 +13,13 @@ from services.treatment_service import TreatmentService
 
 class PatientWithTreatmentService:
     @staticmethod
-    def get_patient_with_treatment_id(db: Session, treatment_id: int):
+    def get_patient_with_treatment_uuid(db: Session, treatment_uuid: UUID):
         """Returns the patient associated with a specific treatment ID,
         including treatment data."""
         return (
-            db
-            .query(Patient)
-            .join(Treatment, Patient.uuid == Treatment.patient_id)
-            .filter(Treatment.id == treatment_id)
+            db.query(Patient)
+            .join(Treatment, Patient.uuid == Treatment.patient_uuid)
+            .filter(Treatment.uuid == str(treatment_uuid))
             .options(joinedload(Patient.treatments))
             .first()
         )
@@ -28,9 +29,8 @@ class PatientWithTreatmentService:
         """Returns all patients for a specific user,
         including their treatment data."""
         return (
-            db
-            .query(Patient)
-            .join(Treatment, Patient.uuid == Treatment.patient_id)
+            db.query(Patient)
+            .join(Treatment, Patient.uuid == Treatment.patient_uuid)
             .filter(Treatment.user_uuid == user_uuid)
             .options(joinedload(Patient.treatments))
             .all()
@@ -41,20 +41,18 @@ class PatientWithTreatmentService:
         """Returns the treatment for a specific patient UUID,
         including patient data."""
         return (
-            db
-            .query(Treatment)
-            .filter(Treatment.patient_id == patient_uuid)
+            db.query(Treatment)
+            .filter(Treatment.patient_uuid == patient_uuid)
             .options(joinedload(Treatment.patient))
             .first()
         )
 
     @staticmethod
-    def get_treatment_with_treatment_id(db: Session, treatment_id: int):
+    def get_treatment_with_treatment_uuid(db: Session, treatment_uuid: UUID):
         """Returns a specific treatment by ID, including patient data."""
         return (
-            db
-            .query(Treatment)
-            .filter(Treatment.id == treatment_id)
+            db.query(Treatment)
+            .filter(Treatment.uuid == str(treatment_uuid))
             .options(joinedload(Treatment.patient))
             .first()
         )
@@ -64,8 +62,7 @@ class PatientWithTreatmentService:
         """Returns all treatments for a specific user,
         including patient data."""
         return (
-            db
-            .query(Treatment)
+            db.query(Treatment)
             .filter(Treatment.user_uuid == user_uuid)
             .options(joinedload(Treatment.patient))
             .all()
@@ -87,7 +84,7 @@ class PatientWithTreatmentService:
         db_treatment = TreatmentService._create_treatment_model(
             schema.treatment_schema
         )
-        db_treatment.patient_id = db_patient.uuid
+        db_treatment.patient_uuid = db_patient.uuid
         db_treatment.user_uuid = user_uuid
         db.add(db_treatment)
 
@@ -101,15 +98,17 @@ class PatientWithTreatmentService:
     def update_patient_with_treatment(
         db: Session,
         patient_uuid: str,
-        treatment_id: int,
+        treatment_uuid: UUID,
         schema: PatientWithTreatmentUpdate,
     ):
         """Updates both patient and treatment in a single transaction."""
         db_patient = (
-            db.query(Patient).filter(Patient.uuid == patient_uuid).first()
+            db.query(Patient).filter(Patient.uuid == str(patient_uuid)).first()
         )
         db_treatment = (
-            db.query(Treatment).filter(Treatment.id == treatment_id).first()
+            db.query(Treatment)
+            .filter(Treatment.uuid == str(treatment_uuid))
+            .first()
         )
 
         if db_patient:

@@ -37,7 +37,7 @@ def get_current_user(
             detail="Could not validate credentials",
         )
 
-    user = UserService.get_user(db, user_id=int(token_data.sub))
+    user = UserService.get_user_by_uuid(db, user_uuid=token_data.sub)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

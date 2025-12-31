@@ -34,7 +34,7 @@ def test_create_treatment(db_session):
     treatment = TreatmentFactory()
     assert treatment.id is not None
     assert treatment.user_uuid is not None
-    assert treatment.patient_id is not None
+    assert treatment.patient_uuid is not None
 
     db_treatment = (
         db_session
@@ -43,7 +43,7 @@ def test_create_treatment(db_session):
         .first()
     )
     assert db_treatment.user_uuid == treatment.user_uuid
-    assert db_treatment.patient_id == treatment.patient_id
+    assert db_treatment.patient_uuid == treatment.patient_uuid
 
     # Test relationships
     assert treatment.user is not None

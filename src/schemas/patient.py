@@ -24,7 +24,6 @@ class PatientUpdate(BaseModel):
 
 
 class PatientRead(PatientBase):
-    id: int
     uuid: str
     full_name: str
 

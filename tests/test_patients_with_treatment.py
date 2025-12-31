@@ -1,3 +1,4 @@
+import uuid as uuid_pkg
 from http import HTTPStatus
 
 from security import create_access_token
@@ -17,7 +18,7 @@ def test_create_patient_with_treatment(user_client):
         },
         "treatment_schema": {
             "user_uuid": "will_be_overridden",
-            "patient_id": "will_be_overridden",
+            "patient_uuid": "will_be_overridden",
             "weekday": "Monday",
             "start_time": "08:00:00",
             "end_time": "09:00:00",
@@ -61,12 +62,12 @@ def test_get_treatment_details(user_client):
     treatment = TreatmentFactory(user=user, user_uuid=user.uuid)
 
     response = client.get(
-        f"/patients-with-treatment/{treatment.id}", headers=headers
+        f"/patients-with-treatment/{treatment.uuid}", headers=headers
     )
     assert response.status_code == HTTPStatus.OK
     data = response.json()
-    assert data["id"] == treatment.id
-    assert data["patient"]["uuid"] == treatment.patient_id
+    assert data["uuid"] == treatment.uuid
+    assert data["patient"]["uuid"] == treatment.patient_uuid
 
 
 def test_get_treatment_details_unauthorized(client, db_session):
@@ -75,18 +76,21 @@ def test_get_treatment_details_unauthorized(client, db_session):
     user2 = UserFactory()
     treatment = TreatmentFactory(user=user1, user_uuid=user1.uuid)
 
-    token2 = create_access_token(subject=user2.id)
+    token2 = create_access_token(subject=user2.uuid)
     headers2 = {"Authorization": f"Bearer {token2}"}
 
     response = client.get(
-        f"/patients-with-treatment/{treatment.id}", headers=headers2
+        f"/patients-with-treatment/{treatment.uuid}", headers=headers2
     )
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 
 def test_get_treatment_details_not_found(user_client):
     client, user, headers = user_client
-    response = client.get("/patients-with-treatment/1", headers=headers)
+    random_uuid = str(uuid_pkg.uuid4())
+    response = client.get(
+        f"/patients-with-treatment/{random_uuid}", headers=headers
+    )
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert "detail" in response.json()
 
@@ -101,7 +105,7 @@ def test_update_patient_with_treatment(user_client):
     }
 
     response = client.patch(
-        f"/patients-with-treatment/{treatment.id}",
+        f"/patients-with-treatment/{treatment.uuid}",
         json=payload,
         headers=headers,
     )
@@ -117,13 +121,13 @@ def test_update_treatment_unauthorized(client):
     user2 = UserFactory()
     treatment = TreatmentFactory(user=user1, user_uuid=user1.uuid)
 
-    token2 = create_access_token(subject=user2.id)
+    token2 = create_access_token(subject=user2.uuid)
     headers2 = {"Authorization": f"Bearer {token2}"}
 
     payload = {"patient_schema": {}, "treatment_schema": {"weekday": "Friday"}}
 
     response = client.patch(
-        f"/patients-with-treatment/{treatment.id}",
+        f"/patients-with-treatment/{treatment.uuid}",
         json=payload,
         headers=headers2,
     )
@@ -133,8 +137,11 @@ def test_update_treatment_unauthorized(client):
 def test_update_treatment_not_found(user_client):
     client, user, headers = user_client
     payload = {"patient_schema": {}, "treatment_schema": {"weekday": "Friday"}}
+    random_uuid = str(uuid_pkg.uuid4())
     response = client.patch(
-        "/patients-with-treatment/1", json=payload, headers=headers
+        f"/patients-with-treatment/{random_uuid}",
+        json=payload,
+        headers=headers,
     )
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert "detail" in response.json()
@@ -145,19 +152,19 @@ def test_update_treatment_restricted_fields(user_client):
     treatment = TreatmentFactory(user=user, user_uuid=user.uuid)
 
     initial_user_uuid = treatment.user_uuid
-    initial_patient_id = treatment.patient_id
+    initial_patient_uuid = treatment.patient_uuid
 
     payload = {
         "patient_schema": {},
         "treatment_schema": {
             "user_uuid": "some-other-uuid",
-            "patient_id": "some-other-patient-id",
+            "patient_uuid": "some-other-patient-uuid",
             "weekday": "Thursday",
         },
     }
 
     response = client.patch(
-        f"/patients-with-treatment/{treatment.id}",
+        f"/patients-with-treatment/{treatment.uuid}",
         json=payload,
         headers=headers,
     )
@@ -170,4 +177,4 @@ def test_update_treatment_restricted_fields(user_client):
 
     # Verify that restricted fields remained unchanged
     assert data["user_uuid"] == initial_user_uuid
-    assert data["patient"]["uuid"] == initial_patient_id
+    assert data["patient"]["uuid"] == initial_patient_uuid

@@ -42,10 +42,11 @@ class TreatmentFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session_persistence = "commit"
 
     id = factory.Sequence(lambda n: n)
+    uuid = factory.LazyFunction(lambda: str(uuid_pkg.uuid4()))
     user = factory.SubFactory(UserFactory)
     user_uuid = factory.SelfAttribute("user.uuid")
     patient = factory.SubFactory(PatientFactory)
-    patient_id = factory.SelfAttribute("patient.uuid")
+    patient_uuid = factory.SelfAttribute("patient.uuid")
     weekday = "Monday"
     start_time = datetime.time(9, 0)
     end_time = datetime.time(10, 0)

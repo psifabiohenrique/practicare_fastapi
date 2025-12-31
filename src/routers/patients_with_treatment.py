@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from models import User
@@ -49,19 +51,21 @@ def get_patients_with_treatment(
     )
 
 
-@router.get("/{treatment_id}", response_model=TreatmentWithPatientRead)
+@router.get("/{treatment_uuid}", response_model=TreatmentWithPatientRead)
 def get_patient_with_treatment(
     *,
     db: SessionDB,
     current_user: User = Depends(get_current_user),
-    treatment_id: int,
+    treatment_uuid: UUID,
 ) -> any:
     """
     Get a specific treatment-patient record by treatment ID.
     Only allows access if the treatment belongs to the current user.
     """
-    db_treatment = PatientWithTreatmentService.get_treatment_with_treatment_id(
-        db=db, treatment_id=treatment_id
+    db_treatment = (
+        PatientWithTreatmentService.get_treatment_with_treatment_uuid(
+            db=db, treatment_uuid=treatment_uuid
+        )
     )
     if not db_treatment:
         raise HTTPException(
@@ -76,12 +80,12 @@ def get_patient_with_treatment(
     return db_treatment
 
 
-@router.patch("/{treatment_id}", response_model=TreatmentWithPatientRead)
+@router.patch("/{treatment_uuid}", response_model=TreatmentWithPatientRead)
 def update_patient_with_treatment(
     *,
     db: SessionDB,
     current_user: User = Depends(get_current_user),
-    treatment_id: int,
+    treatment_uuid: UUID,
     schema: PatientWithTreatmentUpdate,
 ) -> any:
     """
@@ -89,8 +93,10 @@ def update_patient_with_treatment(
     Only allows update if the treatment belongs to the current user.
     """
     # First check ownership
-    db_treatment = PatientWithTreatmentService.get_treatment_with_treatment_id(
-        db=db, treatment_id=treatment_id
+    db_treatment = (
+        PatientWithTreatmentService.get_treatment_with_treatment_uuid(
+            db=db, treatment_uuid=treatment_uuid
+        )
     )
     if not db_treatment:
         raise HTTPException(
@@ -107,8 +113,8 @@ def update_patient_with_treatment(
     _, updated_treatment = (
         PatientWithTreatmentService.update_patient_with_treatment(
             db=db,
-            patient_uuid=db_treatment.patient_id,
-            treatment_id=treatment_id,
+            patient_uuid=db_treatment.patient_uuid,
+            treatment_uuid=treatment_uuid,
             schema=schema,
         )
     )

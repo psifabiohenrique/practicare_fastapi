@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -43,40 +44,40 @@ def read_user_me(
     return current_user
 
 
-@router.get("/{user_id}", response_model=UserRead)
-def read_user_by_id(
-    user_id: int,
+@router.get("/{user_uuid}", response_model=UserRead)
+def read_user_by_uuid(
+    user_uuid: UUID,
     db: SessionDB,
     current_user: CurrentUser,
 ) -> any:
-    user = UserService.get_user(db, user_id=user_id)
+    user = UserService.get_user_by_uuid(db, user_uuid=str(user_uuid))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
 
-@router.patch("/{user_id}", response_model=UserRead)
+@router.patch("/{user_uuid}", response_model=UserRead)
 def update_user(
     *,
     db: SessionDB,
-    user_id: int,
+    user_uuid: UUID,
     user_in: UserUpdate,
     current_user: CurrentUser,
 ) -> any:
-    user = UserService.get_user(db, user_id=user_id)
+    user = UserService.get_user_by_uuid(db, user_uuid=str(user_uuid))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return UserService.update_user(db, db_user=user, user_in=user_in)
 
 
-@router.delete("/{user_id}", response_model=UserRead)
+@router.delete("/{user_uuid}", response_model=UserRead)
 def delete_user(
     *,
     db: SessionDB,
-    user_id: int,
+    user_uuid: UUID,
     current_user: CurrentUser,
 ) -> any:
-    user = UserService.delete_user(db, user_id=user_id)
+    user = UserService.delete_user(db, user_uuid=str(user_uuid))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

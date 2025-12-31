@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy.orm import Session
 
 from models import Patient
@@ -6,8 +8,8 @@ from schemas import PatientCreate, PatientUpdate
 
 class PatientService:
     @staticmethod
-    def get_patient(db: Session, patient_id: int) -> Patient | None:
-        return db.query(Patient).filter(Patient.id == patient_id).first()
+    def get_patient(db: Session, patient_uuid: UUID) -> Patient | None:
+        return db.query(Patient).filter(Patient.uuid == patient_uuid).first()
 
     @staticmethod
     def get_patients(
@@ -44,8 +46,10 @@ class PatientService:
             setattr(db_patient, field, value)
 
     @staticmethod
-    def delete_patient(db: Session, patient_id: int) -> Patient | None:
-        db_patient = db.query(Patient).filter(Patient.id == patient_id).first()
+    def delete_patient(db: Session, patient_uuid: UUID) -> Patient | None:
+        db_patient = (
+            db.query(Patient).filter(Patient.uuid == patient_uuid).first()
+        )
         if db_patient:
             db.delete(db_patient)
             db.commit()
