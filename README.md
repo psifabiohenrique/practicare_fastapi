@@ -117,6 +117,19 @@ cp .env.exemple .env
 uv sync
 ```
 
+4. Migre o banco de dados:
+
+```bash
+alembic upgrade head
+```
+
+5. Entre no ambiente virtual:
+
+```bash
+source .venv/bin/activate # Linux/Mac
+.venv\Scripts\activate # Windows
+```
+
 ### Comandos Úteis (via taskipy)
 
 - **Rodar em Desenvolvimento**:
