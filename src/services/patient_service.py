@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from models import Patient
 from schemas import PatientCreate, PatientUpdate
+from utils.phone_utils import validate_and_normalize_phone
 
 
 class PatientService:
@@ -27,7 +28,10 @@ class PatientService:
 
     @staticmethod
     def _create_patient_model(patient_in: PatientCreate) -> Patient:
-        return Patient(**patient_in.model_dump())
+        data = patient_in.model_dump()
+        if data.get("phone"):
+            data["phone"] = validate_and_normalize_phone(data["phone"])
+        return Patient(**data)
 
     @staticmethod
     def update_patient(
@@ -43,7 +47,11 @@ class PatientService:
     def _apply_update(db_patient: Patient, patient_in: PatientUpdate) -> None:
         update_data = patient_in.model_dump(exclude_unset=True)
         for field, value in update_data.items():
-            setattr(db_patient, field, value)
+            if field == "phone" and value:
+                normalized_phone = validate_and_normalize_phone(value)
+                setattr(db_patient, field, normalized_phone)
+            else:
+                setattr(db_patient, field, value)
 
     @staticmethod
     def delete_patient(db: Session, patient_uuid: UUID) -> Patient | None:

@@ -7,13 +7,12 @@ from tests.factories import TreatmentFactory, UserFactory
 
 def test_create_patient_with_treatment(user_client):
     client, user, headers = user_client
-
     payload = {
         "patient_schema": {
-            "first_name": "John",
-            "last_name": "Doe",
+            "first_name": "Valid",
+            "last_name": "Phone",
             "email": "john@example.com",
-            "phone": "123456789",
+            "phone": "11999999999",
             "birth_date": "1990-01-01",
         },
         "treatment_schema": {
@@ -30,9 +29,9 @@ def test_create_patient_with_treatment(user_client):
     )
     assert response.status_code == HTTPStatus.CREATED
     data = response.json()
-
+    assert data["patient"]["phone"] == "+5511999999999"
     assert data["user_uuid"] == user.uuid
-    assert data["patient"]["first_name"] == "John"
+    assert data["patient"]["first_name"] == "Valid"
     assert data["weekday"] == "Monday"
 
 
@@ -115,6 +114,25 @@ def test_update_patient_with_treatment(user_client):
     assert data["weekday"] == "Wednesday"
 
 
+def test_update_pateint_with_treatment_phone_normalization(user_client):
+    client, user, headers = user_client
+    treatment = TreatmentFactory(user=user, user_uuid=user.uuid)
+
+    payload = {
+        "patient_schema": {"first_name": "Valid", "phone": "11999999999"},
+        "treatment_schema": {"weekday": "Wednesday"},
+    }
+
+    response = client.patch(
+        f"/patients-with-treatment/{treatment.uuid}",
+        json=payload,
+        headers=headers,
+    )
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert data["patient"]["phone"] == "+5511999999999"
+
+
 def test_update_treatment_unauthorized(client):
 
     user1 = UserFactory()
@@ -178,3 +196,49 @@ def test_update_treatment_restricted_fields(user_client):
     # Verify that restricted fields remained unchanged
     assert data["user_uuid"] == initial_user_uuid
     assert data["patient"]["uuid"] == initial_patient_uuid
+
+
+def test_update_pateint_with_treatment_with_invalid_phone(user_client):
+    client, user, headers = user_client
+    treatment = TreatmentFactory(user=user, user_uuid=user.uuid)
+
+    payload = {
+        "patient_schema": {"first_name": "Valid", "phone": "123"},
+        "treatment_schema": {"weekday": "Wednesday"},
+    }
+
+    response = client.patch(
+        f"/patients-with-treatment/{treatment.uuid}",
+        json=payload,
+        headers=headers,
+    )
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    data = response.json()
+    assert "Invalid phone number" in data["detail"]
+
+
+def test_create_patient_with_invalid_phone(user_client):
+    client, user, headers = user_client
+
+    payload = {
+        "patient_schema": {
+            "first_name": "Invalid",
+            "last_name": "Phone",
+            "email": "john@example.com",
+            "phone": "123",  # Invalid
+            "birth_date": "1990-01-01",
+        },
+        "treatment_schema": {
+            "user_uuid": "will_be_overridden",
+            "patient_uuid": "will_be_overridden",
+            "weekday": "Monday",
+            "start_time": "08:00:00",
+            "end_time": "09:00:00",
+        },
+    }
+
+    response = client.post(
+        "/patients-with-treatment/", json=payload, headers=headers
+    )
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert "Invalid phone number" in response.json()["detail"]

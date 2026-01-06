@@ -31,11 +31,16 @@ def create_patient_with_treatment(
     """
     Create a new patient and their associated treatment.
     """
-    db_patient, db_treatment = (
-        PatientWithTreatmentService.create_patient_with_treatment(
-            db=db, schema=schema, user_uuid=current_user.uuid
+    try:
+        db_patient, db_treatment = (
+            PatientWithTreatmentService.create_patient_with_treatment(
+                db=db, schema=schema, user_uuid=current_user.uuid
+            )
         )
-    )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
     return db_treatment
 
 
@@ -145,12 +150,17 @@ def update_patient_with_treatment(
         )
 
     # Perform update
-    _, updated_treatment = (
-        PatientWithTreatmentService.update_patient_with_treatment(
-            db=db,
-            patient_uuid=db_treatment.patient_uuid,
-            treatment_uuid=treatment_uuid,
-            schema=schema,
+    try:
+        _, updated_treatment = (
+            PatientWithTreatmentService.update_patient_with_treatment(
+                db=db,
+                patient_uuid=db_treatment.patient_uuid,
+                treatment_uuid=treatment_uuid,
+                schema=schema,
+            )
         )
-    )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
     return updated_treatment
