@@ -1,23 +1,23 @@
-from .patient import PatientCreate as PatientCreate
-from .patient import PatientRead as PatientRead
-from .patient import PatientUpdate as PatientUpdate
-from .patient_with_treatment import (
+from .patient_schema import PatientCreate as PatientCreate
+from .patient_schema import PatientRead as PatientRead
+from .patient_schema import PatientUpdate as PatientUpdate
+from .patient_with_treatment_schema import (
     PatientWithTreatmentCreate as PatientWithTreatmentCreate,
 )
-from .patient_with_treatment import (
+from .patient_with_treatment_schema import (
     PatientWithTreatmentRead as PatientWithTreatmentRead,
 )
-from .patient_with_treatment import (
+from .patient_with_treatment_schema import (
     PatientWithTreatmentUpdate as PatientWithTreatmentUpdate,
 )
-from .patient_with_treatment import (
+from .patient_with_treatment_schema import (
     TreatmentWithPatientRead as TreatmentWithPatientRead,
 )
-from .token import Token as Token
-from .token import TokenPayload as TokenPayload
-from .treatment import TreatmentCreate as TreatmentCreate
-from .treatment import TreatmentRead as TreatmentRead
-from .treatment import TreatmentUpdate as TreatmentUpdate
-from .user import UserCreate as UserCreate
-from .user import UserRead as UserRead
-from .user import UserUpdate as UserUpdate
+from .token_schema import Token as Token
+from .token_schema import TokenPayload as TokenPayload
+from .treatment_schema import TreatmentCreate as TreatmentCreate
+from .treatment_schema import TreatmentRead as TreatmentRead
+from .treatment_schema import TreatmentUpdate as TreatmentUpdate
+from .user_schema import UserCreate as UserCreate
+from .user_schema import UserRead as UserRead
+from .user_schema import UserUpdate as UserUpdate

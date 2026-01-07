@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models import User
-from schemas.token import TokenPayload
+from schemas.token_schema import TokenPayload
 from services.user_service import UserService
 from settings import settings
 

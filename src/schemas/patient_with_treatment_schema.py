@@ -1,7 +1,11 @@
 from pydantic import BaseModel, ConfigDict
 
-from schemas.patient import PatientCreate, PatientRead, PatientUpdate
-from schemas.treatment import TreatmentCreate, TreatmentRead, TreatmentUpdate
+from schemas.patient_schema import PatientCreate, PatientRead, PatientUpdate
+from schemas.treatment_schema import (
+    TreatmentCreate,
+    TreatmentRead,
+    TreatmentUpdate,
+)
 
 
 class PatientWithTreatmentCreate(BaseModel):

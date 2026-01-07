@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from models import Patient, Treatment
-from schemas.patient_with_treatment import (
+from schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
     PatientWithTreatmentUpdate,
 )

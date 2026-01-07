@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from models import User
 from routers.deps import SessionDB, get_current_user
-from schemas.patient_with_treatment import (
+from schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
     PatientWithTreatmentUpdate,
     TreatmentWithPatientRead,

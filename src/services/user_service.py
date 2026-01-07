@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import User
-from schemas.user import UserCreate, UserUpdate
+from schemas.user_schema import UserCreate, UserUpdate
 from security import get_password_hash
 
 

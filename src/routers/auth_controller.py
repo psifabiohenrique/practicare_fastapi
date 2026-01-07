@@ -7,8 +7,8 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from schemas.message import Details
-from schemas.token import Token, TokenPayload
+from schemas.message_schema import Details
+from schemas.token_schema import Token, TokenPayload
 from services.auth_service import AuthService
 from settings import settings
 

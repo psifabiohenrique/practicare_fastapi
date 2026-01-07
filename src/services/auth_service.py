@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import User
-from schemas.token import Internal_Tokens
+from schemas.token_schema import Internal_Tokens
 from security import (
     create_access_token,
     create_refresh_token,

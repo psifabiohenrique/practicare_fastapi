@@ -4,7 +4,11 @@ import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import auth, patients_with_treatment, users
+from routers import (
+    auth_controller,
+    patients_with_treatment_controller,
+    users_controller,
+)
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -17,9 +21,9 @@ origins = [
     "http://localhost:5173",
 ]
 
-app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(patients_with_treatment.router)
+app.include_router(auth_controller.router)
+app.include_router(users_controller.router)
+app.include_router(patients_with_treatment_controller.router)
 
 app.add_middleware(
     CORSMiddleware,
