@@ -3,7 +3,7 @@ import uuid as uuid_pkg
 
 import factory
 
-from models import Patient, Treatment, User
+from models import Patient, Treatment, TreatmentRecord, TreatmentReport, User
 from utils.enums import Gender
 
 
@@ -52,3 +52,42 @@ class TreatmentFactory(factory.alchemy.SQLAlchemyModelFactory):
     weekday = "Monday"
     start_time = datetime.time(9, 0)
     end_time = datetime.time(10, 0)
+
+
+class TreatmentRecordFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = TreatmentRecord
+        sqlalchemy_session = None
+        sqlalchemy_session_persistence = "commit"
+
+    id = factory.Sequence(lambda n: n)
+    uuid = factory.LazyFunction(lambda: str(uuid_pkg.uuid4()))
+    treatment = factory.SubFactory(TreatmentFactory)
+    treatment_uuid = factory.SelfAttribute("treatment.uuid")
+
+    date = factory.Faker("date_object")
+    start_time = factory.Faker("date_time")
+    end_time = factory.Faker("date_time")
+    content = factory.Faker("paragraph")
+    record_number = factory.Sequence(lambda n: n + 1)
+
+
+class TreatmentReportFactory(factory.alchemy.SQLAlchemyModelFactory):
+    class Meta:
+        model = TreatmentReport
+        sqlalchemy_session = None
+        sqlalchemy_session_persistence = "commit"
+
+    id = factory.Sequence(lambda n: n)
+    uuid = factory.LazyFunction(lambda: str(uuid_pkg.uuid4()))
+    treatment = factory.SubFactory(TreatmentFactory)
+    treatment_uuid = factory.SelfAttribute("treatment.uuid")
+
+    demand_description = factory.Faker("paragraph")
+    procedures = factory.Faker("paragraph")
+    analysis = factory.Faker("paragraph")
+    conclusion = factory.Faker("paragraph")
+
+    issue_date = factory.Faker("date_object")
+    start_date_period = factory.Faker("date_object")
+    end_date_period = factory.Faker("date_object")

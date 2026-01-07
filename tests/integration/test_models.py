@@ -3,8 +3,14 @@ from http import HTTPStatus
 import pytest
 from sqlalchemy import select
 
-from models import Patient, Treatment, User
-from tests.factories import PatientFactory, TreatmentFactory, UserFactory
+from models import Patient, Treatment, TreatmentRecord, TreatmentReport, User
+from tests.factories import (
+    PatientFactory,
+    TreatmentFactory,
+    TreatmentRecordFactory,
+    TreatmentReportFactory,
+    UserFactory,
+)
 
 
 @pytest.mark.asyncio
@@ -57,6 +63,47 @@ async def test_create_treatment(db_session):
     assert treatment.patient is not None
     assert treatment in treatment.user.treatments
     assert treatment in treatment.patient.treatments
+
+
+@pytest.mark.asyncio
+async def test_create_treatment_record(db_session):
+    record = TreatmentRecordFactory()
+    assert record.id is not None
+    assert record.uuid is not None
+    assert record.treatment_uuid is not None
+    assert record.content is not None
+    assert record.record_number is not None
+
+    result = await db_session.execute(
+        select(TreatmentRecord).filter(TreatmentRecord.id == record.id)
+    )
+    db_record = result.scalars().first()
+    assert db_record.uuid == record.uuid
+    assert db_record.treatment_uuid == record.treatment_uuid
+
+    # Test relationships
+    assert record.treatment is not None
+    assert record in record.treatment.treatment_records
+
+
+@pytest.mark.asyncio
+async def test_create_treatment_report(db_session):
+    report = TreatmentReportFactory()
+    assert report.id is not None
+    assert report.uuid is not None
+    assert report.treatment_uuid is not None
+    assert report.demand_description is not None
+
+    result = await db_session.execute(
+        select(TreatmentReport).filter(TreatmentReport.id == report.id)
+    )
+    db_report = result.scalars().first()
+    assert db_report.uuid == report.uuid
+    assert db_report.treatment_uuid == report.treatment_uuid
+
+    # Test relationships
+    assert report.treatment is not None
+    assert report in report.treatment.treatment_reports
 
 
 def test_root_endpoint(client):

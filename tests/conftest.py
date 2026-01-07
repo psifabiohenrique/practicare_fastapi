@@ -7,7 +7,13 @@ from testcontainers.postgres import PostgresContainer
 from database import Base, get_db
 from main import app
 from security import create_access_token
-from tests.factories import PatientFactory, TreatmentFactory, UserFactory
+from tests.factories import (
+    PatientFactory,
+    TreatmentFactory,
+    TreatmentRecordFactory,
+    TreatmentReportFactory,
+    UserFactory,
+)
 
 
 @pytest.fixture(scope="session")
@@ -28,6 +34,8 @@ async def db_session(engine):
         UserFactory._meta.sqlalchemy_session = session
         PatientFactory._meta.sqlalchemy_session = session
         TreatmentFactory._meta.sqlalchemy_session = session
+        TreatmentRecordFactory._meta.sqlalchemy_session = session
+        TreatmentReportFactory._meta.sqlalchemy_session = session
 
         yield session
 
