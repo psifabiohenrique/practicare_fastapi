@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import (
     auth_controller,
     patients_with_treatment_controller,
+    treatment_record_controller,
     users_controller,
 )
 
@@ -24,6 +25,7 @@ origins = [
 app.include_router(auth_controller.router)
 app.include_router(users_controller.router)
 app.include_router(patients_with_treatment_controller.router)
+app.include_router(treatment_record_controller.router)
 
 app.add_middleware(
     CORSMiddleware,
