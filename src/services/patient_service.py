@@ -1,6 +1,7 @@
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Patient
 from schemas import PatientCreate, PatientUpdate
@@ -9,21 +10,29 @@ from utils.phone_utils import validate_and_normalize_phone
 
 class PatientService:
     @staticmethod
-    def get_patient(db: Session, patient_uuid: UUID) -> Patient | None:
-        return db.query(Patient).filter(Patient.uuid == patient_uuid).first()
+    async def get_patient(
+        db: AsyncSession, patient_uuid: UUID
+    ) -> Patient | None:
+        result = await db.execute(
+            select(Patient).filter(Patient.uuid == patient_uuid)
+        )
+        return result.scalars().first()
 
     @staticmethod
-    def get_patients(
-        db: Session, skip: int = 0, limit: int = 100
+    async def get_patients(
+        db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[Patient]:
-        return db.query(Patient).offset(skip).limit(limit).all()
+        result = await db.execute(select(Patient).offset(skip).limit(limit))
+        return list(result.scalars().all())
 
     @staticmethod
-    def create_patient(db: Session, patient_in: PatientCreate) -> Patient:
+    async def create_patient(
+        db: AsyncSession, patient_in: PatientCreate
+    ) -> Patient:
         db_patient = PatientService._create_patient_model(patient_in)
         db.add(db_patient)
-        db.commit()
-        db.refresh(db_patient)
+        await db.commit()
+        await db.refresh(db_patient)
         return db_patient
 
     @staticmethod
@@ -34,13 +43,13 @@ class PatientService:
         return Patient(**data)
 
     @staticmethod
-    def update_patient(
-        db: Session, db_patient: Patient, patient_in: PatientUpdate
+    async def update_patient(
+        db: AsyncSession, db_patient: Patient, patient_in: PatientUpdate
     ) -> Patient:
         PatientService._apply_update(db_patient, patient_in)
         db.add(db_patient)
-        db.commit()
-        db.refresh(db_patient)
+        await db.commit()
+        await db.refresh(db_patient)
         return db_patient
 
     @staticmethod
@@ -54,11 +63,14 @@ class PatientService:
                 setattr(db_patient, field, value)
 
     @staticmethod
-    def delete_patient(db: Session, patient_uuid: UUID) -> Patient | None:
-        db_patient = (
-            db.query(Patient).filter(Patient.uuid == patient_uuid).first()
+    async def delete_patient(
+        db: AsyncSession, patient_uuid: UUID
+    ) -> Patient | None:
+        result = await db.execute(
+            select(Patient).filter(Patient.uuid == patient_uuid)
         )
+        db_patient = result.scalars().first()
         if db_patient:
-            db.delete(db_patient)
-            db.commit()
+            await db.delete(db_patient)
+            await db.commit()
         return db_patient

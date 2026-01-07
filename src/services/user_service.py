@@ -1,5 +1,6 @@
 from fastapi.exceptions import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import User
 from schemas.user import UserCreate, UserUpdate
@@ -8,23 +9,33 @@ from security import get_password_hash
 
 class UserService:
     @staticmethod
-    def get_user_by_id(db: Session, user_id: int) -> User | None:
-        return db.query(User).filter(User.id == user_id).first()
+    async def get_user_by_id(db: AsyncSession, user_id: int) -> User | None:
+        result = await db.execute(select(User).filter(User.id == user_id))
+        return result.scalars().first()
 
     @staticmethod
-    def get_user_by_uuid(db: Session, user_uuid: str) -> User | None:
-        return db.query(User).filter(User.uuid == str(user_uuid)).first()
+    async def get_user_by_uuid(
+        db: AsyncSession, user_uuid: str
+    ) -> User | None:
+        result = await db.execute(
+            select(User).filter(User.uuid == str(user_uuid))
+        )
+        return result.scalars().first()
 
     @staticmethod
-    def get_user_by_email(db: Session, email: str) -> User | None:
-        return db.query(User).filter(User.email == email).first()
+    async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
+        result = await db.execute(select(User).filter(User.email == email))
+        return result.scalars().first()
 
     @staticmethod
-    def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[User]:
-        return db.query(User).offset(skip).limit(limit).all()
+    async def get_users(
+        db: AsyncSession, skip: int = 0, limit: int = 100
+    ) -> list[User]:
+        result = await db.execute(select(User).offset(skip).limit(limit))
+        return list(result.scalars().all())
 
     @staticmethod
-    def create_user(db: Session, user_in: UserCreate) -> User:
+    async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
         if user_in.password != user_in.password_confirmation:
             raise HTTPException(
                 status_code=400, detail="Passwords do not match"
@@ -35,12 +46,14 @@ class UserService:
             hashed_password=get_password_hash(user_in.password),
         )
         db.add(db_user)
-        db.commit()
-        db.refresh(db_user)
+        await db.commit()
+        await db.refresh(db_user)
         return db_user
 
     @staticmethod
-    def update_user(db: Session, db_user: User, user_in: UserUpdate) -> User:
+    async def update_user(
+        db: AsyncSession, db_user: User, user_in: UserUpdate
+    ) -> User:
         update_data = user_in.model_dump(exclude_unset=True)
         if (
             "password" in update_data
@@ -58,14 +71,17 @@ class UserService:
             setattr(db_user, field, value)
 
         db.add(db_user)
-        db.commit()
-        db.refresh(db_user)
+        await db.commit()
+        await db.refresh(db_user)
         return db_user
 
     @staticmethod
-    def delete_user(db: Session, user_uuid: str) -> User | None:
-        db_user = db.query(User).filter(User.uuid == str(user_uuid)).first()
+    async def delete_user(db: AsyncSession, user_uuid: str) -> User | None:
+        result = await db.execute(
+            select(User).filter(User.uuid == str(user_uuid))
+        )
+        db_user = result.scalars().first()
         if db_user:
-            db.delete(db_user)
-            db.commit()
+            await db.delete(db_user)
+            await db.commit()
         return db_user

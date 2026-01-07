@@ -22,7 +22,7 @@ router = APIRouter(
     response_model=TreatmentWithPatientRead,
     status_code=status.HTTP_201_CREATED,
 )
-def create_patient_with_treatment(
+async def create_patient_with_treatment(
     *,
     db: SessionDB,
     current_user: User = Depends(get_current_user),
@@ -32,10 +32,11 @@ def create_patient_with_treatment(
     Create a new patient and their associated treatment.
     """
     try:
-        db_patient, db_treatment = (
-            PatientWithTreatmentService.create_patient_with_treatment(
-                db=db, schema=schema, user_uuid=current_user.uuid
-            )
+        (
+            _,
+            db_treatment,
+        ) = await PatientWithTreatmentService.create_patient_with_treatment(
+            db=db, schema=schema, user_uuid=current_user.uuid
         )
     except ValueError as e:
         raise HTTPException(
@@ -45,7 +46,7 @@ def create_patient_with_treatment(
 
 
 @router.get("/daily", response_model=list[TreatmentWithPatientRead])
-def get_daily_patients_with_treatment(
+async def get_daily_patients_with_treatment(
     *,
     db: SessionDB,
     current_user: User = Depends(get_current_user),
@@ -55,13 +56,13 @@ def get_daily_patients_with_treatment(
     Retrieve all treatments (with patient data) for the current user for
     today or a specific weekday. Ordered by start_time.
     """
-    return PatientWithTreatmentService.get_daily_treatments(
+    return await PatientWithTreatmentService.get_daily_treatments(
         db=db, user_uuid=current_user.uuid, weekday=weekday
     )
 
 
 @router.get("/", response_model=list[TreatmentWithPatientRead])
-def get_patients_with_treatment(  # noqa: PLR0913
+async def get_patients_with_treatment(  # noqa: PLR0913
     *,
     db: SessionDB,
     current_user: User = Depends(get_current_user),
@@ -78,7 +79,7 @@ def get_patients_with_treatment(  # noqa: PLR0913
     Supports pagination, filtering by gender/weekday,
     sorting by name/birth_date, and searching by name.
     """
-    return PatientWithTreatmentService.get_treatments_with_user_uuid(
+    return await PatientWithTreatmentService.get_treatments_with_user_uuid(
         db=db,
         user_uuid=current_user.uuid,
         skip=skip,
@@ -92,7 +93,7 @@ def get_patients_with_treatment(  # noqa: PLR0913
 
 
 @router.get("/{treatment_uuid}", response_model=TreatmentWithPatientRead)
-def get_patient_with_treatment(
+async def get_patient_with_treatment(
     *,
     db: SessionDB,
     current_user: User = Depends(get_current_user),
@@ -103,7 +104,7 @@ def get_patient_with_treatment(
     Only allows access if the treatment belongs to the current user.
     """
     db_treatment = (
-        PatientWithTreatmentService.get_treatment_with_treatment_uuid(
+        await PatientWithTreatmentService.get_treatment_with_treatment_uuid(
             db=db, treatment_uuid=treatment_uuid
         )
     )
@@ -121,7 +122,7 @@ def get_patient_with_treatment(
 
 
 @router.patch("/{treatment_uuid}", response_model=TreatmentWithPatientRead)
-def update_patient_with_treatment(
+async def update_patient_with_treatment(
     *,
     db: SessionDB,
     current_user: User = Depends(get_current_user),
@@ -134,7 +135,7 @@ def update_patient_with_treatment(
     """
     # First check ownership
     db_treatment = (
-        PatientWithTreatmentService.get_treatment_with_treatment_uuid(
+        await PatientWithTreatmentService.get_treatment_with_treatment_uuid(
             db=db, treatment_uuid=treatment_uuid
         )
     )
@@ -151,13 +152,14 @@ def update_patient_with_treatment(
 
     # Perform update
     try:
-        _, updated_treatment = (
-            PatientWithTreatmentService.update_patient_with_treatment(
-                db=db,
-                patient_uuid=db_treatment.patient_uuid,
-                treatment_uuid=treatment_uuid,
-                schema=schema,
-            )
+        (
+            _,
+            updated_treatment,
+        ) = await PatientWithTreatmentService.update_patient_with_treatment(
+            db=db,
+            patient_uuid=db_treatment.patient_uuid,
+            treatment_uuid=treatment_uuid,
+            schema=schema,
         )
     except ValueError as e:
         raise HTTPException(

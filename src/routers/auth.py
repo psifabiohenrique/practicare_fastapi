@@ -4,7 +4,7 @@ import jwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from schemas.message import Details
@@ -13,16 +13,16 @@ from services.auth_service import AuthService
 from settings import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-SessionDB = Annotated[Session, Depends(get_db)]
+SessionDB = Annotated[AsyncSession, Depends(get_db)]
 
 
 @router.post("/login", response_model=Token)
-def login(
+async def login(
     db: SessionDB,
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> any:
-    user = AuthService.authenticate_user(
+    user = await AuthService.authenticate_user(
         db, email=form_data.username, password=form_data.password
     )
     if not user:
@@ -48,7 +48,7 @@ def login(
 
 
 @router.post("/refresh", response_model=Token)
-def refresh_token(
+async def refresh_token(
     db: SessionDB,
     response: Response,
     refresh_token: Annotated[str | None, Cookie()] = None,
@@ -94,6 +94,6 @@ def refresh_token(
 
 
 @router.post("/logout", response_model=Details)
-def logout(response: Response) -> any:
+async def logout(response: Response) -> any:
     response.delete_cookie("refresh_token")
     return Details(detail="Successfully logged out")

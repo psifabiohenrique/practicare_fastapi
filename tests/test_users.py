@@ -1,6 +1,9 @@
 import uuid as uuid_pkg
 from http import HTTPStatus
 
+import pytest
+from sqlalchemy import select
+
 from models import User
 from tests.factories import UserFactory
 
@@ -131,15 +134,17 @@ def test_update_user_not_found(user_client):
     assert "detail" in response.json()
 
 
-def test_delete_user(user_client, db_session):
+@pytest.mark.asyncio
+async def test_delete_user(user_client, db_session):
     client, user, headers = user_client
     response = client.delete(f"/users/{user.uuid}", headers=headers)
     assert response.status_code == HTTPStatus.OK
 
     # Verify deleted
-    deleted_user = (
-        db_session.query(User).filter(User.uuid == user.uuid).first()
+    result = await db_session.execute(
+        select(User).filter(User.uuid == user.uuid)
     )
+    deleted_user = result.scalars().first()
     assert deleted_user is None
 
 

@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Treatment
 from schemas import TreatmentCreate, TreatmentUpdate
@@ -6,23 +7,29 @@ from schemas import TreatmentCreate, TreatmentUpdate
 
 class TreatmentService:
     @staticmethod
-    def get_treatment(db: Session, treatment_id: int) -> Treatment | None:
-        return db.query(Treatment).filter(Treatment.id == treatment_id).first()
+    async def get_treatment(
+        db: AsyncSession, treatment_id: int
+    ) -> Treatment | None:
+        result = await db.execute(
+            select(Treatment).filter(Treatment.id == treatment_id)
+        )
+        return result.scalars().first()
 
     @staticmethod
-    def get_treatments(
-        db: Session, skip: int = 0, limit: int = 100
+    async def get_treatments(
+        db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[Treatment]:
-        return db.query(Treatment).offset(skip).limit(limit).all()
+        result = await db.execute(select(Treatment).offset(skip).limit(limit))
+        return list(result.scalars().all())
 
     @staticmethod
-    def create_treatment(
-        db: Session, treatment_in: TreatmentCreate
+    async def create_treatment(
+        db: AsyncSession, treatment_in: TreatmentCreate
     ) -> Treatment:
         db_treatment = TreatmentService._create_treatment_model(treatment_in)
         db.add(db_treatment)
-        db.commit()
-        db.refresh(db_treatment)
+        await db.commit()
+        await db.refresh(db_treatment)
         return db_treatment
 
     @staticmethod
@@ -30,13 +37,15 @@ class TreatmentService:
         return Treatment(**treatment_in.model_dump())
 
     @staticmethod
-    def update_treatment(
-        db: Session, db_treatment: Treatment, treatment_in: TreatmentUpdate
+    async def update_treatment(
+        db: AsyncSession,
+        db_treatment: Treatment,
+        treatment_in: TreatmentUpdate,
     ) -> Treatment:
         TreatmentService._apply_update(db_treatment, treatment_in)
         db.add(db_treatment)
-        db.commit()
-        db.refresh(db_treatment)
+        await db.commit()
+        await db.refresh(db_treatment)
         return db_treatment
 
     @staticmethod
@@ -48,11 +57,14 @@ class TreatmentService:
             setattr(db_treatment, field, value)
 
     @staticmethod
-    def delete_treatment(db: Session, treatment_id: int) -> Treatment | None:
-        db_treatment = (
-            db.query(Treatment).filter(Treatment.id == treatment_id).first()
+    async def delete_treatment(
+        db: AsyncSession, treatment_id: int
+    ) -> Treatment | None:
+        result = await db.execute(
+            select(Treatment).filter(Treatment.id == treatment_id)
         )
+        db_treatment = result.scalars().first()
         if db_treatment:
-            db.delete(db_treatment)
-            db.commit()
+            await db.delete(db_treatment)
+            await db.commit()
         return db_treatment

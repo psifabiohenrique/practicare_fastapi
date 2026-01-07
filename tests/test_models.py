@@ -1,10 +1,14 @@
 from http import HTTPStatus
 
+import pytest
+from sqlalchemy import select
+
 from models import Patient, Treatment, User
 from tests.factories import PatientFactory, TreatmentFactory, UserFactory
 
 
-def test_create_user(db_session):
+@pytest.mark.asyncio
+async def test_create_user(db_session):
     user = UserFactory()
 
     assert user.id is not None
@@ -14,35 +18,37 @@ def test_create_user(db_session):
     assert user.hashed_password is not None
 
     # Verify persistence
-    db_user = db_session.query(User).filter(User.id == user.id).first()
+    result = await db_session.execute(select(User).filter(User.id == user.id))
+    db_user = result.scalars().first()
     assert db_user.email == user.email
 
 
-def test_create_patient(db_session):
+@pytest.mark.asyncio
+async def test_create_patient(db_session):
     patient = PatientFactory()
     assert patient.id is not None
     assert patient.uuid is not None
     assert patient.first_name is not None
 
-    db_patient = (
-        db_session.query(Patient).filter(Patient.id == patient.id).first()
+    result = await db_session.execute(
+        select(Patient).filter(Patient.id == patient.id)
     )
+    db_patient = result.scalars().first()
     assert db_patient.uuid == patient.uuid
     assert db_patient.gender == patient.gender
 
 
-def test_create_treatment(db_session):
+@pytest.mark.asyncio
+async def test_create_treatment(db_session):
     treatment = TreatmentFactory()
     assert treatment.id is not None
     assert treatment.user_uuid is not None
     assert treatment.patient_uuid is not None
 
-    db_treatment = (
-        db_session
-        .query(Treatment)
-        .filter(Treatment.id == treatment.id)
-        .first()
+    result = await db_session.execute(
+        select(Treatment).filter(Treatment.id == treatment.id)
     )
+    db_treatment = result.scalars().first()
     assert db_treatment.user_uuid == treatment.user_uuid
     assert db_treatment.patient_uuid == treatment.patient_uuid
 

@@ -1,13 +1,16 @@
 from http import HTTPStatus
 
+import pytest
 from jwt import decode, encode
 
 from models import User
 from security import get_password_hash
 from settings import settings
 
+pytestmark = pytest.mark.asyncio
 
-def test_login_success(client, db_session):
+
+async def test_login_success(client, db_session):
     password = "testpassword"
 
     user = User(
@@ -16,7 +19,7 @@ def test_login_success(client, db_session):
         hashed_password=get_password_hash(password),
     )
     db_session.add(user)
-    db_session.commit()
+    await db_session.commit()
 
     response = client.post(
         "/auth/login", data={"username": user.email, "password": password}
@@ -29,7 +32,7 @@ def test_login_success(client, db_session):
     assert "refresh_token" in response.cookies
 
 
-def test_login_invalid_credentials(client):
+async def test_login_invalid_credentials(client):
     response = client.post(
         "/auth/login",
         data={"username": "wrong@example.com", "password": "wrongpassword"},
@@ -37,7 +40,7 @@ def test_login_invalid_credentials(client):
     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
-def test_refresh_token(client, db_session):
+async def test_refresh_token(client, db_session):
     password = "testpassword"
 
     user = User(
@@ -46,7 +49,7 @@ def test_refresh_token(client, db_session):
         hashed_password=get_password_hash(password),
     )
     db_session.add(user)
-    db_session.commit()
+    await db_session.commit()
 
     login_response = client.post(
         "/auth/login", data={"username": user.email, "password": password}
@@ -62,7 +65,7 @@ def test_refresh_token(client, db_session):
     assert "refresh_token" in response.cookies
 
 
-def test_refresh_token_invalid_type(client, db_session):
+async def test_refresh_token_invalid_type(client, db_session):
     password = "testpassword"
 
     user = User(
@@ -71,7 +74,7 @@ def test_refresh_token_invalid_type(client, db_session):
         hashed_password=get_password_hash(password),
     )
     db_session.add(user)
-    db_session.commit()
+    await db_session.commit()
 
     login_response = client.post(
         "/auth/login", data={"username": user.email, "password": password}
@@ -92,7 +95,7 @@ def test_refresh_token_invalid_type(client, db_session):
     assert "detail" in data
 
 
-def test_refresh_token_invalid_secret(client):
+async def test_refresh_token_invalid_secret(client):
     payload = {"sub": "1", "type": "refresh"}
     refresh_token = encode(payload, "wrong", algorithm=settings.ALGORITHM)
 
@@ -103,14 +106,14 @@ def test_refresh_token_invalid_secret(client):
     assert "detail" in data
 
 
-def test_refresh_token_without_cookie(client):
+async def test_refresh_token_without_cookie(client):
     response = client.post("/auth/refresh")
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     data = response.json()
     assert "detail" in data
 
 
-def test_logout_success(client, db_session):
+async def test_logout_success(client, db_session):
     password = "testpassword"
     user = User(
         email="logout@example.com",
@@ -118,7 +121,7 @@ def test_logout_success(client, db_session):
         hashed_password=get_password_hash(password),
     )
     db_session.add(user)
-    db_session.commit()
+    await db_session.commit()
 
     # Login to get the cookie
     login_response = client.post(

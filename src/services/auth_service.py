@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import User
 from schemas.token import Internal_Tokens
@@ -12,10 +12,10 @@ from services.user_service import UserService
 
 class AuthService:
     @staticmethod
-    def authenticate_user(
-        db: Session, email: str, password: str
+    async def authenticate_user(
+        db: AsyncSession, email: str, password: str
     ) -> User | None:
-        user = UserService.get_user_by_email(db, email)
+        user = await UserService.get_user_by_email(db, email)
         if not user or not verify_password(password, user.hashed_password):
             return None
         return user
