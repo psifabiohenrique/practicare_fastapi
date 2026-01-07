@@ -79,6 +79,9 @@ class Treatment(Base):
     treatment_records = relationship(
         "TreatmentRecord", back_populates="treatment"
     )
+    treatment_reports = relationship(
+        "TreatmentReport", back_populates="treatment"
+    )
 
 
 class TreatmentRecord(Base):
