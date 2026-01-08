@@ -1,11 +1,14 @@
 import uuid as uuid_pkg
 from http import HTTPStatus
 
+import pytest
+
 from security import create_access_token
 from tests.factories import TreatmentFactory, UserFactory
 
 
-def test_create_patient_with_treatment(user_client):
+@pytest.mark.asyncio
+async def test_create_patient_with_treatment(user_client):
     client, user, headers = user_client
     payload = {
         "patient_schema": {
@@ -35,18 +38,23 @@ def test_create_patient_with_treatment(user_client):
     assert data["weekday"] == "Monday"
 
 
-def test_list_my_patients_with_treatment(user_client):
+@pytest.mark.asyncio
+async def test_list_my_patients_with_treatment(user_client, db_session):
     client, user, headers = user_client
 
     number_of_treatments = 3
 
     # Create some treatments for this user
-    TreatmentFactory.create_batch(
+    treatments = TreatmentFactory.build_batch(
         number_of_treatments, user=user, user_uuid=user.uuid
     )
+    db_session.add_all(treatments)
+    await db_session.commit()
 
     # Create a treatment for another user
-    TreatmentFactory()
+    other_treatment = TreatmentFactory.build()
+    db_session.add(other_treatment)
+    await db_session.commit()
 
     response = client.get("/patients-with-treatment/", headers=headers)
     assert response.status_code == HTTPStatus.OK
@@ -56,9 +64,13 @@ def test_list_my_patients_with_treatment(user_client):
         assert item["user_uuid"] == user.uuid
 
 
-def test_get_treatment_details(user_client):
+@pytest.mark.asyncio
+async def test_get_treatment_details(user_client, db_session):
     client, user, headers = user_client
-    treatment = TreatmentFactory(user=user, user_uuid=user.uuid)
+    treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
 
     response = client.get(
         f"/patients-with-treatment/{treatment.uuid}", headers=headers
@@ -69,11 +81,19 @@ def test_get_treatment_details(user_client):
     assert data["patient"]["uuid"] == treatment.patient_uuid
 
 
-def test_get_treatment_details_unauthorized(client, db_session):
+@pytest.mark.asyncio
+async def test_get_treatment_details_unauthorized(client, db_session):
+    user1 = UserFactory.build()
+    user2 = UserFactory.build()
+    db_session.add_all([user1, user2])
+    await db_session.commit()
+    await db_session.refresh(user1)
+    await db_session.refresh(user2)
 
-    user1 = UserFactory()
-    user2 = UserFactory()
-    treatment = TreatmentFactory(user=user1, user_uuid=user1.uuid)
+    treatment = TreatmentFactory.build(user=user1, user_uuid=user1.uuid)
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
 
     token2 = create_access_token(subject=user2.uuid)
     headers2 = {"Authorization": f"Bearer {token2}"}
@@ -84,7 +104,8 @@ def test_get_treatment_details_unauthorized(client, db_session):
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 
-def test_get_treatment_details_not_found(user_client):
+@pytest.mark.asyncio
+async def test_get_treatment_details_not_found(user_client):
     client, user, headers = user_client
     random_uuid = str(uuid_pkg.uuid4())
     response = client.get(
@@ -94,9 +115,13 @@ def test_get_treatment_details_not_found(user_client):
     assert "detail" in response.json()
 
 
-def test_update_patient_with_treatment(user_client):
+@pytest.mark.asyncio
+async def test_update_patient_with_treatment(user_client, db_session):
     client, user, headers = user_client
-    treatment = TreatmentFactory(user=user, user_uuid=user.uuid)
+    treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
 
     payload = {
         "patient_schema": {"first_name": "Jane"},
@@ -114,9 +139,15 @@ def test_update_patient_with_treatment(user_client):
     assert data["weekday"] == "Wednesday"
 
 
-def test_update_pateint_with_treatment_phone_normalization(user_client):
+@pytest.mark.asyncio
+async def test_update_pateint_with_treatment_phone_normalization(
+    user_client, db_session
+):
     client, user, headers = user_client
-    treatment = TreatmentFactory(user=user, user_uuid=user.uuid)
+    treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
 
     payload = {
         "patient_schema": {"first_name": "Valid", "phone": "11999999999"},
@@ -133,11 +164,19 @@ def test_update_pateint_with_treatment_phone_normalization(user_client):
     assert data["patient"]["phone"] == "+5511999999999"
 
 
-def test_update_treatment_unauthorized(client):
+@pytest.mark.asyncio
+async def test_update_treatment_unauthorized(client, db_session):
+    user1 = UserFactory.build()
+    user2 = UserFactory.build()
+    db_session.add_all([user1, user2])
+    await db_session.commit()
+    await db_session.refresh(user1)
+    await db_session.refresh(user2)
 
-    user1 = UserFactory()
-    user2 = UserFactory()
-    treatment = TreatmentFactory(user=user1, user_uuid=user1.uuid)
+    treatment = TreatmentFactory.build(user=user1, user_uuid=user1.uuid)
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
 
     token2 = create_access_token(subject=user2.uuid)
     headers2 = {"Authorization": f"Bearer {token2}"}
@@ -152,7 +191,8 @@ def test_update_treatment_unauthorized(client):
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 
-def test_update_treatment_not_found(user_client):
+@pytest.mark.asyncio
+async def test_update_treatment_not_found(user_client):
     client, user, headers = user_client
     payload = {"patient_schema": {}, "treatment_schema": {"weekday": "Friday"}}
     random_uuid = str(uuid_pkg.uuid4())
@@ -165,9 +205,13 @@ def test_update_treatment_not_found(user_client):
     assert "detail" in response.json()
 
 
-def test_update_treatment_restricted_fields(user_client):
+@pytest.mark.asyncio
+async def test_update_treatment_restricted_fields(user_client, db_session):
     client, user, headers = user_client
-    treatment = TreatmentFactory(user=user, user_uuid=user.uuid)
+    treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
 
     initial_user_uuid = treatment.user_uuid
     initial_patient_uuid = treatment.patient_uuid
@@ -198,9 +242,15 @@ def test_update_treatment_restricted_fields(user_client):
     assert data["patient"]["uuid"] == initial_patient_uuid
 
 
-def test_update_pateint_with_treatment_with_invalid_phone(user_client):
+@pytest.mark.asyncio
+async def test_update_pateint_with_treatment_with_invalid_phone(
+    user_client, db_session
+):
     client, user, headers = user_client
-    treatment = TreatmentFactory(user=user, user_uuid=user.uuid)
+    treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
 
     payload = {
         "patient_schema": {"first_name": "Valid", "phone": "123"},
@@ -217,7 +267,8 @@ def test_update_pateint_with_treatment_with_invalid_phone(user_client):
     assert "Invalid phone number" in data["detail"]
 
 
-def test_create_patient_with_invalid_phone(user_client):
+@pytest.mark.asyncio
+async def test_create_patient_with_invalid_phone(user_client):
     client, user, headers = user_client
 
     payload = {

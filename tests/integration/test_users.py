@@ -8,14 +8,16 @@ from models import User
 from tests.factories import UserFactory
 
 
-def test_read_users(user_client):
+@pytest.mark.asyncio
+async def test_read_users(user_client):
     client, _, headers = user_client
     response = client.get("/users/", headers=headers)
     assert response.status_code == HTTPStatus.OK
     assert isinstance(response.json(), list)
 
 
-def test_read_me(user_client):
+@pytest.mark.asyncio
+async def test_read_me(user_client):
     client, user, headers = user_client
     response = client.get("/users/me", headers=headers)
     assert response.status_code == HTTPStatus.OK
@@ -24,9 +26,13 @@ def test_read_me(user_client):
     assert data["uuid"] == user.uuid
 
 
-def test_read_user_by_uuid(user_client):
+@pytest.mark.asyncio
+async def test_read_user_by_uuid(user_client, db_session):
     client, _, headers = user_client
-    user = UserFactory()
+    user = UserFactory.build()
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
     response = client.get(f"/users/{user.uuid}", headers=headers)
     assert response.status_code == HTTPStatus.OK
     data = response.json()
@@ -34,7 +40,8 @@ def test_read_user_by_uuid(user_client):
     assert data["uuid"] == str(user.uuid)
 
 
-def test_read_user_by_uuid_not_found(user_client):
+@pytest.mark.asyncio
+async def test_read_user_by_uuid_not_found(user_client):
     client, _, headers = user_client
     random_uuid = str(uuid_pkg.uuid4())
     response = client.get(f"/users/{random_uuid}", headers=headers)
@@ -42,7 +49,8 @@ def test_read_user_by_uuid_not_found(user_client):
     assert "detail" in response.json()
 
 
-def test_create_user(client):
+@pytest.mark.asyncio
+async def test_create_user(client):
     user_data = {
         "email": "newuser@example.com",
         "name": "New User",
@@ -57,8 +65,13 @@ def test_create_user(client):
     assert "id" not in data
 
 
-def test_create_user_preexisting_email(client):
-    UserFactory(email="olduser@example.com")
+@pytest.mark.asyncio
+async def test_create_user_preexisting_email(client, db_session):
+    user = UserFactory.build(email="olduser@example.com")
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
     user_data = {
         "email": "olduser@example.com",
         "name": "New User",
@@ -71,7 +84,8 @@ def test_create_user_preexisting_email(client):
     assert "detail" in data
 
 
-def test_create_user_with_mismatched_passwords(client):
+@pytest.mark.asyncio
+async def test_create_user_with_mismatched_passwords(client):
     user_data = {
         "email": "newuser@example.com",
         "name": "New User",
@@ -84,7 +98,8 @@ def test_create_user_with_mismatched_passwords(client):
     assert "detail" in data
 
 
-def test_update_user(user_client):
+@pytest.mark.asyncio
+async def test_update_user(user_client):
     client, user, headers = user_client
     update_data = {"name": "Updated Name"}
 
@@ -95,7 +110,8 @@ def test_update_user(user_client):
     assert response.json()["name"] == "Updated Name"
 
 
-def test_update_user_password(user_client):
+@pytest.mark.asyncio
+async def test_update_user_password(user_client):
     client, user, headers = user_client
     update_data = {
         "password": "newpassword123",
@@ -108,7 +124,8 @@ def test_update_user_password(user_client):
     assert response.status_code == HTTPStatus.OK
 
 
-def test_update_user_password_mismatched(user_client):
+@pytest.mark.asyncio
+async def test_update_user_password_mismatched(user_client):
     client, user, headers = user_client
     update_data = {
         "password": "newpassword123",
@@ -123,7 +140,8 @@ def test_update_user_password_mismatched(user_client):
     assert "detail" in data
 
 
-def test_update_user_not_found(user_client):
+@pytest.mark.asyncio
+async def test_update_user_not_found(user_client):
     client, _, headers = user_client
     update_data = {"name": "Updated Name"}
     random_uuid = str(uuid_pkg.uuid4())
@@ -148,7 +166,8 @@ async def test_delete_user(user_client, db_session):
     assert deleted_user is None
 
 
-def test_delete_user_not_found(user_client):
+@pytest.mark.asyncio
+async def test_delete_user_not_found(user_client):
     client, _, headers = user_client
     random_uuid = str(uuid_pkg.uuid4())
     response = client.delete(f"/users/{random_uuid}", headers=headers)

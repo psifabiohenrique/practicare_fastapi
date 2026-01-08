@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from models import TreatmentRecord
 from schemas.treatment_record_schema import (
@@ -17,9 +18,9 @@ class TreatmentRecordService:
         db: AsyncSession, treatment_record_uuid: UUID
     ) -> TreatmentRecord | None:
         result = await db.execute(
-            select(TreatmentRecord).filter(
-                TreatmentRecord.uuid == treatment_record_uuid
-            )
+            select(TreatmentRecord)
+            .options(selectinload(TreatmentRecord.treatment))
+            .filter(TreatmentRecord.uuid == treatment_record_uuid)
         )
         return result.scalars().first()
 

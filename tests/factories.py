@@ -11,7 +11,7 @@ class UserFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = User
         sqlalchemy_session = None  # Will be set in conftest.py
-        sqlalchemy_session_persistence = "commit"
+        sqlalchemy_session_persistence = None
 
     id = factory.Sequence(lambda n: n)
     uuid = factory.LazyFunction(lambda: str(uuid_pkg.uuid4()))
@@ -26,7 +26,7 @@ class PatientFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = Patient
         sqlalchemy_session = None
-        sqlalchemy_session_persistence = "commit"
+        sqlalchemy_session_persistence = None
 
     id = factory.Sequence(lambda n: n)
     uuid = factory.LazyFunction(lambda: str(uuid_pkg.uuid4()))
@@ -41,7 +41,7 @@ class TreatmentFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = Treatment
         sqlalchemy_session = None
-        sqlalchemy_session_persistence = "commit"
+        sqlalchemy_session_persistence = None
 
     id = factory.Sequence(lambda n: n)
     uuid = factory.LazyFunction(lambda: str(uuid_pkg.uuid4()))
@@ -58,7 +58,7 @@ class TreatmentRecordFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = TreatmentRecord
         sqlalchemy_session = None
-        sqlalchemy_session_persistence = "commit"
+        sqlalchemy_session_persistence = None
 
     id = factory.Sequence(lambda n: n)
     uuid = factory.LazyFunction(lambda: str(uuid_pkg.uuid4()))
@@ -76,7 +76,7 @@ class TreatmentReportFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = TreatmentReport
         sqlalchemy_session = None
-        sqlalchemy_session_persistence = "commit"
+        sqlalchemy_session_persistence = None
 
     id = factory.Sequence(lambda n: n)
     uuid = factory.LazyFunction(lambda: str(uuid_pkg.uuid4()))
