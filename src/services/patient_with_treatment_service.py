@@ -5,6 +5,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from domain.exceptions import ForbiddenError, NotFoundError
 from models import Patient, Treatment
 from schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
@@ -18,7 +19,7 @@ from utils.enums import Gender, Weekdays
 class PatientWithTreatmentService:
     @staticmethod
     async def get_patient_with_treatment_uuid(
-        db: AsyncSession, treatment_uuid: UUID
+        db: AsyncSession, treatment_uuid: UUID, user_uuid: str
     ):
         """Returns the patient associated with a specific treatment ID,
         including treatment data."""
@@ -28,7 +29,21 @@ class PatientWithTreatmentService:
             .filter(Treatment.uuid == str(treatment_uuid))
             .options(joinedload(Patient.treatments))
         )
-        return result.scalars().first()
+        patient = result.scalars().first()
+        if not patient:
+            raise NotFoundError("Patient or Treatment not found")
+
+        # Treatment ownership check (checking first treatment
+        # found for simplicity, but the query ensures it matches
+        # treatment_uuid)
+        treatment = next(
+            (t for t in patient.treatments if t.uuid == str(treatment_uuid)),
+            None,
+        )
+        if treatment and treatment.user_uuid != user_uuid:
+            raise ForbiddenError("Access denied")
+
+        return patient
 
     @staticmethod
     async def get_patients_with_user_uuid(db: AsyncSession, user_uuid: str):
@@ -57,7 +72,7 @@ class PatientWithTreatmentService:
 
     @staticmethod
     async def get_treatment_with_treatment_uuid(
-        db: AsyncSession, treatment_uuid: UUID
+        db: AsyncSession, treatment_uuid: UUID, user_uuid: str
     ):
         """Returns a specific treatment by ID, including patient data."""
         result = await db.execute(
@@ -65,7 +80,12 @@ class PatientWithTreatmentService:
             .filter(Treatment.uuid == str(treatment_uuid))
             .options(joinedload(Treatment.patient))
         )
-        return result.scalars().first()
+        treatment = result.scalars().first()
+        if not treatment:
+            raise NotFoundError("Treatment not found")
+        if treatment.user_uuid != user_uuid:
+            raise ForbiddenError("Access denied")
+        return treatment
 
     @staticmethod
     async def get_treatments_with_user_uuid(  # noqa: PLR0913, PLR0917
@@ -79,8 +99,9 @@ class PatientWithTreatmentService:
         weekday: Weekdays | None = None,
         search: str | None = None,
     ):
-        """Returns all treatments for a specific user, including patient data,
-        with support for filtering, sorting and pagination."""
+        """Returns all treatments for a specific user,
+        including patient data, with support for filtering,
+        sorting and pagination."""
         query = (
             select(Treatment)
             .join(Patient, Treatment.patient_uuid == Patient.uuid)
@@ -170,36 +191,31 @@ class PatientWithTreatmentService:
     @staticmethod
     async def update_patient_with_treatment(
         db: AsyncSession,
-        patient_uuid: str,
         treatment_uuid: UUID,
+        user_uuid: str,
         schema: PatientWithTreatmentUpdate,
     ):
         """Updates both patient and treatment in a single transaction."""
+        db_treatment = await PatientWithTreatmentService.get_treatment_with_treatment_uuid(  # noqa: E501
+            db, treatment_uuid, user_uuid
+        )
+
+        # Get the associated patient
         res_patient = await db.execute(
-            select(Patient).filter(Patient.uuid == str(patient_uuid))
+            select(Patient).filter(Patient.uuid == db_treatment.patient_uuid)
         )
         db_patient = res_patient.scalars().first()
+        if not db_patient:
+            raise NotFoundError("Associated patient not found")
 
-        res_treatment = await db.execute(
-            select(Treatment).filter(Treatment.uuid == str(treatment_uuid))
-        )
-        db_treatment = res_treatment.scalars().first()
+        PatientService._apply_update(db_patient, schema.patient_schema)
+        db.add(db_patient)
 
-        if db_patient:
-            PatientService._apply_update(db_patient, schema.patient_schema)
-            db.add(db_patient)
-
-        if db_treatment:
-            TreatmentService._apply_update(
-                db_treatment, schema.treatment_schema
-            )
-            db.add(db_treatment)
+        TreatmentService._apply_update(db_treatment, schema.treatment_schema)
+        db.add(db_treatment)
 
         await db.commit()
-
-        if db_patient:
-            await db.refresh(db_patient)
-        if db_treatment:
-            await db.refresh(db_treatment, ["patient"])
+        await db.refresh(db_patient)
+        await db.refresh(db_treatment, ["patient"])
 
         return db_patient, db_treatment

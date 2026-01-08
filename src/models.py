@@ -9,6 +9,7 @@ from sqlalchemy import (
     Integer,
     String,
     Time,
+    UniqueConstraint,
 )
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -86,6 +87,8 @@ class Treatment(Base):
 
 class TreatmentRecord(Base):
     __tablename__ = "treatment_records"
+
+    __table_args__ = (UniqueConstraint("treatment_uuid", "record_number"),)
 
     id = Column(Integer, primary_key=True, index=True)
     uuid = Column(

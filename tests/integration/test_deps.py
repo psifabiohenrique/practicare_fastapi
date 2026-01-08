@@ -32,7 +32,7 @@ async def test_get_current_user_invalid_signature(db_session):
     token = jwt.encode(payload, "wrong_secret", algorithm=settings.ALGORITHM)
     with pytest.raises(HTTPException) as exc:
         await get_current_user(db=db_session, token=token)
-    assert exc.value.status_code == HTTPStatus.FORBIDDEN
+    assert exc.value.status_code == HTTPStatus.UNAUTHORIZED
     assert exc.value.detail == "Could not validate credentials"
 
 
@@ -45,7 +45,7 @@ async def test_get_current_user_expired_token(db_session):
     )
     with pytest.raises(HTTPException) as exc:
         await get_current_user(db=db_session, token=token)
-    assert exc.value.status_code == HTTPStatus.FORBIDDEN
+    assert exc.value.status_code == HTTPStatus.UNAUTHORIZED
 
 
 @pytest.mark.asyncio

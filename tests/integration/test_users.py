@@ -79,7 +79,7 @@ async def test_create_user_preexisting_email(client, db_session):
         "password_confirmation": "newpassword123",
     }
     response = client.post("/users/", json=user_data)
-    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.status_code == HTTPStatus.CONFLICT
     data = response.json()
     assert "detail" in data
 

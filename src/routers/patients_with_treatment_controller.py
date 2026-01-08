@@ -1,9 +1,8 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 
-from models import User
-from routers.deps import SessionDB, get_current_user
+from routers.deps import CurrentUser, SessionDB
 from schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
     PatientWithTreatmentUpdate,
@@ -25,23 +24,18 @@ router = APIRouter(
 async def create_patient_with_treatment(
     *,
     db: SessionDB,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUser,
     schema: PatientWithTreatmentCreate,
 ) -> any:
     """
     Create a new patient and their associated treatment.
     """
-    try:
-        (
-            _,
-            db_treatment,
-        ) = await PatientWithTreatmentService.create_patient_with_treatment(
-            db=db, schema=schema, user_uuid=current_user.uuid
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        ) from e
+    (
+        _,
+        db_treatment,
+    ) = await PatientWithTreatmentService.create_patient_with_treatment(
+        db=db, schema=schema, user_uuid=current_user.uuid
+    )
     return db_treatment
 
 
@@ -49,7 +43,7 @@ async def create_patient_with_treatment(
 async def get_daily_patients_with_treatment(
     *,
     db: SessionDB,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUser,
     weekday: Weekdays | None = Query(None),
 ) -> any:
     """
@@ -65,7 +59,7 @@ async def get_daily_patients_with_treatment(
 async def get_patients_with_treatment(  # noqa: PLR0913
     *,
     db: SessionDB,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUser,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     order_by: str | None = Query(None, pattern="^(name|birth_date)$"),
@@ -96,36 +90,23 @@ async def get_patients_with_treatment(  # noqa: PLR0913
 async def get_patient_with_treatment(
     *,
     db: SessionDB,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUser,
     treatment_uuid: UUID,
 ) -> any:
     """
     Get a specific treatment-patient record by treatment ID.
     Only allows access if the treatment belongs to the current user.
     """
-    db_treatment = (
-        await PatientWithTreatmentService.get_treatment_with_treatment_uuid(
-            db=db, treatment_uuid=treatment_uuid
-        )
+    return await PatientWithTreatmentService.get_treatment_with_treatment_uuid(
+        db=db, treatment_uuid=treatment_uuid, user_uuid=current_user.uuid
     )
-    if not db_treatment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Treatment not found",
-        )
-    if db_treatment.user_uuid != current_user.uuid:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied",
-        )
-    return db_treatment
 
 
 @router.patch("/{treatment_uuid}", response_model=TreatmentWithPatientRead)
 async def update_patient_with_treatment(
     *,
     db: SessionDB,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUser,
     treatment_uuid: UUID,
     schema: PatientWithTreatmentUpdate,
 ) -> any:
@@ -133,36 +114,13 @@ async def update_patient_with_treatment(
     Update both patient and treatment data.
     Only allows update if the treatment belongs to the current user.
     """
-    # First check ownership
-    db_treatment = (
-        await PatientWithTreatmentService.get_treatment_with_treatment_uuid(
-            db=db, treatment_uuid=treatment_uuid
-        )
+    (
+        _,
+        updated_treatment,
+    ) = await PatientWithTreatmentService.update_patient_with_treatment(
+        db=db,
+        treatment_uuid=treatment_uuid,
+        user_uuid=current_user.uuid,
+        schema=schema,
     )
-    if not db_treatment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Treatment not found",
-        )
-    if db_treatment.user_uuid != current_user.uuid:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied",
-        )
-
-    # Perform update
-    try:
-        (
-            _,
-            updated_treatment,
-        ) = await PatientWithTreatmentService.update_patient_with_treatment(
-            db=db,
-            patient_uuid=db_treatment.patient_uuid,
-            treatment_uuid=treatment_uuid,
-            schema=schema,
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        ) from e
     return updated_treatment
