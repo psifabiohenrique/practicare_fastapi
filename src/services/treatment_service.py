@@ -1,19 +1,28 @@
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from domain.exceptions import ForbiddenError, NotFoundError
 from models import Treatment
 from schemas import TreatmentCreate, TreatmentUpdate
 
 
 class TreatmentService:
     @staticmethod
-    async def get_treatment(
-        db: AsyncSession, treatment_id: int
-    ) -> Treatment | None:
+    async def get_treatment_by_uuid(
+        db: AsyncSession, treatment_uuid: UUID, user_uuid: str
+    ) -> Treatment:
         result = await db.execute(
-            select(Treatment).filter(Treatment.id == treatment_id)
+            select(Treatment).filter(Treatment.uuid == str(treatment_uuid))
         )
-        return result.scalars().first()
+        treatment = result.scalars().first()
+        if not treatment:
+            raise NotFoundError("Treatment not found")
+        if treatment.user_uuid != user_uuid:
+            raise ForbiddenError("Access denied to this treatment")
+
+        return treatment
 
     @staticmethod
     async def get_treatments(

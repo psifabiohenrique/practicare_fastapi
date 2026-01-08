@@ -5,11 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from domain.exceptions import ForbiddenError, NotFoundError
-from models import Treatment, TreatmentRecord
+from models import TreatmentRecord
 from schemas.treatment_record_schema import (
     TreatmentRecordCreate,
     TreatmentRecordUpdate,
 )
+from services.treatment_service import TreatmentService
 
 
 class TreatmentRecordService:
@@ -41,14 +42,9 @@ class TreatmentRecordService:
         limit: int = 100,
     ) -> list[TreatmentRecord]:
         # Check if treatment exists and belongs to user
-        treatment_result = await db.execute(
-            select(Treatment).filter(Treatment.uuid == str(treatment_uuid))
+        await TreatmentService.get_treatment_by_uuid(
+            db, treatment_uuid, user_uuid
         )
-        treatment = treatment_result.scalars().first()
-        if not treatment:
-            raise NotFoundError("Treatment not found")
-        if treatment.user_uuid != user_uuid:
-            raise ForbiddenError("Access denied to this treatment")
 
         result = await db.execute(
             select(TreatmentRecord)
@@ -64,16 +60,9 @@ class TreatmentRecordService:
         db: AsyncSession, schema: TreatmentRecordCreate, user_uuid: str
     ) -> TreatmentRecord:
         # Check if treatment exists and belongs to user
-        treatment_result = await db.execute(
-            select(Treatment).filter(
-                Treatment.uuid == str(schema.treatment_uuid)
-            )
+        await TreatmentService.get_treatment_by_uuid(
+            db, schema.treatment_uuid, user_uuid
         )
-        treatment = treatment_result.scalars().first()
-        if not treatment:
-            raise NotFoundError("Treatment not found")
-        if treatment.user_uuid != user_uuid:
-            raise ForbiddenError("Access denied to this treatment")
 
         # Generate record_number: max(record_number) + 1 for this treatment
         max_number_result = await db.execute(
