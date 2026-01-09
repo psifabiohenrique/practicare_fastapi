@@ -63,9 +63,9 @@ async def test_create_treatment_record_sequential(user_client, db_session):
 
     payload = {
         "treatment_uuid": treatment.uuid,
-        "date": "2024-01-01T10:00:00",
-        "start_time": "2024-01-01T10:00:00",
-        "end_time": "2024-01-01T11:00:00",
+        "date": "2024-01-01",
+        "start_time": "10:00:00",
+        "end_time": "11:00:00",
         "content": "Record 1",
     }
 

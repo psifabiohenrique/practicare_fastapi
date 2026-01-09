@@ -66,8 +66,8 @@ class TreatmentRecordFactory(factory.alchemy.SQLAlchemyModelFactory):
     treatment_uuid = factory.SelfAttribute("treatment.uuid")
 
     date = factory.Faker("date_object")
-    start_time = factory.Faker("date_time")
-    end_time = factory.Faker("date_time")
+    start_time = datetime.time(9, 0)
+    end_time = datetime.time(10, 0)
     content = factory.Faker("paragraph")
     record_number = factory.Sequence(lambda n: n + 1)
 
@@ -89,5 +89,5 @@ class TreatmentReportFactory(factory.alchemy.SQLAlchemyModelFactory):
     conclusion = factory.Faker("paragraph")
 
     issue_date = factory.Faker("date_object")
-    start_date_period = factory.Faker("date_object")
-    end_date_period = factory.Faker("date_object")
+    start_date_period = datetime.time(9, 0)
+    end_date_period = datetime.time(10, 0)

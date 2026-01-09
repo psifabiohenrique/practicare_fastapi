@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -10,9 +10,9 @@ class TreatmentReportBase(BaseModel):
     procedures: str
     analysis: str
     conclusion: str
-    issue_date: datetime
-    start_date_period: datetime
-    end_date_period: datetime
+    issue_date: date
+    start_date_period: time
+    end_date_period: time
 
 
 class TreatmentReportCreate(TreatmentReportBase):
@@ -24,9 +24,9 @@ class TreatmentReportUpdate(BaseModel):
     procedures: str | None = None
     analysis: str | None = None
     conclusion: str | None = None
-    issue_date: datetime | None = None
-    start_date_period: datetime | None = None
-    end_date_period: datetime | None = None
+    issue_date: date | None = None
+    start_date_period: time | None = None
+    end_date_period: time | None = None
 
 
 class TreatmentReportRead(TreatmentReportBase):

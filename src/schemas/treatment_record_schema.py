@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date as _date
+from datetime import datetime, time
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -6,9 +7,9 @@ from pydantic import BaseModel, ConfigDict
 
 class TreatmentRecordBase(BaseModel):
     treatment_uuid: UUID
-    date: datetime
-    start_time: datetime
-    end_time: datetime
+    date: _date
+    start_time: time
+    end_time: time
     content: str
 
 
@@ -17,9 +18,9 @@ class TreatmentRecordCreate(TreatmentRecordBase):
 
 
 class TreatmentRecordUpdate(BaseModel):
-    date: datetime | None = None
-    start_time: datetime | None = None
-    end_time: datetime | None = None
+    date: _date | None = None
+    start_time: time | None = None
+    end_time: time | None = None
     content: str | None = None
 
 
