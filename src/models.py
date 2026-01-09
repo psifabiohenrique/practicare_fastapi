@@ -97,8 +97,8 @@ class TreatmentRecord(Base):
     treatment_uuid = Column(String, ForeignKey("treatments.uuid"))
 
     date = Column(Date)
-    start_time = Column(DateTime)
-    end_time = Column(DateTime)
+    start_time = Column(Time)
+    end_time = Column(Time)
     content = Column(String)
     record_number = Column(Integer)
 
@@ -127,8 +127,8 @@ class TreatmentReport(Base):
     conclusion = Column(String, nullable=True)
 
     issue_date = Column(Date)
-    start_date_period = Column(Date)
-    end_date_period = Column(Date)
+    start_date_period = Column(Time)
+    end_date_period = Column(Time)
 
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(
