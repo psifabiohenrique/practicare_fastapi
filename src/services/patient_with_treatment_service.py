@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from domain.exceptions import ForbiddenError, NotFoundError
 from models import Patient, Treatment
@@ -200,22 +200,29 @@ class PatientWithTreatmentService:
             db, treatment_uuid, user_uuid
         )
 
+        treatment_uuid_value = db_treatment.uuid
+        patient_uuid_value = db_treatment.patient_uuid
+
         # Get the associated patient
         res_patient = await db.execute(
-            select(Patient).filter(Patient.uuid == db_treatment.patient_uuid)
+            select(Patient).filter(Patient.uuid == patient_uuid_value)
         )
         db_patient = res_patient.scalars().first()
         if not db_patient:
             raise NotFoundError("Associated patient not found")
 
         PatientService._apply_update(db_patient, schema.patient_schema)
-        db.add(db_patient)
-
         TreatmentService._apply_update(db_treatment, schema.treatment_schema)
-        db.add(db_treatment)
 
         await db.commit()
-        await db.refresh(db_patient)
-        await db.refresh(db_treatment, ["patient"])
 
-        return db_patient, db_treatment
+        stmt = (
+            select(Treatment)
+            .where(Treatment.uuid == treatment_uuid_value)
+            .options(
+                selectinload(Treatment.patient),
+                selectinload(Treatment.user),
+            )
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one()

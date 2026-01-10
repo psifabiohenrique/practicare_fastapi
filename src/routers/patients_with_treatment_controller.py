@@ -114,13 +114,12 @@ async def update_patient_with_treatment(
     Update both patient and treatment data.
     Only allows update if the treatment belongs to the current user.
     """
-    (
-        _,
-        updated_treatment,
-    ) = await PatientWithTreatmentService.update_patient_with_treatment(
-        db=db,
-        treatment_uuid=treatment_uuid,
-        user_uuid=current_user.uuid,
-        schema=schema,
+    updated_treatment = (
+        await PatientWithTreatmentService.update_patient_with_treatment(
+            db=db,
+            treatment_uuid=treatment_uuid,
+            user_uuid=current_user.uuid,
+            schema=schema,
+        )
     )
     return updated_treatment
