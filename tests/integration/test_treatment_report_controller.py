@@ -66,8 +66,8 @@ async def test_create_treatment_report(user_client, db_session):
         "analysis": "Initial analysis",
         "conclusion": "Initial conclusion",
         "issue_date": "2024-01-01",
-        "start_date_period": "10:00:00",
-        "end_date_period": "11:00:00",
+        "start_date_period": "2024-01-01",
+        "end_date_period": "2024-01-01",
     }
 
     response = client.post(

@@ -127,8 +127,8 @@ class TreatmentReport(Base):
     conclusion = Column(String, nullable=True)
 
     issue_date = Column(Date)
-    start_date_period = Column(Time)
-    end_date_period = Column(Time)
+    start_date_period = Column(Date)
+    end_date_period = Column(Date)
 
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(

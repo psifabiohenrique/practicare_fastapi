@@ -89,5 +89,5 @@ class TreatmentReportFactory(factory.alchemy.SQLAlchemyModelFactory):
     conclusion = factory.Faker("paragraph")
 
     issue_date = factory.Faker("date_object")
-    start_date_period = datetime.time(9, 0)
-    end_date_period = datetime.time(10, 0)
+    start_date_period = factory.Faker("date_object")
+    end_date_period = factory.Faker("date_object")

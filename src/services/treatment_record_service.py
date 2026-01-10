@@ -49,7 +49,7 @@ class TreatmentRecordService:
         result = await db.execute(
             select(TreatmentRecord)
             .filter(TreatmentRecord.treatment_uuid == str(treatment_uuid))
-            .order_by(TreatmentRecord.record_number.asc())
+            .order_by(TreatmentRecord.record_number.desc())
             .offset(skip)
             .limit(limit)
         )
