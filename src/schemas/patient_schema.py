@@ -2,7 +2,7 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict
 
-from core.enums import Gender
+from models import Gender
 
 
 class PatientBase(BaseModel):

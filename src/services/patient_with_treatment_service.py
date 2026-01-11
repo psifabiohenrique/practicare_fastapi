@@ -5,9 +5,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from core.enums import Gender, Weekdays
 from core.exceptions import ForbiddenError, NotFoundError
-from models import Patient, Treatment
+from models import Gender, Patient, Treatment, Weekdays
 from schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
     PatientWithTreatmentUpdate,
