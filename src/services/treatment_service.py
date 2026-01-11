@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from domain.exceptions import ForbiddenError, NotFoundError
+from core.exceptions import ForbiddenError, NotFoundError
 from models import Treatment
 from schemas import TreatmentCreate, TreatmentUpdate
 

@@ -1,6 +1,6 @@
 import pytest
 
-from utils.phone_utils import validate_and_normalize_phone
+from core.phone_utils import validate_and_normalize_phone
 
 
 def test_validate_and_normalize_phone_valid():

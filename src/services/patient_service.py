@@ -3,10 +3,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from domain.exceptions import ValidationError
+from core.exceptions import ValidationError
+from core.phone_utils import validate_and_normalize_phone
 from models import Patient
 from schemas import PatientCreate, PatientUpdate
-from utils.phone_utils import validate_and_normalize_phone
 
 
 class PatientService:

@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from domain.exceptions import ForbiddenError, NotFoundError
+from core.exceptions import ForbiddenError, NotFoundError
 from models import TreatmentRecord
 from schemas.treatment_record_schema import (
     TreatmentRecordCreate,

@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from domain.exceptions import ConflictError, NotFoundError, ValidationError
+from core.exceptions import ConflictError, NotFoundError, ValidationError
 from models import User
 from schemas.user_schema import UserCreate, UserUpdate
 from security import get_password_hash
