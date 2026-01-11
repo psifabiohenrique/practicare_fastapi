@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
+from core.enums import Gender, Weekdays
 from routers.deps import CurrentUser, SessionDB
 from schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
@@ -9,7 +10,6 @@ from schemas.patient_with_treatment_schema import (
     TreatmentWithPatientRead,
 )
 from services.patient_with_treatment_service import PatientWithTreatmentService
-from utils.enums import Gender, Weekdays
 
 router = APIRouter(
     prefix="/patients-with-treatment", tags=["Patients with Treatment"]

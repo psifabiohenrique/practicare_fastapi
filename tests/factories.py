@@ -3,8 +3,8 @@ import uuid as uuid_pkg
 
 import factory
 
+from core.enums import Gender
 from models import Patient, Treatment, TreatmentRecord, TreatmentReport, User
-from utils.enums import Gender
 
 
 class UserFactory(factory.alchemy.SQLAlchemyModelFactory):

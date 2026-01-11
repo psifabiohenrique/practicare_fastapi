@@ -4,8 +4,8 @@ from http import HTTPStatus
 import pytest
 from freezegun import freeze_time
 
+from core.enums import Gender, Weekdays
 from tests.factories import PatientFactory, TreatmentFactory
-from utils.enums import Gender, Weekdays
 
 
 @pytest.mark.asyncio

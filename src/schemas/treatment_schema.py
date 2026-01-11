@@ -2,7 +2,7 @@ from datetime import time
 
 from pydantic import BaseModel, ConfigDict
 
-from utils.enums import Weekdays
+from core.enums import Weekdays
 
 
 class TreatmentBase(BaseModel):

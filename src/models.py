@@ -15,8 +15,8 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
+from core.enums import Gender, Weekdays
 from database import Base
-from utils.enums import Gender, Weekdays
 
 
 class User(Base):

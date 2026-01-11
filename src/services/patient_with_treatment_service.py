@@ -4,8 +4,8 @@ from uuid import UUID
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
-from utils.enums import Gender, Weekdays
 
+from core.enums import Gender, Weekdays
 from core.exceptions import ForbiddenError, NotFoundError
 from models import Patient, Treatment
 from schemas.patient_with_treatment_schema import (
