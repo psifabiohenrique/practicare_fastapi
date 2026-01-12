@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_MINUTES: int
+    REDIS_URL: str
+    PYTHONPATH: str
 
     model_config = SettingsConfigDict(env_file=".env")
 

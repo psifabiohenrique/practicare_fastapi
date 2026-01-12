@@ -13,6 +13,9 @@ dependencies = [
     "pyjwt>=2.10.1",
     "sqlalchemy[asyncio] (>=2.0.45,<3.0.0)",
     "psycopg[binary] (>=3.3.2,<4.0.0)",
+    "flower>=2.0.1",
+    "celery>=5.6.2",
+    "redis>=7.1.0",
 ]
 
 [dependency-groups]
@@ -53,6 +56,8 @@ run = 'fastapi dev src/main.py'
 pre_test = 'task lint'
 test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'
+celery = 'celery -A src.celery_app.celery_app worker --loglevel=INFO --pool=solo'
+flower = 'celery -A src.celery_app flower'
 
 [tool.coverage.run]
 core = "ctrace"
