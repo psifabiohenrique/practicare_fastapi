@@ -71,6 +71,7 @@ class TreatmentRecordFactory(factory.alchemy.SQLAlchemyModelFactory):
     treatment = factory.SubFactory(TreatmentFactory)
     treatment_uuid = factory.SelfAttribute("treatment.uuid")
 
+    status = "ready"
     date = factory.Faker("date_object")
     start_time = datetime.time(9, 0)
     end_time = datetime.time(10, 0)

@@ -96,6 +96,7 @@ async def upload_audio(
         db=db,
         schema=TreatmentRecordCreate(
             treatment_uuid=treatment_uuid,
+            status="pending",
             date=session_date,
             start_time=treatment.start_time,
             end_time=treatment.end_time,

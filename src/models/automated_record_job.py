@@ -4,6 +4,7 @@ from enum import Enum
 
 from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.orm import relationship
 
 from database import Base
 
@@ -39,4 +40,8 @@ class AutomatedRecordJob(Base):
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(
         DateTime, default=datetime.now, onupdate=datetime.now, nullable=False
+    )
+
+    treatment_record = relationship(
+        "TreatmentRecord", back_populates="automated_record_job"
     )

@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from models.treatment_record_model import RecordStatus
+
 
 class TreatmentRecordBase(BaseModel):
     treatment_uuid: UUID
@@ -26,6 +28,7 @@ class TreatmentRecordUpdate(BaseModel):
 
 class TreatmentRecordRead(TreatmentRecordBase):
     uuid: UUID
+    status: RecordStatus
     created_at: datetime
     updated_at: datetime
     record_number: int

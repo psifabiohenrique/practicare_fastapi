@@ -1,5 +1,6 @@
 import uuid as uuid_pkg
 from datetime import datetime
+from enum import Enum
 
 from sqlalchemy import (
     Column,
@@ -11,9 +12,17 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
 )
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 from database import Base
+
+
+class RecordStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    READY = "ready"
+    FAILED = "failed"
 
 
 class TreatmentRecord(Base):
@@ -26,7 +35,13 @@ class TreatmentRecord(Base):
         String, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
     )
     treatment_uuid = Column(String, ForeignKey("treatments.uuid"))
+    automated_record_job_uuid = Column(
+        String, ForeignKey("automated_record_jobs.uuid")
+    )
 
+    status = Column(
+        SQLEnum(RecordStatus), default=RecordStatus.READY, nullable=False
+    )
     date = Column(Date)
     start_time = Column(Time)
     end_time = Column(Time)
@@ -41,3 +56,6 @@ class TreatmentRecord(Base):
     )
 
     treatment = relationship("Treatment", back_populates="treatment_records")
+    automated_record_job = relationship(
+        "AutomatedRecordJob", back_populates="treatment_record"
+    )

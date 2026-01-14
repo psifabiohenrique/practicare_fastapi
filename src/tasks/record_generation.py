@@ -4,6 +4,7 @@ from uuid import UUID
 from celery_app import celery_app
 from database import get_async_session
 from models.automated_record_job import JobStatus
+from models.treatment_record_model import RecordStatus
 from schemas.treatment_record_schema import (
     TreatmentRecordUpdate,
 )
@@ -63,7 +64,7 @@ async def _generate_record(job_uuid: str, transcription: str):
         treatment_record_uuid=job.treatment_record_uuid,
         user_uuid=job.user_uuid,
         schema=TreatmentRecordUpdate(
-            content=record_text,
+            content=record_text, status=RecordStatus.READY
         ),
     )
     await AutomatedRecordService.update_job_status(
