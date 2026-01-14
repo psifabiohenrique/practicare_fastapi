@@ -12,7 +12,8 @@ celery_app = Celery(
 celery_app.conf.imports = ("tasks.record_generation",)
 
 
-# Used to serialize audiobytes need to be removed when audio files become stored
+# Used to serialize audiobytes need to be removed when
+#  audio files become stored
 celery_app.conf.update(
     task_serializer="pickle",
     accept_content=["pickle"],
