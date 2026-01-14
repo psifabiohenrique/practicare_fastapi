@@ -58,6 +58,7 @@ test = 'pytest -s -x --cov=src -vv'
 post_test = 'coverage html'
 celery = 'celery -A src.celery_app.celery_app worker --loglevel=INFO --pool=solo'
 flower = 'celery -A src.celery_app flower'
+python_path = '$env:PYTHONPATH="src"'
 
 [tool.coverage.run]
 core = "ctrace"

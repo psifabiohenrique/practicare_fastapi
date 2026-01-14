@@ -26,6 +26,7 @@ class AutomatedRecordJob(Base):
     )
     user_uuid = Column(String)
     treatment_uuid = Column(String)
+    treatment_record_uuid = Column(String)
 
     audio_path = Column(String)
 

@@ -21,3 +21,7 @@ class ConflictError(DomainError):
 
 class UnauthorizedError(DomainError):
     pass
+
+
+class BadRequestError(DomainError):
+    pass

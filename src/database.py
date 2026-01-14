@@ -18,3 +18,7 @@ Base = declarative_base()
 async def get_db():  # pragma: no cover
     async with SessionLocal() as session:
         yield session
+
+
+async def get_async_session() -> AsyncSession:
+    return SessionLocal()
