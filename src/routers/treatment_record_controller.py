@@ -13,7 +13,6 @@ from fastapi import (
 )
 
 from routers.deps import CurrentUser, SessionDB
-from schemas.automated_record_schema import JobResponse
 from schemas.treatment_record_schema import (
     TreatmentRecordCreate,
     TreatmentRecordRead,
@@ -70,7 +69,7 @@ async def create_treatment_record(
 
 @router.post(
     "/treatments/{treatment_uuid}/automated-record",
-    response_model=JobResponse,
+    response_model=TreatmentRecordRead,
 )
 async def upload_audio(
     treatment_uuid: UUID,
@@ -117,10 +116,7 @@ async def upload_audio(
     transcribe_audio.delay(job_uuid=job.uuid, audio=audio_bytes)
     # transcribe_audio.delay(job_uuid=job.uuid)
 
-    return JobResponse(
-        job_uuid=job.uuid,
-        status=job.status,
-    )
+    return record
 
 
 @router.patch("/{treatment_record_uuid}", response_model=TreatmentRecordRead)
