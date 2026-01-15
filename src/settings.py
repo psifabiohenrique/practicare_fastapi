@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_MINUTES: int
     REDIS_URL: str
     PYTHONPATH: str
+    LLM_MODEL: str
 
     model_config = SettingsConfigDict(env_file=".env")
 
