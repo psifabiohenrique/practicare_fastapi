@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     REDIS_URL: str
     PYTHONPATH: str
     LLM_MODEL: str
+    GOOGLE_API_KEY: str
 
     model_config = SettingsConfigDict(env_file=".env")
 
