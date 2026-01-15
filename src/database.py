@@ -9,7 +9,11 @@ from settings import settings
 
 engine = create_async_engine(settings.DATABASE_URL)
 SessionLocal = async_sessionmaker(
-    autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
+    bind=engine,
+    class_=AsyncSession,
 )
 
 Base = declarative_base()

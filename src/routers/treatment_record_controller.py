@@ -100,7 +100,7 @@ async def upload_audio(
             date=session_date,
             start_time=treatment.start_time,
             end_time=treatment.end_time,
-            content="Processing",
+            content="Processando em background",
         ),
         user_uuid=user_uuid,
     )
@@ -115,8 +115,6 @@ async def upload_audio(
     audio_bytes = await audio_file.read()
 
     transcribe_audio.delay(job_uuid=job.uuid, audio=audio_bytes)
-    # transcribe_audio.delay(job_uuid=job.uuid)
-
     return record
 
 
