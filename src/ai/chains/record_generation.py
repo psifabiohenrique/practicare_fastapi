@@ -11,20 +11,23 @@ class RecordGenerationChain:
         self.llm = LLMFactory.get_llm(provider=provider)
         self.chain = RECORD_GENERATION_PROMPT | self.llm
 
-    async def generate(self, transcription: str) -> str:
+    async def generate(
+        self, transcription: str, gender: str, context: str
+    ) -> str:  # pyright: ignore[reportReturnType]
         """
         Generates a structured record from a transcription.
         """
         try:
             response = await self.chain.ainvoke({
-                "transcription": transcription
+                "transcription": transcription,
+                "gender": gender,
+                "context": context,
             })
             return ResponseExtractor.extract_text(response)
 
         except ChatGoogleGenerativeAIError as e:
             if any(sub in str(e) for sub in ("429", "503", "504", "500")):
                 raise AITransientError(f"Erro temporário: {str(e)}")
-        except ChatGoogleGenerativeAIError as e:
             if any(sub in str(e) for sub in ("400", "403", "401")):
                 raise AIFatalError(f"Erro fatal ocorrido: {str(e)}")
         except Exception as e:
