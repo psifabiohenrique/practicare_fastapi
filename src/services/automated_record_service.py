@@ -3,6 +3,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ai.chains.record_generation import RecordGenerationChain
+from ai.chains.transcription import TranscriptionChain
 from core.exceptions import NotFoundError
 from models.automated_record_job import AutomatedRecordJob, JobStatus
 
@@ -57,3 +59,37 @@ class AutomatedRecordService:
         await db.refresh(job)
 
         return job
+
+    async def generate_record(
+        db: AsyncSession, transcription: str, job_uuid: UUID
+    ) -> str:
+        record_chain = RecordGenerationChain()
+        try:
+            record_text = await record_chain.generate(
+                transcription=transcription
+            )
+            return record_text
+        except Exception as e:
+            await AutomatedRecordService.update_job_status(
+                db=db,
+                job_uuid=job_uuid,
+                status=JobStatus.FAILED,
+            )
+            raise e
+
+    async def generate_transcription(
+        db: AsyncSession, audio: bytes, job_uuid: UUID
+    ):
+        transcription_chain = TranscriptionChain()
+        try:
+            transcription = await transcription_chain.transcribe(
+                audio_bytes=audio
+            )
+            return transcription
+        except Exception as e:
+            await AutomatedRecordService.update_job_status(
+                db=db,
+                job_uuid=job_uuid,
+                status=JobStatus.FAILED,
+            )
+            raise e

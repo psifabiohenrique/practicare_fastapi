@@ -2,8 +2,6 @@ import asyncio
 import logging
 from uuid import UUID
 
-from ai.chains.record_generation import RecordGenerationChain
-from ai.chains.transcription import TranscriptionChain
 from ai.exceptions import AIFatalError, AITransientError
 from celery_app import celery_app
 from database import get_async_session
@@ -38,18 +36,9 @@ async def _transcribe_audio(job_uuid: UUID, audio: bytes):
         status=JobStatus.TRANSCRIBING,
     )
 
-    transcription_chain = TranscriptionChain()
-    try:
-        transcription = await transcription_chain.transcribe(audio_bytes=audio)
-        logger.info(f"Transcrição: {transcription}")
-    except Exception as e:
-        await AutomatedRecordService.update_job_status(
-            db=db,
-            job_uuid=job_uuid,
-            status=JobStatus.FAILED,
-        )
-        await db.close()
-        raise e
+    transcription = await AutomatedRecordService.generate_transcription(
+        db, audio, job_uuid
+    )
 
     await AutomatedRecordService.update_job_status(
         db=db,
@@ -68,19 +57,9 @@ async def _generate_record(job_uuid: str, transcription: str):
         status=JobStatus.GENERATING_RECORD,
     )
 
-    # AI Integration for record generation
-    record_chain = RecordGenerationChain()
-    try:
-        record_text = await record_chain.generate(transcription=transcription)
-        logger.info(f"Record text: {record_text}")
-    except Exception as e:
-        await AutomatedRecordService.update_job_status(
-            db=db,
-            job_uuid=job_uuid,
-            status=JobStatus.FAILED,
-        )
-        await db.close()
-        raise e
+    record_text = await AutomatedRecordService.generate_record(
+        db, transcription, job_uuid
+    )
 
     job = await AutomatedRecordService.get_job(db, job_uuid)
 
