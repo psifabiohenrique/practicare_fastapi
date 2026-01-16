@@ -26,6 +26,10 @@ class TreatmentRecordUpdate(BaseModel):
     content: str | None = None
 
 
+class InternalTreatmentRecordUpdate(TreatmentRecordUpdate):
+    status: RecordStatus | None = None
+
+
 class TreatmentRecordRead(TreatmentRecordBase):
     uuid: UUID
     status: RecordStatus

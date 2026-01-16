@@ -7,6 +7,10 @@ from src.ai.chains.record_generation import RecordGenerationChain
 from src.ai.chains.transcription import TranscriptionChain
 from src.core.exceptions import NotFoundError
 from src.models.automated_record_job import AutomatedRecordJob, JobStatus
+from src.services.patient_with_treatment_service import (
+    PatientWithTreatmentService,
+)
+from src.services.treatment_report_service import TreatmentReportService
 
 
 class AutomatedRecordService:
@@ -53,30 +57,51 @@ class AutomatedRecordService:
     ):
         job = await AutomatedRecordService.get_job(db, job_uuid)
 
-        job.status = status
-        job.error_message = error_message
+        job.status = status  # type: ignore
+        job.error_message = error_message  # type: ignore
         await db.commit()
         await db.refresh(job)
 
         return job
 
+    @staticmethod
     async def generate_record(
-        db: AsyncSession, transcription: str, job_uuid: UUID
+        db: AsyncSession, transcription: str, job: AutomatedRecordJob
     ) -> str:
+        report_list = await TreatmentReportService.get_treatment_reports(
+            db=db,
+            treatment_uuid=job.treatment_uuid,  # pyright: ignore[reportArgumentType]
+            user_uuid=job.user_uuid,  # pyright: ignore[reportArgumentType]
+        )
+        last_report_context = "Nenhum relatório produzido ainda. Está é a sessão inicial ou uma das sessões iniciais."  # noqa: E501
+        if report_list:
+            last_report_context = report_list[0]
+
+        treatment_patient = (
+            await PatientWithTreatmentService.get_patient_with_treatment_uuid(
+                db=db,
+                treatment_uuid=job.treatment_uuid,  # pyright: ignore[reportArgumentType]
+                user_uuid=job.user_uuid,  # pyright: ignore[reportArgumentType]
+            )
+        )
+
         record_chain = RecordGenerationChain()
         try:
             record_text = await record_chain.generate(
-                transcription=transcription
+                transcription=transcription,
+                gender=treatment_patient.gender,  # pyright: ignore[reportArgumentType]
+                context=last_report_context,
             )
             return record_text
         except Exception as e:
             await AutomatedRecordService.update_job_status(
                 db=db,
-                job_uuid=job_uuid,
+                job_uuid=job.uuid,  # pyright: ignore[reportArgumentType]
                 status=JobStatus.FAILED,
             )
             raise e
 
+    @staticmethod
     async def generate_transcription(
         db: AsyncSession, audio: bytes, job_uuid: UUID
     ):

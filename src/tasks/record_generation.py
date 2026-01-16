@@ -8,7 +8,7 @@ from src.database import get_async_session
 from src.models.automated_record_job import JobStatus
 from src.models.treatment_record_model import RecordStatus
 from src.schemas.treatment_record_schema import (
-    TreatmentRecordUpdate,
+    InternalTreatmentRecordUpdate,
 )
 from src.services.automated_record_service import AutomatedRecordService
 from src.services.treatment_record_service import TreatmentRecordService
@@ -21,11 +21,11 @@ async def comunicate_record_fail(job_uuid: UUID, message: str):
     job = await AutomatedRecordService.get_job(db, job_uuid)
     await TreatmentRecordService.update_treatment_record(
         db,
-        job.treatment_record_uuid,
-        job.user_uuid,
-        TreatmentRecordUpdate(content=message),
+        job.treatment_record_uuid,  # type: ignore
+        job.user_uuid,  # type: ignore
+        InternalTreatmentRecordUpdate(content=message),
     )
-    db.close()
+    await db.close()
 
 
 async def _transcribe_audio(job_uuid: UUID, audio: bytes):
@@ -49,7 +49,7 @@ async def _transcribe_audio(job_uuid: UUID, audio: bytes):
     generate_record.delay(job_uuid=job_uuid, transcription=transcription)
 
 
-async def _generate_record(job_uuid: str, transcription: str):
+async def _generate_record(job_uuid: UUID, transcription: str):
     db = await get_async_session()
     await AutomatedRecordService.update_job_status(
         db=db,
@@ -57,17 +57,17 @@ async def _generate_record(job_uuid: str, transcription: str):
         status=JobStatus.GENERATING_RECORD,
     )
 
-    record_text = await AutomatedRecordService.generate_record(
-        db, transcription, job_uuid
-    )
-
     job = await AutomatedRecordService.get_job(db, job_uuid)
+
+    record_text = await AutomatedRecordService.generate_record(
+        db, transcription, job
+    )
 
     await TreatmentRecordService.update_treatment_record(
         db=db,
-        treatment_record_uuid=job.treatment_record_uuid,
-        user_uuid=job.user_uuid,
-        schema=TreatmentRecordUpdate(
+        treatment_record_uuid=job.treatment_record_uuid,  # type: ignore
+        user_uuid=job.user_uuid,  # type: ignore
+        schema=InternalTreatmentRecordUpdate(
             content=record_text, status=RecordStatus.READY
         ),
     )
@@ -138,7 +138,7 @@ def transcribe_audio(self, job_uuid: UUID, audio: bytes):
     autoretry_for=(AITransientError,),
     retry_kwargs={"max_retries": 10},
 )
-def generate_record(self, job_uuid: str, transcription: str):
+def generate_record(self, job_uuid: UUID, transcription: str):
     try:
         asyncio.run(_generate_record(job_uuid, transcription))
 
