@@ -65,3 +65,8 @@ python_path = '$env:PYTHONPATH="src"'
 [tool.coverage.run]
 core = "ctrace"
 concurrency = ["thread", "greenlet"]
+
+
+[tool.pyright]
+reportArgumentType = 'warning'
+reportFunctionMemberAccess = 'none'

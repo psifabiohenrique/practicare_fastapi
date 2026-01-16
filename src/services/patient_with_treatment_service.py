@@ -82,7 +82,7 @@ class PatientWithTreatmentService:
         treatment = result.scalars().first()
         if not treatment:
             raise NotFoundError("Treatment not found")
-        if treatment.user_uuid != user_uuid:
+        if treatment.user_uuid != user_uuid:  # type: ignore
             raise ForbiddenError("Access denied")
         return treatment
 
@@ -178,7 +178,7 @@ class PatientWithTreatmentService:
             schema.treatment_schema
         )
         db_treatment.patient_uuid = db_patient.uuid
-        db_treatment.user_uuid = user_uuid
+        db_treatment.user_uuid = user_uuid  # type: ignore
         db.add(db_treatment)
 
         await db.commit()

@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -34,25 +35,34 @@ class TreatmentRecordService:
         return record
 
     @staticmethod
-    async def get_treatment_records(
+    async def get_treatment_records(  # noqa: PLR0913, PLR0917
         db: AsyncSession,
         treatment_uuid: UUID,
         user_uuid: str,
         skip: int = 0,
         limit: int = 100,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[TreatmentRecord]:
         # Check if treatment exists and belongs to user
         await TreatmentService.get_treatment_by_uuid(
             db, treatment_uuid, user_uuid
         )
+        query = select(TreatmentRecord).filter(
+            TreatmentRecord.treatment_uuid == str(treatment_uuid)
+        )
+        if start_date:
+            query = query.filter(TreatmentRecord.issue_date >= start_date)
+        if end_date:
+            query = query.filter(TreatmentRecord.issue_date >= end_date)
 
-        result = await db.execute(
-            select(TreatmentRecord)
-            .filter(TreatmentRecord.treatment_uuid == str(treatment_uuid))
+        query = (
+            query
             .order_by(TreatmentRecord.record_number.desc())
             .offset(skip)
             .limit(limit)
         )
+        result = await db.execute(query)
         return list(result.scalars().all())
 
     @staticmethod
