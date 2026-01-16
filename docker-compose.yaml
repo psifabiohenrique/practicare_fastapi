@@ -4,7 +4,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - .env-docker
     depends_on:
       db:
         condition: service_healthy
@@ -30,6 +30,20 @@ services:
       retries: 5
     networks:
       - practicare-network
+
+  celery_worker:
+    build: .
+    command: celery -A src.celery_app worker -l info --concurrency=2
+    depends_on:
+      - redis
+
+  flower:
+    build: .
+    command: celery -A src.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
 
   redis:
     image: redis:8-alpine

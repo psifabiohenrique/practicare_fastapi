@@ -9,6 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .env
+.env-docker
 .coverage
 
 sql_app.db
