@@ -86,6 +86,7 @@ async def _generate_record(job_uuid: UUID, transcription: str):
     retry_backoff_max=60 * 60,
     autoretry_for=(AITransientError,),
     retry_kwargs={"max_retries": 10},
+    acks_late=True,
 )
 def transcribe_audio(self, job_uuid: UUID, audio: bytes):
     try:
@@ -137,6 +138,7 @@ def transcribe_audio(self, job_uuid: UUID, audio: bytes):
     retry_backoff_max=60 * 60,
     autoretry_for=(AITransientError,),
     retry_kwargs={"max_retries": 10},
+    acks_late=True,
 )
 def generate_record(self, job_uuid: UUID, transcription: str):
     try:

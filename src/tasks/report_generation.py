@@ -55,6 +55,7 @@ async def _generate_report(job_uuid: UUID):
     retry_backoff_max=60 * 60,
     autoretry_for=(AITransientError,),
     retry_kwargs={"max_retries": 10},
+    acks_late=True,
 )
 def generate_report_task(self, job_uuid: UUID):
     try:
