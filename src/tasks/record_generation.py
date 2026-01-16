@@ -18,6 +18,18 @@ from services.treatment_record_service import TreatmentRecordService
 logger = logging.getLogger(__name__)
 
 
+async def comunicate_record_fail(job_uuid: UUID, message: str):
+    db = await get_async_session()
+    job = await AutomatedRecordService.get_job(db, job_uuid)
+    await TreatmentRecordService.update_treatment_record(
+        db,
+        job.treatment_record_uuid,
+        job.user_uuid,
+        TreatmentRecordUpdate(content=message),
+    )
+    db.close()
+
+
 async def _transcribe_audio(job_uuid: UUID, audio: bytes):
     db = await get_async_session()
     await AutomatedRecordService.update_job_status(
@@ -39,13 +51,6 @@ async def _transcribe_audio(job_uuid: UUID, audio: bytes):
         await db.close()
         raise e
 
-    job = await AutomatedRecordService.get_job(db, job_uuid)
-
-    await TreatmentRecordService.get_treatment_record(
-        db=db,
-        treatment_record_uuid=job.treatment_record_uuid,
-        user_uuid=job.user_uuid,
-    )
     await AutomatedRecordService.update_job_status(
         db=db,
         job_uuid=job_uuid,
@@ -107,6 +112,13 @@ def transcribe_audio(self, job_uuid: UUID, audio: bytes):
     try:
         asyncio.run(_transcribe_audio(job_uuid, audio))
     except AITransientError as e:
+        asyncio.run(
+            comunicate_record_fail(
+                job_uuid,
+                "Falha na comunicação com a IA, uma nova"
+                + " tentativa será realizada em breve",
+            )
+        )
         logger.warning(
             f"Erro transitório ao gerar prontuário. {self.request.retry} \n"
             + str(e)
@@ -114,6 +126,13 @@ def transcribe_audio(self, job_uuid: UUID, audio: bytes):
         raise
 
     except AIFatalError as e:
+        asyncio.run(
+            comunicate_record_fail(
+                job_uuid,
+                "Uma falha fatal ocorreu, tente reenviar o áudio ou"
+                + " redija o prontuário manualmente.",
+            )
+        )
         logger.error(
             f"Erro fatal ao gerar prontuário: {str(e)}",
         )
@@ -121,6 +140,13 @@ def transcribe_audio(self, job_uuid: UUID, audio: bytes):
 
     except Exception:
         # fallback defensivo
+        asyncio.run(
+            comunicate_record_fail(
+                job_uuid,
+                "Uma falha fatal ocorreu, tente reenviar o áudio ou"
+                + " redija o prontuário manualmente.",
+            )
+        )
         logger.exception("Erro inesperado na task")
         raise
 
@@ -138,6 +164,13 @@ def generate_record(self, job_uuid: str, transcription: str):
         asyncio.run(_generate_record(job_uuid, transcription))
 
     except AITransientError as e:
+        asyncio.run(
+            comunicate_record_fail(
+                job_uuid,
+                "Falha na comunicação com a IA, uma nova"
+                + " tentativa será realizada em breve",
+            )
+        )
         logger.warning(
             f"Erro transitório ao gerar prontuário. {self.request.retry}"
             + str(e)
@@ -145,6 +178,13 @@ def generate_record(self, job_uuid: str, transcription: str):
         raise
 
     except AIFatalError as e:
+        asyncio.run(
+            comunicate_record_fail(
+                job_uuid,
+                "Uma falha fatal ocorreu, tente reenviar o áudio ou"
+                + " redija o prontuário manualmente.",
+            )
+        )
         logger.error(
             f"Erro fatal ao gerar prontuário: {str(e)}",
         )
@@ -152,5 +192,12 @@ def generate_record(self, job_uuid: str, transcription: str):
 
     except Exception:
         # fallback defensivo
+        asyncio.run(
+            comunicate_record_fail(
+                job_uuid,
+                "Uma falha fatal ocorreu, tente reenviar o áudio ou"
+                + " redija o prontuário manualmente.",
+            )
+        )
         logger.exception("Erro inesperado na task")
         raise
