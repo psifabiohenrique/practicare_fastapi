@@ -15,7 +15,7 @@ from sqlalchemy import (
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
-from database import Base
+from src.database import Base
 
 
 class RecordStatus(str, Enum):

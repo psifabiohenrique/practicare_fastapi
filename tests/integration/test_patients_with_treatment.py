@@ -3,7 +3,7 @@ from http import HTTPStatus
 
 import pytest
 
-from security import create_access_token
+from src.security import create_access_token
 from tests.factories import TreatmentFactory, UserFactory
 
 

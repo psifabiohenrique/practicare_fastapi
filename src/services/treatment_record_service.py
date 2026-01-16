@@ -4,13 +4,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core.exceptions import ForbiddenError, NotFoundError
-from models import TreatmentRecord
-from schemas.treatment_record_schema import (
+from src.core.exceptions import ForbiddenError, NotFoundError
+from src.models import TreatmentRecord
+from src.schemas.treatment_record_schema import (
     TreatmentRecordCreate,
     TreatmentRecordUpdate,
 )
-from services.treatment_service import TreatmentService
+from src.services.treatment_service import TreatmentService
 
 
 class TreatmentRecordService:

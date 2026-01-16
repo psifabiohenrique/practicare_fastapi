@@ -4,7 +4,13 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from models import Patient, Treatment, TreatmentRecord, TreatmentReport, User
+from src.models import (
+    Patient,
+    Treatment,
+    TreatmentRecord,
+    TreatmentReport,
+    User,
+)
 from tests.factories import (
     PatientFactory,
     TreatmentFactory,

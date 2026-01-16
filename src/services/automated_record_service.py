@@ -3,10 +3,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai.chains.record_generation import RecordGenerationChain
-from ai.chains.transcription import TranscriptionChain
-from core.exceptions import NotFoundError
-from models.automated_record_job import AutomatedRecordJob, JobStatus
+from src.ai.chains.record_generation import RecordGenerationChain
+from src.ai.chains.transcription import TranscriptionChain
+from src.core.exceptions import NotFoundError
+from src.models.automated_record_job import AutomatedRecordJob, JobStatus
 
 
 class AutomatedRecordService:

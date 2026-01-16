@@ -2,13 +2,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, status
 
-from routers.deps import CurrentUser, SessionDB
-from schemas.treatment_report_schema import (
+from src.routers.deps import CurrentUser, SessionDB
+from src.schemas.treatment_report_schema import (
     TreatmentReportCreate,
     TreatmentReportRead,
     TreatmentReportUpdate,
 )
-from services.treatment_report_service import TreatmentReportService
+from src.services.treatment_report_service import TreatmentReportService
 
 router = APIRouter(prefix="/treatment-reports", tags=["Treatment reports"])
 

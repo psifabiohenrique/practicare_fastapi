@@ -7,10 +7,10 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db
-from models import User
-from schemas.token_schema import TokenPayload
-from settings import settings
+from src.database import get_db
+from src.models import User
+from src.schemas.token_schema import TokenPayload
+from src.settings import settings
 
 reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/login")
 SessionDB = Annotated[AsyncSession, Depends(get_db)]

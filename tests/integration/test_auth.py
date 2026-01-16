@@ -3,9 +3,9 @@ from http import HTTPStatus
 import pytest
 from jwt import decode, encode
 
-from models import User
-from security import get_password_hash
-from settings import settings
+from src.models import User
+from src.security import get_password_hash
+from src.settings import settings
 
 pytestmark = pytest.mark.asyncio
 

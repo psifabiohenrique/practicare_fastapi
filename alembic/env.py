@@ -4,11 +4,11 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from alembic import context
-from database import Base
-from settings import settings
+from src.database import Base
+from src.settings import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -26,7 +26,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-import models  # noqa
+import src.models as models  # noqa
 
 target_metadata = Base.metadata
 

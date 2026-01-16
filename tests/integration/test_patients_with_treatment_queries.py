@@ -4,7 +4,7 @@ from http import HTTPStatus
 import pytest
 from freezegun import freeze_time
 
-from models import Gender, Weekdays
+from src.models import Gender, Weekdays
 from tests.factories import PatientFactory, TreatmentFactory
 
 

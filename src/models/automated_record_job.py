@@ -6,7 +6,7 @@ from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
-from database import Base
+from src.database import Base
 
 
 class JobStatus(str, Enum):

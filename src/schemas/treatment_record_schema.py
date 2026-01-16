@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from models.treatment_record_model import RecordStatus
+from src.models.treatment_record_model import RecordStatus
 
 
 class TreatmentRecordBase(BaseModel):

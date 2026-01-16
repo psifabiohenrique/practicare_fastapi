@@ -5,7 +5,7 @@ from datetime import date, time, timedelta
 from pathlib import Path
 
 # Add src to sys.path to allow imports from models, database, etc.
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+sys.path.append(str(Path(__file__).parent.parent))
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -14,8 +14,8 @@ from faker import Faker
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import SessionLocal
-from models import (
+from src.database import SessionLocal
+from src.models import (
     Gender,
     Patient,
     Treatment,
@@ -24,7 +24,7 @@ from models import (
     User,
     Weekdays,
 )
-from security import get_password_hash
+from src.security import get_password_hash
 
 faker = Faker(["pt_BR"])
 

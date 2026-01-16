@@ -5,9 +5,9 @@ import jwt
 import pytest
 from fastapi import HTTPException
 
-from routers.deps import get_current_user
-from security import create_access_token, create_refresh_token
-from settings import settings
+from src.routers.deps import get_current_user
+from src.security import create_access_token, create_refresh_token
+from src.settings import settings
 
 
 @pytest.mark.asyncio

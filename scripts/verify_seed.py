@@ -2,15 +2,15 @@ import asyncio
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+sys.path.append(str(Path(__file__).parent.parent))
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from sqlalchemy import func, select
 
-from database import SessionLocal
-from models import Treatment, TreatmentRecord, TreatmentReport, User
+from src.database import SessionLocal
+from src.models import Treatment, TreatmentRecord, TreatmentReport, User
 
 
 async def verify_data():

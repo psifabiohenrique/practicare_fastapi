@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import declarative_base
 
-from settings import settings
+from src.settings import settings
 
 engine = create_async_engine(settings.DATABASE_URL)
 SessionLocal = async_sessionmaker(

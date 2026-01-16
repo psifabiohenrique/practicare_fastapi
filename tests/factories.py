@@ -3,7 +3,7 @@ import uuid as uuid_pkg
 
 import factory
 
-from models import (
+from src.models import (
     Gender,
     Patient,
     Treatment,

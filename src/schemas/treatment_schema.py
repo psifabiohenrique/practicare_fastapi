@@ -2,7 +2,7 @@ from datetime import time
 
 from pydantic import BaseModel, ConfigDict
 
-from models import Weekdays
+from src.models import Weekdays
 
 
 class TreatmentBase(BaseModel):

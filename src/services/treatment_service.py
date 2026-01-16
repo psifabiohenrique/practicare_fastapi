@@ -3,9 +3,9 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import ForbiddenError, NotFoundError
-from models import Treatment
-from schemas import TreatmentCreate, TreatmentUpdate
+from src.core.exceptions import ForbiddenError, NotFoundError
+from src.models import Treatment
+from src.schemas import TreatmentCreate, TreatmentUpdate
 
 
 class TreatmentService:

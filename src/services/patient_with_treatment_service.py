@@ -5,14 +5,14 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from core.exceptions import ForbiddenError, NotFoundError
-from models import Gender, Patient, Treatment, Weekdays
-from schemas.patient_with_treatment_schema import (
+from src.core.exceptions import ForbiddenError, NotFoundError
+from src.models import Gender, Patient, Treatment, Weekdays
+from src.schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
     PatientWithTreatmentUpdate,
 )
-from services.patient_service import PatientService
-from services.treatment_service import TreatmentService
+from src.services.patient_service import PatientService
+from src.services.treatment_service import TreatmentService
 
 
 class PatientWithTreatmentService:

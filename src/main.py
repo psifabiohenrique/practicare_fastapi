@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from core.exceptions import (
+from src.core.exceptions import (
     ConflictError,
     DomainError,
     ForbiddenError,
@@ -13,7 +13,7 @@ from core.exceptions import (
     UnauthorizedError,
     ValidationError,
 )
-from routers import (
+from src.routers import (
     auth_controller,
     patients_with_treatment_controller,
     treatment_record_controller,

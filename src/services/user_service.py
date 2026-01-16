@@ -1,10 +1,10 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import ConflictError, NotFoundError, ValidationError
-from models import User
-from schemas.user_schema import UserCreate, UserUpdate
-from security import get_password_hash
+from src.core.exceptions import ConflictError, NotFoundError, ValidationError
+from src.models import User
+from src.schemas.user_schema import UserCreate, UserUpdate
+from src.security import get_password_hash
 
 
 class UserService:

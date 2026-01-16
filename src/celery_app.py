@@ -1,6 +1,6 @@
 from celery import Celery
 
-from settings import settings
+from src.settings import settings
 
 celery_app = Celery(
     "practicare",
@@ -9,7 +9,7 @@ celery_app = Celery(
 )
 
 # celery_app.autodiscover_tasks(["src.tasks"])
-celery_app.conf.imports = ("tasks.record_generation",)
+celery_app.conf.imports = ("src.tasks.record_generation",)
 
 
 # Used to serialize audiobytes need to be removed when

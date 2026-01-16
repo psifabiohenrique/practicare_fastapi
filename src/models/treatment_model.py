@@ -5,7 +5,7 @@ from sqlalchemy import Column, ForeignKey, Integer, String, Time
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
-from database import Base
+from src.database import Base
 
 
 class Weekdays(str, Enum):

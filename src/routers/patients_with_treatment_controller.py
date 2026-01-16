@@ -2,14 +2,16 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from models import Gender, Weekdays
-from routers.deps import CurrentUser, SessionDB
-from schemas.patient_with_treatment_schema import (
+from src.models import Gender, Weekdays
+from src.routers.deps import CurrentUser, SessionDB
+from src.schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
     PatientWithTreatmentUpdate,
     TreatmentWithPatientRead,
 )
-from services.patient_with_treatment_service import PatientWithTreatmentService
+from src.services.patient_with_treatment_service import (
+    PatientWithTreatmentService,
+)
 
 router = APIRouter(
     prefix="/patients-with-treatment", tags=["Patients with Treatment"]

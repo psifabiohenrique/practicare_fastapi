@@ -1,13 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import User
-from schemas.token_schema import Internal_Tokens
-from security import (
+from src.models import User
+from src.schemas.token_schema import Internal_Tokens
+from src.security import (
     create_access_token,
     create_refresh_token,
     verify_password,
 )
-from services.user_service import UserService
+from src.services.user_service import UserService
 
 
 class AuthService:

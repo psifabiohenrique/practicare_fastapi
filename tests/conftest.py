@@ -4,9 +4,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
-from database import Base, get_db
-from main import app
-from security import create_access_token
+from src.database import Base, get_db
+from src.main import app
+from src.security import create_access_token
 from tests.factories import (
     PatientFactory,
     TreatmentFactory,

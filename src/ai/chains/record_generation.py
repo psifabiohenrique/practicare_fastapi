@@ -1,9 +1,9 @@
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAIError
 
-from ai.exceptions import AIFatalError, AITransientError
-from ai.llm.factory import LLMFactory
-from ai.llm.response_extractor import ResponseExtractor
-from ai.prompts.record_prompts import RECORD_GENERATION_PROMPT
+from src.ai.exceptions import AIFatalError, AITransientError
+from src.ai.llm.factory import LLMFactory
+from src.ai.llm.response_extractor import ResponseExtractor
+from src.ai.prompts.record_prompts import RECORD_GENERATION_PROMPT
 
 
 class RecordGenerationChain:

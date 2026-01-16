@@ -12,16 +12,16 @@ from fastapi import (
     status,
 )
 
-from routers.deps import CurrentUser, SessionDB
-from schemas.treatment_record_schema import (
+from src.routers.deps import CurrentUser, SessionDB
+from src.schemas.treatment_record_schema import (
     TreatmentRecordCreate,
     TreatmentRecordRead,
     TreatmentRecordUpdate,
 )
-from services.automated_record_service import AutomatedRecordService
-from services.treatment_record_service import TreatmentRecordService
-from services.treatment_service import TreatmentService
-from tasks.record_generation import transcribe_audio
+from src.services.automated_record_service import AutomatedRecordService
+from src.services.treatment_record_service import TreatmentRecordService
+from src.services.treatment_service import TreatmentService
+from src.tasks.record_generation import transcribe_audio
 
 router = APIRouter(prefix="/treatment-records", tags=["Treatment records"])
 

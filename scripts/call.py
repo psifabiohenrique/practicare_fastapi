@@ -1,6 +1,6 @@
 import asyncio
 
-from ai.chains.record_generation import RecordGenerationChain
+from src.ai.chains.record_generation import RecordGenerationChain
 
 
 async def run():

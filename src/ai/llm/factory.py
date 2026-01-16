@@ -1,6 +1,6 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from settings import settings
+from src.settings import settings
 
 
 class LLMFactory:

@@ -4,7 +4,7 @@ from http import HTTPStatus
 import pytest
 from sqlalchemy import select
 
-from models import User
+from src.models import User
 from tests.factories import UserFactory
 
 

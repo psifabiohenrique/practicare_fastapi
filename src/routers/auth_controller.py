@@ -6,11 +6,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db
-from schemas.message_schema import Details
-from schemas.token_schema import Token, TokenPayload
-from services.auth_service import AuthService
-from settings import settings
+from src.database import get_db
+from src.schemas.message_schema import Details
+from src.schemas.token_schema import Token, TokenPayload
+from src.services.auth_service import AuthService
+from src.settings import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 SessionDB = Annotated[AsyncSession, Depends(get_db)]
