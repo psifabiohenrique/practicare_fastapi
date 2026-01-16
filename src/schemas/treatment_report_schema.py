@@ -1,7 +1,15 @@
 from datetime import date, datetime
+from enum import Enum
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
+
+
+class ReportStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    READY = "ready"
+    FAILED = "failed"
 
 
 class TreatmentReportBase(BaseModel):
@@ -13,10 +21,18 @@ class TreatmentReportBase(BaseModel):
     issue_date: date
     start_date_period: date
     end_date_period: date
+    status: ReportStatus = ReportStatus.READY
 
 
 class TreatmentReportCreate(TreatmentReportBase):
     pass
+
+
+class AutomatedReportCreate(BaseModel):
+    treatment_uuid: UUID
+    issue_date: date
+    start_date_period: date
+    end_date_period: date
 
 
 class TreatmentReportUpdate(BaseModel):
@@ -27,6 +43,10 @@ class TreatmentReportUpdate(BaseModel):
     issue_date: date | None = None
     start_date_period: date | None = None
     end_date_period: date | None = None
+
+
+class InternalTreatmentReportUpdate(TreatmentReportUpdate):
+    status: ReportStatus | None = None
 
 
 class TreatmentReportRead(TreatmentReportBase):

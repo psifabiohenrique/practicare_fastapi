@@ -1,10 +1,28 @@
 import uuid as uuid_pkg
 from datetime import datetime
+from enum import Enum
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy import (
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
+)
 from sqlalchemy.orm import relationship
 
 from src.database import Base
+
+
+class ReportStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    READY = "ready"
+    FAILED = "failed"
 
 
 class TreatmentReport(Base):
@@ -15,6 +33,13 @@ class TreatmentReport(Base):
         String, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
     )
     treatment_uuid = Column(String, ForeignKey("treatments.uuid"))
+    automated_report_job_uuid = Column(
+        String, ForeignKey("automated_report_jobs.uuid")
+    )
+
+    status = Column(
+        SQLEnum(ReportStatus), default=ReportStatus.READY, nullable=False
+    )
 
     demand_description = Column(String, nullable=True)
     procedures = Column(String, nullable=True)
@@ -33,3 +58,6 @@ class TreatmentReport(Base):
     )
 
     treatment = relationship("Treatment", back_populates="treatment_reports")
+    automated_report_job = relationship(
+        "AutomatedReportJob", back_populates="treatment_report"
+    )

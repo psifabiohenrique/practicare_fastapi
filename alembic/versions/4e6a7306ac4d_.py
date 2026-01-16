@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 66ce2ef1c648
+Revision ID: 4e6a7306ac4d
 Revises: 
-Create Date: 2026-01-14 15:49:43.788507
+Create Date: 2026-01-16 14:22:43.435546
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '66ce2ef1c648'
+revision: str = '4e6a7306ac4d'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -38,6 +38,21 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_automated_record_jobs_id'), 'automated_record_jobs', ['id'], unique=False)
     op.create_index(op.f('ix_automated_record_jobs_uuid'), 'automated_record_jobs', ['uuid'], unique=True)
+    op.create_table('automated_report_jobs',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('uuid', sa.String(), nullable=True),
+    sa.Column('user_uuid', sa.String(), nullable=True),
+    sa.Column('treatment_uuid', sa.String(), nullable=True),
+    sa.Column('treatment_report_uuid', sa.String(), nullable=True),
+    sa.Column('status', sa.Enum('PENDING', 'GENERATING_REPORT', 'COMPLETED', 'FAILED', name='reportjobstatus'), nullable=False),
+    sa.Column('error_message', sa.String(), nullable=True),
+    sa.Column('generated_report_json', sa.String(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_automated_report_jobs_id'), 'automated_report_jobs', ['id'], unique=False)
+    op.create_index(op.f('ix_automated_report_jobs_uuid'), 'automated_report_jobs', ['uuid'], unique=True)
     op.create_table('patients',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('uuid', sa.String(), nullable=True),
@@ -102,6 +117,8 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('uuid', sa.String(), nullable=True),
     sa.Column('treatment_uuid', sa.String(), nullable=True),
+    sa.Column('automated_report_job_uuid', sa.String(), nullable=True),
+    sa.Column('status', sa.Enum('PENDING', 'PROCESSING', 'READY', 'FAILED', name='reportstatus'), nullable=False),
     sa.Column('demand_description', sa.String(), nullable=True),
     sa.Column('procedures', sa.String(), nullable=True),
     sa.Column('analysis', sa.String(), nullable=True),
@@ -111,6 +128,7 @@ def upgrade() -> None:
     sa.Column('end_date_period', sa.Date(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['automated_report_job_uuid'], ['automated_report_jobs.uuid'], ),
     sa.ForeignKeyConstraint(['treatment_uuid'], ['treatments.uuid'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -138,6 +156,9 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_patients_uuid'), table_name='patients')
     op.drop_index(op.f('ix_patients_id'), table_name='patients')
     op.drop_table('patients')
+    op.drop_index(op.f('ix_automated_report_jobs_uuid'), table_name='automated_report_jobs')
+    op.drop_index(op.f('ix_automated_report_jobs_id'), table_name='automated_report_jobs')
+    op.drop_table('automated_report_jobs')
     op.drop_index(op.f('ix_automated_record_jobs_uuid'), table_name='automated_record_jobs')
     op.drop_index(op.f('ix_automated_record_jobs_id'), table_name='automated_record_jobs')
     op.drop_table('automated_record_jobs')

@@ -52,9 +52,9 @@ class TreatmentRecordService:
             TreatmentRecord.treatment_uuid == str(treatment_uuid)
         )
         if start_date:
-            query = query.filter(TreatmentRecord.issue_date >= start_date)
+            query = query.filter(TreatmentRecord.date >= start_date)
         if end_date:
-            query = query.filter(TreatmentRecord.issue_date >= end_date)
+            query = query.filter(TreatmentRecord.date <= end_date)
 
         query = (
             query

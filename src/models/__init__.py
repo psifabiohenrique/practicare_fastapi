@@ -1,4 +1,5 @@
 from .automated_record_job import AutomatedRecordJob, JobStatus
+from .automated_report_job import AutomatedReportJob, ReportJobStatus
 from .patient_model import Gender, Patient
 from .treatment_model import Treatment, Weekdays
 from .treatment_record_model import TreatmentRecord
@@ -15,4 +16,6 @@ __all__ = [
     "TreatmentReport",
     "AutomatedRecordJob",
     "JobStatus",
+    "AutomatedReportJob",
+    "ReportJobStatus",
 ]

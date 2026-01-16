@@ -9,7 +9,10 @@ celery_app = Celery(
 )
 
 # celery_app.autodiscover_tasks(["src.tasks"])
-celery_app.conf.imports = ("src.tasks.record_generation",)
+celery_app.conf.imports = (
+    "src.tasks.record_generation",
+    "src.tasks.report_generation",
+)
 
 
 # Used to serialize audiobytes need to be removed when

@@ -15,6 +15,18 @@ from .patient_with_treatment_schema import (
 )
 from .token_schema import Token as Token
 from .token_schema import TokenPayload as TokenPayload
+from .treatment_report_schema import (
+    AutomatedReportCreate as AutomatedReportCreate,
+)
+from .treatment_report_schema import (
+    TreatmentReportCreate as TreatmentReportCreate,
+)
+from .treatment_report_schema import (
+    TreatmentReportRead as TreatmentReportRead,
+)
+from .treatment_report_schema import (
+    TreatmentReportUpdate as TreatmentReportUpdate,
+)
 from .treatment_schema import TreatmentCreate as TreatmentCreate
 from .treatment_schema import TreatmentRead as TreatmentRead
 from .treatment_schema import TreatmentUpdate as TreatmentUpdate
