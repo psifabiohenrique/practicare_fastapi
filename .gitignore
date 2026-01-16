@@ -13,3 +13,5 @@ wheels/
 
 sql_app.db
 *.db
+.pytest_cache
+.idea
