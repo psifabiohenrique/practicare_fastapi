@@ -18,7 +18,7 @@ celery_app.conf.imports = (
 # Used to serialize audiobytes need to be removed when
 #  audio files become stored
 celery_app.conf.update(
-    task_serializer="pickle",
-    accept_content=["pickle"],
-    result_serializer="pickle",
+    task_serializer="json",
+    accept_content=["json"],
+    result_serializer="json",
 )

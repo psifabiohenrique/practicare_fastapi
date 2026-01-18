@@ -16,10 +16,20 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.13-slim-bookworm
 
+
 WORKDIR /app
 
 COPY --from=builder /app /app
 
 ENV PATH="/app/.venv/bin:$PATH"
+
+# # cria grupo e usuário
+# RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# # define permissões (ajuste se necessário)
+# RUN chown -R appuser:appuser /app
+
+# # muda o usuário padrão
+# USER appuser
 
 CMD ["fastapi", "run", "src/main.py", "--port", "8000", "--host", "0.0.0.0"]

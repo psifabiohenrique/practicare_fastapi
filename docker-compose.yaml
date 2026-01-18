@@ -3,6 +3,8 @@ services:
     build: .
     ports:
       - "8000:8000"
+    volumes:
+      - data:/data
     env_file:
       - .env-docker
     depends_on:
@@ -34,16 +36,26 @@ services:
   celery_worker:
     build: .
     command: celery -A src.celery_app worker -l info --concurrency=2
+    volumes:
+      - data:/data
+    env_file:
+      - .env-docker
     depends_on:
       - redis
+    networks:
+      - practicare-network
 
   flower:
     build: .
     command: celery -A src.celery_app flower --port=5555
+    env_file:
+      - .env-docker
     ports:
       - "5555:5555"
     depends_on:
       - redis
+    networks:
+      - practicare-network
 
   redis:
     image: redis:8-alpine
@@ -58,3 +70,4 @@ networks:
 
 volumes:
   postgres_data:
+  data:

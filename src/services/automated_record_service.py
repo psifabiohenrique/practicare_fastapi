@@ -1,3 +1,4 @@
+from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import select
@@ -53,12 +54,14 @@ class AutomatedRecordService:
         db: AsyncSession,
         job_uuid: UUID,
         status: JobStatus,
+        transcription: str | None = None,
         error_message: str | None = None,
     ):
         job = await AutomatedRecordService.get_job(db, job_uuid)
 
         job.status = status  # type: ignore
         job.error_message = error_message  # type: ignore
+        job.transcription = transcription
         await db.commit()
         await db.refresh(job)
 
@@ -103,12 +106,12 @@ class AutomatedRecordService:
 
     @staticmethod
     async def generate_transcription(
-        db: AsyncSession, audio: bytes, job_uuid: UUID
+        db: AsyncSession, audio_path: str, job_uuid: UUID
     ):
         transcription_chain = TranscriptionChain()
         try:
             transcription = await transcription_chain.transcribe(
-                audio_bytes=audio
+                audio_path=Path(audio_path)
             )
             return transcription
         except Exception as e:

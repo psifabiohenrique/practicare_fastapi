@@ -18,6 +18,7 @@ from src.schemas.treatment_record_schema import (
     TreatmentRecordRead,
     TreatmentRecordUpdate,
 )
+from src.services.audio_storage_service import AudioStorageService
 from src.services.automated_record_service import AutomatedRecordService
 from src.services.treatment_record_service import TreatmentRecordService
 from src.services.treatment_service import TreatmentService
@@ -80,7 +81,10 @@ async def upload_audio(
 ):
 
     user_uuid = current_user.uuid
-    if audio_file.content_type not in {
+
+    content_type = audio_file.content_type.split(";")[0]
+
+    if content_type not in {
         "audio/webm",
         "video/webm",
         "audio/ogg",
@@ -112,9 +116,10 @@ async def upload_audio(
         treatment_record_uuid=record.uuid,
     )
 
-    audio_bytes = await audio_file.read()
+    # audio_bytes = await audio_file.read()
+    audio_path = await AudioStorageService.save_upload(job.uuid, audio_file)
 
-    transcribe_audio.delay(job_uuid=job.uuid, audio=audio_bytes)
+    transcribe_audio.delay(job_uuid=job.uuid, audio_path=str(audio_path))
     return record
 
 
@@ -130,7 +135,9 @@ async def reload_audio(
 ):
 
     user_uuid = current_user.uuid
-    if audio_file.content_type not in {
+
+    content_type = audio_file.content_type.split(";")[0]
+    if content_type not in {
         "audio/webm",
         "video/webm",
         "audio/ogg",
@@ -150,9 +157,10 @@ async def reload_audio(
         treatment_record_uuid=record.uuid,
     )
 
-    audio_bytes = await audio_file.read()
+    audio_path = await AudioStorageService.save_upload(job.uuid, audio_file)
 
-    transcribe_audio.delay(job_uuid=job.uuid, audio=audio_bytes)
+    transcribe_audio.delay(job_uuid=job.uuid, audio_path=str(audio_path))
+
     record = await TreatmentRecordService.update_treatment_record(
         db,
         record.uuid,

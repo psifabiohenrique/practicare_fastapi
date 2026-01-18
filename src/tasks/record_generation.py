@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from pathlib import Path
 from uuid import UUID
 
 from src.ai.exceptions import AIFatalError, AITransientError
@@ -28,8 +29,10 @@ async def comunicate_record_fail(job_uuid: UUID, message: str):
     await db.close()
 
 
-async def _transcribe_audio(job_uuid: UUID, audio: bytes):
+async def _transcribe_audio(job_uuid: UUID, audio_path: str) -> None:
+    audio_path = Path(audio_path)
     db = await get_async_session()
+
     await AutomatedRecordService.update_job_status(
         db=db,
         job_uuid=job_uuid,
@@ -37,19 +40,20 @@ async def _transcribe_audio(job_uuid: UUID, audio: bytes):
     )
 
     transcription = await AutomatedRecordService.generate_transcription(
-        db, audio, job_uuid
+        db, audio_path, job_uuid
     )
 
     await AutomatedRecordService.update_job_status(
         db=db,
         job_uuid=job_uuid,
         status=JobStatus.TRANSCRIBED,
+        transcription=transcription,
     )
     await db.close()
-    generate_record.delay(job_uuid=job_uuid, transcription=transcription)
+    generate_record.delay(job_uuid=job_uuid)
 
 
-async def _generate_record(job_uuid: UUID, transcription: str):
+async def _generate_record(job_uuid: UUID):
     db = await get_async_session()
     await AutomatedRecordService.update_job_status(
         db=db,
@@ -60,7 +64,7 @@ async def _generate_record(job_uuid: UUID, transcription: str):
     job = await AutomatedRecordService.get_job(db, job_uuid)
 
     record_text = await AutomatedRecordService.generate_record(
-        db, transcription, job
+        db, job.transcription, job
     )
 
     await TreatmentRecordService.update_treatment_record(
@@ -88,9 +92,9 @@ async def _generate_record(job_uuid: UUID, transcription: str):
     retry_kwargs={"max_retries": 10},
     acks_late=True,
 )
-def transcribe_audio(self, job_uuid: UUID, audio: bytes):
+def transcribe_audio(self, job_uuid: UUID, audio_path: str):
     try:
-        asyncio.run(_transcribe_audio(job_uuid, audio))
+        asyncio.run(_transcribe_audio(job_uuid, audio_path))
     except AITransientError as e:
         asyncio.run(
             comunicate_record_fail(
@@ -140,9 +144,9 @@ def transcribe_audio(self, job_uuid: UUID, audio: bytes):
     retry_kwargs={"max_retries": 10},
     acks_late=True,
 )
-def generate_record(self, job_uuid: UUID, transcription: str):
+def generate_record(self, job_uuid: UUID):
     try:
-        asyncio.run(_generate_record(job_uuid, transcription))
+        asyncio.run(_generate_record(job_uuid))
 
     except AITransientError as e:
         asyncio.run(

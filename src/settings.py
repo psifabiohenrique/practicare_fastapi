@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +13,7 @@ class Settings(BaseSettings):
     PYTHONPATH: str
     LLM_MODEL: str
     GOOGLE_API_KEY: str
+    BASE_AUDIO_DIR: Path = Path("/data/audio")
 
     model_config = SettingsConfigDict(env_file=".env")
 

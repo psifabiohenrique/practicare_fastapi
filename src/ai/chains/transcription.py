@@ -1,4 +1,5 @@
 import base64
+from pathlib import Path
 
 from langchain_core.messages import HumanMessage
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAIError
@@ -14,12 +15,13 @@ class TranscriptionChain:
         self.llm = LLMFactory.get_llm(provider=provider)
 
     async def transcribe(
-        self, audio_bytes: bytes, mime_type: str = "audio/webm"
+        self, audio_path: Path, mime_type: str = "audio/webm"
     ) -> str:
         """
         Transcribes audio bytes using Gemini's multimodal capabilities.
         """
         # Convert audio bytes to base64 for LangChain/Gemini input
+        audio_bytes = audio_path.read_bytes()
         audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
 
         message = HumanMessage(

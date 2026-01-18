@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from src.core.bootstrap import init_storage_dirs
 from src.core.exceptions import (
     ConflictError,
     DomainError,
@@ -25,6 +26,11 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 app = FastAPI(title="Practicare FastAPI")
+
+
+@app.on_event("startup")
+async def startup():
+    init_storage_dirs()
 
 
 @app.exception_handler(NotFoundError)
