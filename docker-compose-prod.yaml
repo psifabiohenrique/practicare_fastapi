@@ -23,8 +23,6 @@ services:
     env_file:
       - .env-prod
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_started
     environment:
@@ -49,7 +47,6 @@ services:
       - .env-prod
     depends_on:
       - redis
-      - db
     networks:
       - practicare-network
     restart: unless-stopped
