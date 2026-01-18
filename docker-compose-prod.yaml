@@ -1,0 +1,24 @@
+services:
+  web:
+    build: .
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
+    env_file:
+      - .env
+    expose:
+      - "8000"
+    environment:
+      PYTHONPATH: src
+    restart: always
+
+  worker:
+    build: .
+    command: celery -A src.celery_app worker -l info --concurrency=2
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: src
+    restart: always
+
+  redis:
+    image: redis:8-alpine
+    restart: always
