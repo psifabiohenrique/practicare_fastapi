@@ -1,24 +1,64 @@
 services:
-  web:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - practicare-network
+    restart: unless-stopped
+
+  app:
     build: .
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
-    env_file:
-      - .env
     expose:
       - "8000"
-    environment:
-      PYTHONPATH: src
-    restart: always
-
-  worker:
-    build: .
-    command: celery -A src.celery_app worker -l info --concurrency=2
+    volumes:
+      - data:/data
     env_file:
-      - .env
+      - .env-prod
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       PYTHONPATH: src
-    restart: always
+    networks:
+      - practicare-network
+    restart: unless-stopped
+
 
   redis:
     image: redis:8-alpine
-    restart: always
+    networks:
+      - practicare-network
+    restart: unless-stopped
+
+  celery_worker:
+    build: .
+    command: celery -A src.celery_app worker -l info --concurrency=2
+    volumes:
+      - data:/data
+    env_file:
+      - .env-prod
+    depends_on:
+      - redis
+      - db
+    networks:
+      - practicare-network
+    restart: unless-stopped
+
+networks:
+  practicare-network:
+    driver: bridge
+
+volumes:
+  data:
+  caddy_data:
+  caddy_config:
