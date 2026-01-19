@@ -9,12 +9,12 @@ from src.services.user_service import UserService
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("/", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 async def create_user(*, db: SessionDB, user_in: UserCreate) -> any:
     return await UserService.create_user(db, user_in=user_in)
 
 
-@router.get("/", response_model=list[UserRead])
+@router.get("", response_model=list[UserRead])
 async def read_users(
     current_user: CurrentUser,
     db: SessionDB,

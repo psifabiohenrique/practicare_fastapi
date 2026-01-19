@@ -35,7 +35,7 @@ services:
 
   celery_worker:
     build: .
-    command: celery -A src.celery_app worker -l info --concurrency=2
+    command: celery -A src.celery_app worker -l info --concurrency=1
     volumes:
       - data:/data
     env_file:

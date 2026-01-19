@@ -23,13 +23,9 @@ COPY --from=builder /app /app
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-# # cria grupo e usuário
-# RUN groupadd -r appuser && useradd -r -g appuser appuser
+# CMD ["fastapi", "run", "src/main.py", "--port", "8000", "--host", "0.0.0.0", "--proxy-headers" '--forwarded-allow-ips="*"']
 
-# # define permissões (ajuste se necessário)
-# RUN chown -R appuser:appuser /app
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# # muda o usuário padrão
-# USER appuser
-
-CMD ["fastapi", "run", "src/main.py", "--port", "8000", "--host", "0.0.0.0"]
+CMD ["/entrypoint.sh"]

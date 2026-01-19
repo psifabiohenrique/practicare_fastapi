@@ -143,6 +143,6 @@ async def test_create_treatment_report(db_session):
 
 
 def test_root_endpoint(client):
-    response = client.get("/")
+    response = client.get("")
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {"Hello": "World"}

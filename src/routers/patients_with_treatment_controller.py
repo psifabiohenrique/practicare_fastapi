@@ -19,7 +19,7 @@ router = APIRouter(
 
 
 @router.post(
-    "/",
+    "",
     response_model=TreatmentWithPatientRead,
     status_code=status.HTTP_201_CREATED,
 )
@@ -57,7 +57,7 @@ async def get_daily_patients_with_treatment(
     )
 
 
-@router.get("/", response_model=list[TreatmentWithPatientRead])
+@router.get("", response_model=list[TreatmentWithPatientRead])
 async def get_patients_with_treatment(  # noqa: PLR0913
     *,
     db: SessionDB,

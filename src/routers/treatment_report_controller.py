@@ -44,7 +44,7 @@ async def get_treatment_report(
 
 
 @router.post(
-    "/",
+    "",
     response_model=TreatmentReportRead,
     status_code=status.HTTP_201_CREATED,
 )

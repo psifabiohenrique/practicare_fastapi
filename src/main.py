@@ -3,6 +3,8 @@ import sys
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+
+# from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 
 from src.core.bootstrap import init_storage_dirs
@@ -21,11 +23,29 @@ from src.routers import (
     treatment_report_controller,
     users_controller,
 )
+from src.settings import settings
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-app = FastAPI(title="Practicare FastAPI")
+
+app = FastAPI(
+    title="Practicare FastAPI",
+    docs_url=None if settings.PRODUCTION else "/docs",
+    redoc_url=None if settings.PRODUCTION else "/redoc",
+    openapi_url=None if settings.PRODUCTION else "/openapi.json",
+    redirect_slashes=False,
+)
+
+# app.add_middleware(HTTPSRedirectMiddleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
@@ -65,27 +85,13 @@ async def domain_exception_handler(request: Request, exc: DomainError):
     return JSONResponse(status_code=500, content={"detail": exc.message})
 
 
-origins = [
-    "http://localhost",
-    "http://localhost:8000",
-    "http://localhost:5173",
-]
-
 app.include_router(auth_controller.router)
 app.include_router(users_controller.router)
 app.include_router(patients_with_treatment_controller.router)
 app.include_router(treatment_record_controller.router)
 app.include_router(treatment_report_controller.router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allow_headers=["*"],
-)
 
-
-@app.get("/")
+@app.get("")
 def read_root():
     return {"Hello": "World"}

@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     LLM_MODEL: str
     GOOGLE_API_KEY: str
     BASE_AUDIO_DIR: Path = Path("/data/audio")
+    ALLOWED_ORIGINS: str = "*"
+    PRODUCTION: bool = False
 
     model_config = SettingsConfigDict(env_file=".env")
 
