@@ -1,5 +1,4 @@
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_google_genai.chat_models import ChatGoogleGenerativeAIError
 
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.ai.llm.factory import LLMFactory
@@ -7,7 +6,7 @@ from src.ai.prompts.report_prompts import REPORT_GENERATION_PROMPT
 
 
 class ReportGenerationChain:
-    def __init__(self, provider: str = "google"):
+    def __init__(self, provider: str = "openai"):
         self.llm = LLMFactory.get_llm(provider=provider)
         self.parser = JsonOutputParser()
         self.chain = REPORT_GENERATION_PROMPT | self.llm | self.parser
@@ -31,12 +30,33 @@ class ReportGenerationChain:
             })
             return response
 
-        except ChatGoogleGenerativeAIError as e:
-            if any(sub in str(e) for sub in ("429", "503", "504", "500")):
-                raise AITransientError(f"Erro temporário: {str(e)}")
-            if any(sub in str(e) for sub in ("400", "403", "401")):
-                raise AIFatalError(f"Erro fatal ocorrido: {str(e)}")
         except Exception as e:
+            err_msg = str(e).lower()
+            if any(
+                sub in err_msg
+                for sub in (
+                    "429",
+                    "rate limit",
+                    "503",
+                    "504",
+                    "500",
+                    "overloaded",
+                )
+            ):
+                raise AITransientError(f"Erro temporário: {str(e)}")
+
+            if any(
+                sub in err_msg
+                for sub in (
+                    "400",
+                    "403",
+                    "401",
+                    "invalid_api_key",
+                    "permission_denied",
+                )
+            ):
+                raise AIFatalError(f"Erro fatal ocorrido: {str(e)}")
+
             raise AIFatalError(
                 f"Erro desconhecido no processamento: {str(e)}"
             ) from e

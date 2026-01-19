@@ -1,4 +1,3 @@
-from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import select
@@ -106,13 +105,28 @@ class AutomatedRecordService:
 
     @staticmethod
     async def generate_transcription(
-        db: AsyncSession, audio_path: str, job_uuid: UUID
+        db: AsyncSession, audio_id: str, job_uuid: UUID
     ):
         transcription_chain = TranscriptionChain()
+        from src.services.audio_storage_service import AudioStorageService
+
         try:
-            transcription = await transcription_chain.transcribe(
-                audio_path=Path(audio_path)
+            # 1. Fetch content from provider
+            audio_content = await AudioStorageService.get_file_content(
+                audio_id
             )
+
+            # 2. Transcribe
+            transcription = await transcription_chain.transcribe(
+                audio_content=audio_content
+            )
+
+            # 3. Cleanup from provider (fire and forget or background)
+            # OpenAI Files should be deleted after use to avoid costs and clutter
+            import asyncio
+
+            asyncio.create_task(AudioStorageService.delete_file(audio_id))
+
             return transcription
         except Exception as e:
             await AutomatedRecordService.update_job_status(

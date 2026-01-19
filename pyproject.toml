@@ -19,6 +19,8 @@ dependencies = [
     "langchain>=1.2.4",
     "langchain-google-genai>=4.2.0",
     "aiofiles>=25.1.0",
+    "langchain-openai>=1.1.7",
+    "openai>=2.15.0",
 ]
 
 [dependency-groups]

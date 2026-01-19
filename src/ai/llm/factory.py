@@ -21,5 +21,18 @@ class LLMFactory:
                 **kwargs,
             )
 
-        # Add other providers (openai, anthropic) here if needed in the future
+        if provider == "openai":
+            from langchain_openai import ChatOpenAI
+
+            model_name = kwargs.get(
+                "model_name", settings.LLM_MODEL or "gpt-4o"
+            )
+            return ChatOpenAI(
+                model=model_name,
+                openai_api_key=settings.OPENAI_API_KEY,
+                temperature=kwargs.get("temperature", 0),
+                **kwargs,
+            )
+
+        # Add other providers (anthropic) here if needed in the future
         raise ValueError(f"Unsupported provider: {provider}")

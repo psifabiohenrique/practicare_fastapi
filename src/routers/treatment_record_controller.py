@@ -117,9 +117,9 @@ async def upload_audio(
     )
 
     # audio_bytes = await audio_file.read()
-    audio_path = await AudioStorageService.save_upload(job.uuid, audio_file)
+    audio_id = await AudioStorageService.save_upload(audio_file)
 
-    transcribe_audio.delay(job_uuid=job.uuid, audio_path=str(audio_path))
+    transcribe_audio.delay(job_uuid=job.uuid, audio_id=audio_id)
     return record
 
 
@@ -157,9 +157,9 @@ async def reload_audio(
         treatment_record_uuid=record.uuid,
     )
 
-    audio_path = await AudioStorageService.save_upload(job.uuid, audio_file)
+    audio_id = await AudioStorageService.save_upload(audio_file)
 
-    transcribe_audio.delay(job_uuid=job.uuid, audio_path=str(audio_path))
+    transcribe_audio.delay(job_uuid=job.uuid, audio_id=audio_id)
 
     record = await TreatmentRecordService.update_treatment_record(
         db,

@@ -1,57 +1,67 @@
-import base64
-from pathlib import Path
-
-from langchain_core.messages import HumanMessage
-from langchain_google_genai.chat_models import ChatGoogleGenerativeAIError
-
+import logging
+from openai import AsyncOpenAI
 from src.ai.exceptions import AIFatalError, AITransientError
-from src.ai.llm.factory import LLMFactory
-from src.ai.llm.response_extractor import ResponseExtractor
+from src.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 class TranscriptionChain:
-    def __init__(self, provider: str = "google"):
-        # We need a multimodal model for audio transcription
-        self.llm = LLMFactory.get_llm(provider=provider)
+    def __init__(self, provider: str = "openai"):
+        self.provider = provider
+        if provider == "openai":
+            self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        else:
+            raise ValueError(
+                f"Provider {provider} not supported for Whisper yet"
+            )
 
     async def transcribe(
-        self, audio_path: Path, mime_type: str = "audio/webm"
+        self, audio_content: bytes, filename: str = "audio.webm"
     ) -> str:
         """
-        Transcribes audio bytes using Gemini's multimodal capabilities.
+        Transcribes audio using OpenAI Whisper.
         """
-        # Convert audio bytes to base64 for LangChain/Gemini input
-        audio_bytes = audio_path.read_bytes()
-        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
-
-        message = HumanMessage(
-            content=[
-                {
-                    "type": "text",
-                    "text": (
-                        "Transcreva o áudio a seguir da forma mais fiel "
-                        "possível, focando no conteúdo de saúde."
-                    ),
-                },
-                {
-                    "type": "media",
-                    "mime_type": mime_type,
-                    "data": audio_base64,
-                },
-            ]
-        )
-
         try:
-            response = await self.llm.ainvoke([message])
-            return ResponseExtractor.extract_text(response)
-        except ChatGoogleGenerativeAIError as e:
-            if any(sub in str(e) for sub in ("429", "503", "504", "500")):
-                raise AITransientError(f"Erro temporário: {str(e)}")
-        except ChatGoogleGenerativeAIError as e:
-            if any(sub in str(e) for sub in ("400", "403", "401")):
-                raise AIFatalError(f"Erro fatal ocorrido: {str(e)}")
+            # Whisper requires a file-like object with a name attribute
+            # We'll use a temporary file if needed, but the API accepts a tuple (filename, file_bytes)
+            response = await self.client.audio.transcriptions.create(
+                model="whisper-1",
+                file=(filename, audio_content),
+            )
+            return response.text
+
         except Exception as e:
-            # Erros genéricos (rede, LangChain, etc.)
+            err_msg = str(e).lower()
+            logger.error(f"Error in transcription: {err_msg}")
+
+            if any(
+                sub in err_msg
+                for sub in (
+                    "429",
+                    "rate limit",
+                    "503",
+                    "504",
+                    "500",
+                    "overloaded",
+                )
+            ):
+                raise AITransientError(
+                    f"Erro temporário na transcrição: {str(e)}"
+                )
+
+            if any(
+                sub in err_msg
+                for sub in (
+                    "400",
+                    "403",
+                    "401",
+                    "invalid_api_key",
+                    "permission_denied",
+                )
+            ):
+                raise AIFatalError(f"Erro fatal na transcrição: {str(e)}")
+
             raise AIFatalError(
-                f"Erro desconhecido no processamento: {str(e)}"
+                f"Erro desconhecido na transcrição: {str(e)}"
             ) from e

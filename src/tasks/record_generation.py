@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from pathlib import Path
 from uuid import UUID
 
 from src.ai.exceptions import AIFatalError, AITransientError
@@ -29,8 +28,7 @@ async def comunicate_record_fail(job_uuid: UUID, message: str):
     await db.close()
 
 
-async def _transcribe_audio(job_uuid: UUID, audio_path: str) -> None:
-    audio_path = Path(audio_path)
+async def _transcribe_audio(job_uuid: UUID, audio_id: str) -> None:
     db = await get_async_session()
 
     await AutomatedRecordService.update_job_status(
@@ -40,7 +38,7 @@ async def _transcribe_audio(job_uuid: UUID, audio_path: str) -> None:
     )
 
     transcription = await AutomatedRecordService.generate_transcription(
-        db, audio_path, job_uuid
+        db, audio_id, job_uuid
     )
 
     await AutomatedRecordService.update_job_status(
@@ -92,9 +90,9 @@ async def _generate_record(job_uuid: UUID):
     retry_kwargs={"max_retries": 10},
     acks_late=True,
 )
-def transcribe_audio(self, job_uuid: UUID, audio_path: str):
+def transcribe_audio(self, job_uuid: UUID, audio_id: str):
     try:
-        asyncio.run(_transcribe_audio(job_uuid, audio_path))
+        asyncio.run(_transcribe_audio(job_uuid, audio_id))
     except AITransientError as e:
         asyncio.run(
             comunicate_record_fail(

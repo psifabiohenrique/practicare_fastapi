@@ -1,5 +1,3 @@
-from langchain_google_genai.chat_models import ChatGoogleGenerativeAIError
-
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.ai.llm.factory import LLMFactory
 from src.ai.llm.response_extractor import ResponseExtractor
@@ -7,7 +5,7 @@ from src.ai.prompts.record_prompts import RECORD_GENERATION_PROMPT
 
 
 class RecordGenerationChain:
-    def __init__(self, provider: str = "google"):
+    def __init__(self, provider: str = "openai"):
         self.llm = LLMFactory.get_llm(provider=provider)
         self.chain = RECORD_GENERATION_PROMPT | self.llm
 
@@ -25,13 +23,34 @@ class RecordGenerationChain:
             })
             return ResponseExtractor.extract_text(response)
 
-        except ChatGoogleGenerativeAIError as e:
-            if any(sub in str(e) for sub in ("429", "503", "504", "500")):
-                raise AITransientError(f"Erro temporário: {str(e)}")
-            if any(sub in str(e) for sub in ("400", "403", "401")):
-                raise AIFatalError(f"Erro fatal ocorrido: {str(e)}")
         except Exception as e:
-            # Erros genéricos (rede, LangChain, etc.)
+            err_msg = str(e).lower()
+            if any(
+                sub in err_msg
+                for sub in (
+                    "429",
+                    "rate limit",
+                    "503",
+                    "504",
+                    "500",
+                    "overloaded",
+                )
+            ):
+                raise AITransientError(f"Erro temporário: {str(e)}")
+
+            if any(
+                sub in err_msg
+                for sub in (
+                    "400",
+                    "403",
+                    "401",
+                    "invalid_api_key",
+                    "permission_denied",
+                )
+            ):
+                raise AIFatalError(f"Erro fatal ocorrido: {str(e)}")
+
+            # Generic error
             raise AIFatalError(
                 f"Erro desconhecido no processamento: {str(e)}"
             ) from e

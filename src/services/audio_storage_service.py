@@ -1,39 +1,68 @@
+import logging
 import uuid
-import aiofiles
-
-from pathlib import Path
-from uuid import UUID
-
+from typing import BinaryIO
+from openai import AsyncOpenAI
 from src.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 class AudioStorageService:
     @staticmethod
-    def get_job_dir(job_uuid: UUID) -> Path:
-        path = settings.BASE_AUDIO_DIR / str(job_uuid)
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
-    @staticmethod
     async def save_upload(
-        job_uuid: UUID,
         upload_file,
-    ) -> Path:
-        job_dir = AudioStorageService.get_job_dir(job_uuid)
+    ) -> str:
+        """
+        Uploads the file to OpenAI Files API and returns the file_id.
+        """
+        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
-        suffix = Path(upload_file.filename).suffix or ".webm"
-        file_path = job_dir / f"{uuid.uuid4()}{suffix}"
+        # We need to read the file content
+        content = await upload_file.read()
+        suffix = (
+            upload_file.filename.split(".")[-1]
+            if "." in upload_file.filename
+            else "webm"
+        )
+        filename = f"{uuid.uuid4()}.{suffix}"
 
-        async with aiofiles.open(file_path, "wb") as f:
-            while chunk := await upload_file.read(1024 * 1024):
-                await f.write(chunk)
-
-        return file_path
+        try:
+            # Upload to OpenAI
+            # 'purpose' can be 'assistants' for long term but 'fine-tune' is not it.
+            # Actually, Whisper doesn't use Files API for direct transcription,
+            # but we will use it as a storage bridge since that's what was requested.
+            # Note: Files API files are only accessible by certain APIs.
+            # For Whisper, we will need to download it back.
+            response = await client.files.create(
+                file=(filename, content),
+                purpose="assistants",  # Using assistants purpose as it allows retrieval
+            )
+            return response.id
+        except Exception as e:
+            logger.error(f"Failed to upload to OpenAI: {e}")
+            raise
 
     @staticmethod
-    def remove_file(path: Path):
+    async def get_file_content(file_id: str) -> bytes:
+        """
+        Re-downloads the file content from OpenAI.
+        """
+        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         try:
-            path.unlink(missing_ok=True)
-            path.parent.rmdir()  # remove pasta do job
-        except OSError:
-            pass  # defensivo, não falha task
+            response = await client.files.content(file_id)
+            return await response.read()
+        except Exception as e:
+            logger.error(f"Failed to download from OpenAI: {e}")
+            raise
+
+    @staticmethod
+    async def delete_file(file_id: str):
+        """
+        Deletes the file from OpenAI.
+        """
+        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        try:
+            await client.files.delete(file_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete file {file_id} from OpenAI: {e}")
+            pass  # Non-critical

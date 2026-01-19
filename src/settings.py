@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     PYTHONPATH: str
     LLM_MODEL: str
     GOOGLE_API_KEY: str
+    OPENAI_API_KEY: str
     BASE_AUDIO_DIR: Path = Path("/data/audio")
     ALLOWED_ORIGINS: str = "*"
     PRODUCTION: bool = False
