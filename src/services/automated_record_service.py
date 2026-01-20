@@ -1,3 +1,6 @@
+import logging
+import os
+import shutil
 from uuid import UUID
 
 from sqlalchemy import select
@@ -7,10 +10,20 @@ from src.ai.chains.record_generation import RecordGenerationChain
 from src.ai.chains.transcription import TranscriptionChain
 from src.core.exceptions import NotFoundError
 from src.models.automated_record_job import AutomatedRecordJob, JobStatus
+from src.models.treatment_record_model import RecordStatus
+from src.schemas.treatment_record_schema import (
+    TreatmentRecordUpdate,
+)
 from src.services.patient_with_treatment_service import (
     PatientWithTreatmentService,
 )
+from src.services.treatment_record_service import (
+    TreatmentRecordService,
+)
 from src.services.treatment_report_service import TreatmentReportService
+from src.utils.audio_processor import split_audio
+
+logger = logging.getLogger(__name__)
 
 
 class AutomatedRecordService:
@@ -21,8 +34,6 @@ class AutomatedRecordService:
         treatment_record_uuid: UUID,
         user_uuid: str,
     ):
-
-        # 2. Criar job no banco (PENDING)
         job = AutomatedRecordJob(
             user_uuid=user_uuid,
             treatment_uuid=str(treatment_uuid),
@@ -33,7 +44,6 @@ class AutomatedRecordService:
         db.add(job)
         await db.commit()
         await db.refresh(job)
-
         return job
 
     @staticmethod
@@ -57,14 +67,112 @@ class AutomatedRecordService:
         error_message: str | None = None,
     ):
         job = await AutomatedRecordService.get_job(db, job_uuid)
-
-        job.status = status  # type: ignore
-        job.error_message = error_message  # type: ignore
-        job.transcription = transcription
+        job.status = status
+        if error_message:
+            job.error_message = error_message
+        if transcription:
+            job.transcription = transcription
         await db.commit()
         await db.refresh(job)
-
         return job
+
+    @staticmethod
+    async def process_automated_record_job(
+        db: AsyncSession,  # AsyncSession factory or session
+        job_uuid: UUID,
+        audio_path: str,
+    ):
+        """
+        Main background task for processing an automated record job.
+        """
+        job = await AutomatedRecordService.get_job(db, job_uuid)
+        try:
+            # 1. Update status to TRANSCRIBING
+            await AutomatedRecordService.update_job_status(
+                db, job_uuid, JobStatus.TRANSCRIBING
+            )
+
+            # 2. Split audio if needed
+            logger.info("Enviando áudio para o split")
+            temp_dir = f"temp_audio_{job_uuid}"
+            os.makedirs(temp_dir, exist_ok=True)
+            try:
+                chunks = split_audio(audio_path, temp_dir, max_size_mb=20)
+
+                # 3. Transcribe each chunk
+                logger.info("Enviando áudio para a transcrição")
+                transcription_chain = TranscriptionChain()
+                full_transcription = ""
+                for chunk in chunks:
+                    with open(chunk, "rb") as f:
+                        audio_content = f.read()
+
+                    chunk_transcription = await transcription_chain.transcribe(
+                        audio_content=audio_content,
+                        filename=os.path.basename(chunk),
+                    )
+                    full_transcription += chunk_transcription + " "
+
+                full_transcription = full_transcription.strip()
+                logger.info("Transcrição de áudio recebida")
+                await AutomatedRecordService.update_job_status(
+                    db,
+                    job_uuid,
+                    JobStatus.TRANSCRIBED,
+                    transcription=full_transcription,
+                )
+
+                # 4. Generate record
+                await AutomatedRecordService.update_job_status(
+                    db, job_uuid, JobStatus.GENERATING_RECORD
+                )
+
+                logger.info("Enviando transcrição para geração de prontuário")
+                record_text = await AutomatedRecordService.generate_record(
+                    db, full_transcription, job
+                )
+                logger.info("Prontuário recebido")
+                # 5. Complete job
+                await AutomatedRecordService.update_job_status(
+                    db,
+                    job_uuid,
+                    JobStatus.COMPLETED,
+                )
+
+                # Update the treatment record content
+
+                await TreatmentRecordService.update_treatment_record(
+                    db,
+                    UUID(job.treatment_record_uuid),
+                    job.user_uuid,
+                    TreatmentRecordUpdate(
+                        content=record_text, status=RecordStatus.READY
+                    ),
+                )
+
+            finally:
+                # Cleanup
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir)
+                if os.path.exists(audio_path):
+                    os.remove(audio_path)
+
+        except Exception as e:
+            logger.error(f"Error processing job {job_uuid}: {e}")
+            await AutomatedRecordService.update_job_status(
+                db, job_uuid, JobStatus.FAILED, error_message=str(e)
+            )
+            # Update treatment record status to failed
+
+            try:
+                await TreatmentRecordService.update_treatment_record(
+                    db,
+                    UUID(job.treatment_record_uuid),
+                    job.user_uuid,
+                    TreatmentRecordUpdate(status=RecordStatus.FAILED),
+                )
+            except Exception:
+                pass
 
     @staticmethod
     async def generate_record(
@@ -72,66 +180,27 @@ class AutomatedRecordService:
     ) -> str:
         report_list = await TreatmentReportService.get_treatment_reports(
             db=db,
-            treatment_uuid=job.treatment_uuid,  # pyright: ignore[reportArgumentType]
-            user_uuid=job.user_uuid,  # pyright: ignore[reportArgumentType]
+            treatment_uuid=UUID(job.treatment_uuid),
+            user_uuid=job.user_uuid,
         )
         last_report_context = "Nenhum relatório produzido ainda. Está é a sessão inicial ou uma das sessões iniciais."  # noqa: E501
         if report_list:
-            last_report_context = report_list[0]
+            last_report_context = report_list[
+                0
+            ].analysis  # Use analysis or a summary
 
         treatment_patient = (
             await PatientWithTreatmentService.get_patient_with_treatment_uuid(
                 db=db,
-                treatment_uuid=job.treatment_uuid,  # pyright: ignore[reportArgumentType]
-                user_uuid=job.user_uuid,  # pyright: ignore[reportArgumentType]
+                treatment_uuid=UUID(job.treatment_uuid),
+                user_uuid=job.user_uuid,
             )
         )
 
         record_chain = RecordGenerationChain()
-        try:
-            record_text = await record_chain.generate(
-                transcription=transcription,
-                gender=treatment_patient.gender,  # pyright: ignore[reportArgumentType]
-                context=last_report_context,
-            )
-            return record_text
-        except Exception as e:
-            await AutomatedRecordService.update_job_status(
-                db=db,
-                job_uuid=job.uuid,  # pyright: ignore[reportArgumentType]
-                status=JobStatus.FAILED,
-            )
-            raise e
-
-    @staticmethod
-    async def generate_transcription(
-        db: AsyncSession, audio_id: str, job_uuid: UUID
-    ):
-        transcription_chain = TranscriptionChain()
-        from src.services.audio_storage_service import AudioStorageService
-
-        try:
-            # 1. Fetch content from provider
-            audio_content = await AudioStorageService.get_file_content(
-                audio_id
-            )
-
-            # 2. Transcribe
-            transcription = await transcription_chain.transcribe(
-                audio_content=audio_content
-            )
-
-            # 3. Cleanup from provider (fire and forget or background)
-            # OpenAI Files should be deleted after use to avoid costs and clutter
-            import asyncio
-
-            asyncio.create_task(AudioStorageService.delete_file(audio_id))
-
-            return transcription
-        except Exception as e:
-            await AutomatedRecordService.update_job_status(
-                db=db,
-                job_uuid=job_uuid,
-                status=JobStatus.FAILED,
-            )
-            raise e
+        record_text = await record_chain.generate(
+            transcription=transcription,
+            gender=treatment_patient.gender,
+            context=last_report_context,
+        )
+        return record_text

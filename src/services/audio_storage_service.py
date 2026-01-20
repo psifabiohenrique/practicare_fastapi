@@ -1,7 +1,8 @@
 import logging
 import uuid
-from typing import BinaryIO
+
 from openai import AsyncOpenAI
+
 from src.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -28,14 +29,14 @@ class AudioStorageService:
 
         try:
             # Upload to OpenAI
-            # 'purpose' can be 'assistants' for long term but 'fine-tune' is not it.
+            # 'purpose' can be 'assistants' for long term but 'fine-tune' is not it.  # noqa: E501
             # Actually, Whisper doesn't use Files API for direct transcription,
-            # but we will use it as a storage bridge since that's what was requested.
+            # but we will use it as a storage bridge since that's what was requested.  # noqa: E501
             # Note: Files API files are only accessible by certain APIs.
             # For Whisper, we will need to download it back.
             response = await client.files.create(
                 file=(filename, content),
-                purpose="assistants",  # Using assistants purpose as it allows retrieval
+                purpose="assistants",  # Using assistants purpose as it allows retrieval  # noqa: E501
             )
             return response.id
         except Exception as e:

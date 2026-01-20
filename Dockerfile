@@ -16,6 +16,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.13-slim-bookworm
 
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -23,9 +24,10 @@ COPY --from=builder /app /app
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-# CMD ["fastapi", "run", "src/main.py", "--port", "8000", "--host", "0.0.0.0", "--proxy-headers" '--forwarded-allow-ips="*"']
+# CMD ["fastapi", "run", "src/main.py", "--port", "8000", "--host", "0.0.0.0"]
+CMD ['uvicorn' '']
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# COPY entrypoint.sh /entrypoint.sh
+# RUN chmod +x /entrypoint.sh
 
-CMD ["/entrypoint.sh"]
+# CMD ["/entrypoint.sh"]

@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Body,
     File,
     HTTPException,
@@ -12,17 +13,16 @@ from fastapi import (
     status,
 )
 
+from src.database import SessionLocal
 from src.routers.deps import CurrentUser, SessionDB
 from src.schemas.treatment_record_schema import (
     TreatmentRecordCreate,
     TreatmentRecordRead,
     TreatmentRecordUpdate,
 )
-from src.services.audio_storage_service import AudioStorageService
 from src.services.automated_record_service import AutomatedRecordService
 from src.services.treatment_record_service import TreatmentRecordService
 from src.services.treatment_service import TreatmentService
-from src.tasks.record_generation import transcribe_audio
 
 router = APIRouter(prefix="/treatment-records", tags=["Treatment records"])
 
@@ -72,10 +72,11 @@ async def create_treatment_record(
     "/treatments/{treatment_uuid}/automated-record",
     response_model=TreatmentRecordRead,
 )
-async def upload_audio(
+async def upload_audio(  # noqa: PLR0913, PLR0917
     treatment_uuid: UUID,
     db: SessionDB,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
     session_date: Annotated[date, Body()],
     audio_file: UploadFile = File(...),
 ):
@@ -88,6 +89,9 @@ async def upload_audio(
         "audio/webm",
         "video/webm",
         "audio/ogg",
+        "audio/mpeg",
+        "audio/mp3",
+        "audio/wav",
     }:
         raise HTTPException(
             HTTPStatus.BAD_REQUEST, detail="Invalid audio content type"
@@ -104,7 +108,7 @@ async def upload_audio(
             date=session_date,
             start_time=treatment.start_time,
             end_time=treatment.end_time,
-            content="Processando em background",
+            content="Processando áudio e gerando prontuário...",
         ),
         user_uuid=user_uuid,
     )
@@ -116,10 +120,18 @@ async def upload_audio(
         treatment_record_uuid=record.uuid,
     )
 
-    # audio_bytes = await audio_file.read()
-    audio_id = await AudioStorageService.save_upload(audio_file)
+    # Save audio temporarily to disk
+    audio_path = f"audio_{job.uuid}.webm"
+    with open(audio_path, "wb") as f:
+        f.write(await audio_file.read())
 
-    transcribe_audio.delay(job_uuid=job.uuid, audio_id=audio_id)
+    background_tasks.add_task(
+        AutomatedRecordService.process_automated_record_job,
+        db=SessionLocal,
+        job_uuid=job.uuid,
+        audio_path=audio_path,
+    )
+
     return record
 
 
@@ -131,6 +143,7 @@ async def reload_audio(
     treatment_record_uuid: UUID,
     db: SessionDB,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
     audio_file: UploadFile = File(...),
 ):
 
@@ -141,6 +154,9 @@ async def reload_audio(
         "audio/webm",
         "video/webm",
         "audio/ogg",
+        "audio/mpeg",
+        "audio/mp3",
+        "audio/wav",
     }:
         raise HTTPException(
             HTTPStatus.BAD_REQUEST, detail="Invalid audio content type"
@@ -157,9 +173,17 @@ async def reload_audio(
         treatment_record_uuid=record.uuid,
     )
 
-    audio_id = await AudioStorageService.save_upload(audio_file)
+    # Save audio temporarily to disk
+    audio_path = f"audio_{job.uuid}.webm"
+    with open(audio_path, "wb") as f:
+        f.write(await audio_file.read())
 
-    transcribe_audio.delay(job_uuid=job.uuid, audio_id=audio_id)
+    background_tasks.add_task(
+        AutomatedRecordService.process_automated_record_job,
+        db=SessionLocal,
+        job_uuid=UUID(job.uuid),
+        audio_path=audio_path,
+    )
 
     record = await TreatmentRecordService.update_treatment_record(
         db,

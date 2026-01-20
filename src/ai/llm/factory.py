@@ -1,4 +1,5 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 
 from src.settings import settings
 
@@ -22,8 +23,6 @@ class LLMFactory:
             )
 
         if provider == "openai":
-            from langchain_openai import ChatOpenAI
-
             model_name = kwargs.get(
                 "model_name", settings.LLM_MODEL or "gpt-4o"
             )

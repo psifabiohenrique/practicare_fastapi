@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, BackgroundTasks, status
 
 from src.routers.deps import CurrentUser, SessionDB
 from src.schemas.treatment_report_schema import (
@@ -12,7 +12,6 @@ from src.schemas.treatment_report_schema import (
 )
 from src.services.automated_report_service import AutomatedReportService
 from src.services.treatment_report_service import TreatmentReportService
-from src.tasks.report_generation import generate_report_task
 
 router = APIRouter(prefix="/treatment-reports", tags=["Treatment reports"])
 
@@ -79,6 +78,7 @@ async def create_automated_report(
     schema: AutomatedReportCreate,
     db: SessionDB,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ) -> any:
     user_uuid = current_user.uuid
 
@@ -103,11 +103,15 @@ async def create_automated_report(
     job = await AutomatedReportService.create_job(
         db=db,
         treatment_uuid=treatment_uuid,
-        treatment_report_uuid=UUID(report.uuid),  # type: ignore
+        treatment_report_uuid=UUID(report.uuid),
         user_uuid=user_uuid,
     )
 
-    # 3. Disparar a task do Celery
-    generate_report_task.delay(job_uuid=UUID(job.uuid))  # type: ignore
+    # 3. Disparar a background task
+    background_tasks.add_task(
+        AutomatedReportService.process_automated_report_job,
+        db=db,
+        job_uuid=UUID(job.uuid),
+    )
 
     return report

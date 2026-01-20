@@ -1,5 +1,7 @@
 import logging
+
 from openai import AsyncOpenAI
+
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.settings import settings
 
@@ -24,7 +26,7 @@ class TranscriptionChain:
         """
         try:
             # Whisper requires a file-like object with a name attribute
-            # We'll use a temporary file if needed, but the API accepts a tuple (filename, file_bytes)
+            # We'll use a temporary file if needed, but the API accepts a tuple (filename, file_bytes)  # noqa: E501
             response = await self.client.audio.transcriptions.create(
                 model="whisper-1",
                 file=(filename, audio_content),
