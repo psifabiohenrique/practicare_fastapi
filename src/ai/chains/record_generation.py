@@ -10,8 +10,8 @@ class RecordGenerationChain:
         self.provider = provider
         if provider == "openai":
             self.client = AsyncOpenAI(
-                api_key=settings.OPEN_API_KEY
-                if hasattr(settings, "OPEN_API_KEY")
+                api_key=settings.OPENAI_API_KEY
+                if hasattr(settings, "OPENAI_API_KEY")
                 else settings.OPENAI_API_KEY
             )
             self.model = "gpt-5-mini"  # User requested gpt-5-mini
@@ -38,7 +38,7 @@ class RecordGenerationChain:
                         "content": f"Aqui está a transcrição do atendimento:\n\n{transcription}",  # noqa: E501
                     },
                 ],
-                temperature=0,
+                # temperature=0,
             )
             return response.choices[0].message.content or ""
 

@@ -43,7 +43,7 @@ class ReportGenerationChain:
                         "content": f"Gere o relatório para o paciente {patient_first_name}.",  # noqa: E501
                     },
                 ],
-                temperature=0,
+                # temperature=0,
                 response_format={"type": "json_object"},
             )
 

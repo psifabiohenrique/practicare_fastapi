@@ -13,7 +13,6 @@ from fastapi import (
     status,
 )
 
-from src.database import SessionLocal
 from src.routers.deps import CurrentUser, SessionDB
 from src.schemas.treatment_record_schema import (
     TreatmentRecordCreate,
@@ -104,7 +103,6 @@ async def upload_audio(  # noqa: PLR0913, PLR0917
         db=db,
         schema=TreatmentRecordCreate(
             treatment_uuid=treatment_uuid,
-            status="pending",
             date=session_date,
             start_time=treatment.start_time,
             end_time=treatment.end_time,
@@ -127,7 +125,7 @@ async def upload_audio(  # noqa: PLR0913, PLR0917
 
     background_tasks.add_task(
         AutomatedRecordService.process_automated_record_job,
-        db=SessionLocal,
+        db=db,
         job_uuid=job.uuid,
         audio_path=audio_path,
     )
@@ -180,7 +178,7 @@ async def reload_audio(
 
     background_tasks.add_task(
         AutomatedRecordService.process_automated_record_job,
-        db=SessionLocal,
+        db=db,
         job_uuid=UUID(job.uuid),
         audio_path=audio_path,
     )

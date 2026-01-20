@@ -1,43 +1,43 @@
 # flyctl launch added from .gitignore
 # Python-generated files
-**\__pycache__
-**\*.py[oc]
-**\build
-**\dist
-**\wheels
-**\*.egg-info
+**/__pycache__
+**/*.py[oc]
+**/build
+**/dist
+**/wheels
+**/*.egg-info
 
 # Virtual environments
-**\.venv
-**\.env
-**\.env-docker
-**\.env-prod
-**\.coverage
+**/.venv
+**/.env
+**/.env-docker
+**/.env-prod
+**/.coverage
 
-**\sql_app.db
-**\*.db
-**\.pytest_cache
-**\.idea
+**/sql_app.db
+**/*.db
+**/.pytest_cache
+**/.idea
 
-# flyctl launch added from .idea\.gitignore
+# flyctl launch added from .idea/.gitignore
 # Default ignored files
-.idea\shelf
-.idea\workspace.xml
+.idea/shelf
+.idea/workspace.xml
 # Editor-based HTTP Client requests
-.idea\httpRequests
+.idea/httpRequests
 
-# flyctl launch added from .pytest_cache\.gitignore
+# flyctl launch added from .pytest_cache/.gitignore
 # Created by pytest automatically.
-.pytest_cache\**\*
+.pytest_cache/**/*
 
-# flyctl launch added from .ruff_cache\.gitignore
+# flyctl launch added from .ruff_cache/.gitignore
 # Automatically created by ruff.
-.ruff_cache\**\*
+.ruff_cache/**/*
 
-# flyctl launch added from .venv\.gitignore
-.venv\**\*
+# flyctl launch added from .venv/.gitignore
+.venv/**/*
 
-# flyctl launch added from htmlcov\.gitignore
+# flyctl launch added from htmlcov/.gitignore
 # Created by coverage.py
-htmlcov\**\*
+htmlcov/**/*
 fly.toml

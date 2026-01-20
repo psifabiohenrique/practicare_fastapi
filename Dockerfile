@@ -24,8 +24,8 @@ COPY --from=builder /app /app
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-# CMD ["fastapi", "run", "src/main.py", "--port", "8000", "--host", "0.0.0.0"]
-CMD ['uvicorn' '']
+CMD ["fastapi", "run", "src/main.py", "--port", "8080", "--host", "0.0.0.0"]
+# CMD ["uvicorn", "src:main", "--port", "8000", "--host", "0.0.0.0"]
 
 # COPY entrypoint.sh /entrypoint.sh
 # RUN chmod +x /entrypoint.sh

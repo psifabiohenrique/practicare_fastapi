@@ -28,8 +28,8 @@ class LLMFactory:
             )
             return ChatOpenAI(
                 model=model_name,
-                openai_api_key=settings.OPENAI_API_KEY,
-                temperature=kwargs.get("temperature", 0),
+                api_key=settings.OPENAI_API_KEY,
+                # temperature=kwargs.get("temperature", 0.1),
                 **kwargs,
             )
 
