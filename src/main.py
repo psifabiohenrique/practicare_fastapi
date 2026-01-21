@@ -39,11 +39,14 @@ app = FastAPI(
 
 # app.add_middleware(HTTPSRedirectMiddleware)
 
+print(settings.ALLOWED_ORIGINS)
+origins = [str(url).rstrip("/") for url in settings.ALLOWED_ORIGINS]
+print(origins)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 

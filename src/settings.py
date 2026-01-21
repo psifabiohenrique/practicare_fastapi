@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import AnyHttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,7 +16,7 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str
     OPENAI_API_KEY: str
     BASE_AUDIO_DIR: Path = Path("/data/audio")
-    ALLOWED_ORIGINS: str = "*"
+    ALLOWED_ORIGINS: list[AnyHttpUrl] = "*"
     PRODUCTION: bool = False
 
     model_config = SettingsConfigDict(env_file=".env")

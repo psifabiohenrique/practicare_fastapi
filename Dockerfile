@@ -1,5 +1,6 @@
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
 
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
 WORKDIR /app
@@ -8,6 +9,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --no-install-project --no-dev
+
+
 
 ADD . /app
 
@@ -20,9 +23,12 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /app /app
 
-ENV PATH="/app/.venv/bin:$PATH"
+# ENV PATH="/app/.venv/bin:$PATH"
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 CMD ["fastapi", "run", "src/main.py", "--port", "8080", "--host", "0.0.0.0"]
 # CMD ["uvicorn", "src:main", "--port", "8000", "--host", "0.0.0.0"]

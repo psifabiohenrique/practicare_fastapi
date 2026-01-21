@@ -2,9 +2,11 @@ services:
   app:
     build: .
     ports:
-      - "8000:8000"
+      - "8080:8080"
     volumes:
+      - .:/app 
       - data:/data
+    working_dir: /app
     env_file:
       - .env-docker
     depends_on:
@@ -32,6 +34,14 @@ services:
       retries: 5
     networks:
       - practicare-network
+
+networks:
+  practicare-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  data:
 
   # celery_worker:
   #   build: .
@@ -63,11 +73,3 @@ services:
   #     - "6379:6379"
   #   networks:
   #     - practicare-network
-
-networks:
-  practicare-network:
-    driver: bridge
-
-volumes:
-  postgres_data:
-  data:
