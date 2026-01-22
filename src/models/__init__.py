@@ -1,3 +1,4 @@
+from .auth_session_model import AuthSession
 from .automated_record_job import AutomatedRecordJob, JobStatus
 from .automated_report_job import AutomatedReportJob, ReportJobStatus
 from .patient_model import Gender, Patient
@@ -18,4 +19,5 @@ __all__ = [
     "JobStatus",
     "AutomatedReportJob",
     "ReportJobStatus",
+    "AuthSession",
 ]

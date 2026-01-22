@@ -1,4 +1,5 @@
 from datetime import time
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
@@ -6,8 +7,8 @@ from src.models import Weekdays
 
 
 class TreatmentBase(BaseModel):
-    user_uuid: str
-    patient_uuid: str
+    user_uuid: UUID
+    patient_uuid: UUID
     weekday: Weekdays
     start_time: time
     end_time: time
@@ -24,6 +25,6 @@ class TreatmentUpdate(BaseModel):
 
 
 class TreatmentRead(TreatmentBase):
-    uuid: str
+    uuid: UUID
 
     model_config = ConfigDict(from_attributes=True)

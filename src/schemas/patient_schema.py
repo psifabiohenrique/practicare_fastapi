@@ -1,4 +1,5 @@
 from datetime import date
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
@@ -28,7 +29,7 @@ class PatientUpdate(BaseModel):
 
 
 class PatientRead(PatientBase):
-    uuid: str
+    uuid: UUID
     full_name: str
 
     model_config = ConfigDict(from_attributes=True)

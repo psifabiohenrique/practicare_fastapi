@@ -27,7 +27,9 @@ SessionDB = Annotated[AsyncSession, Depends(get_db)]
 
 @router.post("/login", response_model=Message)
 async def login_session(
-    db: SessionDB, response: Response, form_data: LoginRequest
+    db: SessionDB,
+    response: Response,
+    form_data: LoginRequest,
 ):
     user = await AuthService.authenticate_user(
         db=db, email=form_data.email, password=form_data.password
@@ -49,6 +51,11 @@ async def login_session(
         samesite="lax",
     )
 
+    csrf_token = AuthService.generate_csrf_token()
+    response.set_cookie(
+        key="csrf_token", value=csrf_token, httponly=False, samesite="lax"
+    )
+
     return Message(message="Logged_in")
 
 
@@ -59,6 +66,7 @@ async def logout_session(db: SessionDB, request=Request, response=Response):
         await AuthService.delete_session(db, session_uuid)
 
     response.delete_cookie("session_uuid")
+    response.delete_cookie("csrf_token")
 
     return Message(message="logged_out")
 

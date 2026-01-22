@@ -7,7 +7,7 @@ from src.database import Base
 
 
 class AuthSession(Base):
-    tablename = "sessions"
+    __tablename__ = "sessions"
 
     uuid = Column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_uuid = Column(

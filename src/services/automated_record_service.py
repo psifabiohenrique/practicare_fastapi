@@ -12,7 +12,7 @@ from src.core.exceptions import NotFoundError
 from src.models.automated_record_job import AutomatedRecordJob, JobStatus
 from src.models.treatment_record_model import RecordStatus
 from src.schemas.treatment_record_schema import (
-    TreatmentRecordUpdate,
+    InternalTreatmentRecordUpdate,
 )
 from src.services.patient_with_treatment_service import (
     PatientWithTreatmentService,
@@ -145,7 +145,7 @@ class AutomatedRecordService:
                     db,
                     UUID(job.treatment_record_uuid),
                     job.user_uuid,
-                    TreatmentRecordUpdate(
+                    InternalTreatmentRecordUpdate(
                         content=record_text, status=RecordStatus.READY
                     ),
                 )
@@ -169,7 +169,7 @@ class AutomatedRecordService:
                     db,
                     UUID(job.treatment_record_uuid),
                     job.user_uuid,
-                    TreatmentRecordUpdate(status=RecordStatus.FAILED),
+                    InternalTreatmentRecordUpdate(status=RecordStatus.FAILED),
                 )
             except Exception:
                 pass

@@ -1,6 +1,7 @@
 import uuid as uuid_pkg
 from enum import Enum
 
+from sqlalchemy import UUID as SQLUUID
 from sqlalchemy import Column, Date, Integer, String
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -20,7 +21,7 @@ class Patient(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     uuid = Column(
-        String, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
+        SQLUUID, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
     )
     first_name = Column(String)
     last_name = Column(String)

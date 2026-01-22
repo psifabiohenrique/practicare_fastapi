@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -59,3 +60,7 @@ class AuthService:
             delete(AuthSession).where(AuthSession.uuid == session_uuid)
         )
         await db.commit()
+
+    @staticmethod
+    def generate_csrf_token() -> str:
+        return secrets.token_urlsafe(32)

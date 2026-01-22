@@ -2,6 +2,7 @@ import uuid as uuid_pkg
 from datetime import datetime
 from enum import Enum
 
+from sqlalchemy import UUID as SQLUUID
 from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
@@ -21,11 +22,11 @@ class AutomatedReportJob(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     uuid = Column(
-        String, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
+        SQLUUID, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
     )
-    user_uuid = Column(String)
-    treatment_uuid = Column(String)
-    treatment_report_uuid = Column(String)
+    user_uuid = Column(SQLUUID)
+    treatment_uuid = Column(SQLUUID)
+    treatment_report_uuid = Column(SQLUUID)
 
     status = Column(SQLEnum(ReportJobStatus), nullable=False)
     error_message = Column(String, nullable=True)

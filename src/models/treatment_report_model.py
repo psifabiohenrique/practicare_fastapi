@@ -2,6 +2,7 @@ import uuid as uuid_pkg
 from datetime import datetime
 from enum import Enum
 
+from sqlalchemy import UUID as SQLUUID
 from sqlalchemy import (
     Column,
     Date,
@@ -30,11 +31,11 @@ class TreatmentReport(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     uuid = Column(
-        String, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
+        SQLUUID, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
     )
-    treatment_uuid = Column(String, ForeignKey("treatments.uuid"))
+    treatment_uuid = Column(SQLUUID, ForeignKey("treatments.uuid"))
     automated_report_job_uuid = Column(
-        String, ForeignKey("automated_report_jobs.uuid")
+        SQLUUID, ForeignKey("automated_report_jobs.uuid")
     )
 
     status = Column(

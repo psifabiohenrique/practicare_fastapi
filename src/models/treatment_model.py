@@ -1,7 +1,8 @@
 import uuid as uuid_pkg
 from enum import Enum
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Time
+from sqlalchemy import UUID as SQLUUID
+from sqlalchemy import Column, ForeignKey, Integer, Time
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
@@ -23,10 +24,10 @@ class Treatment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     uuid = Column(
-        String, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
+        SQLUUID, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
     )
-    user_uuid = Column(String, ForeignKey("users.uuid"))
-    patient_uuid = Column(String, ForeignKey("patients.uuid"))
+    user_uuid = Column(SQLUUID, ForeignKey("users.uuid"))
+    patient_uuid = Column(SQLUUID, ForeignKey("patients.uuid"))
     weekday = Column(
         SQLEnum(Weekdays), default=Weekdays.MONDAY, nullable=False
     )

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -77,7 +77,7 @@ async def get_current_user_session(request: Request, db: SessionDB) -> User:
     await db.commit()
 
     user_result = await db.execute(
-        select(User).filter(User.id == session.user_id)
+        select(User).filter(User.uuid == session.user_uuid)
     )
     user = user_result.scalars().one_or_none()
 
@@ -91,6 +91,33 @@ async def get_current_user_session(request: Request, db: SessionDB) -> User:
         )
 
     return user
+
+
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+async def csrf_protect(
+    request: Request,
+    csrf_header: str | None = Header(None, alias="X-CSRF-Token"),
+    csrf_cookie: str | None = Cookie(None, alias="csrf_token"),
+) -> None:
+    if request.url.path.startswith("/auth/login"):
+        return
+
+    if request.method in SAFE_METHODS:
+        return
+
+    if not csrf_header or not csrf_cookie:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="CSRF token missing",
+        )
+
+    if csrf_header != csrf_cookie:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid CSRF token",
+        )
 
 
 CurrentUser = Annotated[User, Depends(get_current_user_session)]

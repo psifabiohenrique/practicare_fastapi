@@ -1,7 +1,7 @@
 import asyncio
 import sys
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 # from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -23,6 +23,7 @@ from src.routers import (
     treatment_report_controller,
     users_controller,
 )
+from src.routers.deps import csrf_protect
 from src.settings import settings
 
 if sys.platform == "win32":
@@ -35,6 +36,7 @@ app = FastAPI(
     redoc_url=None if settings.PRODUCTION else "/redoc",
     openapi_url=None if settings.PRODUCTION else "/openapi.json",
     redirect_slashes=False,
+    dependencies=[Depends(csrf_protect)],
 )
 
 # app.add_middleware(HTTPSRedirectMiddleware)
