@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_db
 from src.schemas.auth_schema import LoginRequest
 from src.schemas.message_schema import Details, Message
-from src.schemas.token_schema import Token, TokenPayload
+from src.schemas.token_schema import Token, TokenCSRF, TokenPayload
 from src.services.auth_service import AuthService
 from src.settings import settings
 
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 SessionDB = Annotated[AsyncSession, Depends(get_db)]
 
 
-@router.post("/login", response_model=Message)
+@router.post("/login", response_model=TokenCSRF)
 async def login_session(
     db: SessionDB,
     response: Response,
@@ -48,15 +48,19 @@ async def login_session(
         value=str(session.uuid),
         httponly=True,
         secure=True,
-        samesite="lax",
+        samesite="none",
     )
 
     csrf_token = AuthService.generate_csrf_token()
     response.set_cookie(
-        key="csrf_token", value=csrf_token, httponly=False, samesite="lax"
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,
+        secure=True,
+        samesite="none",
     )
 
-    return Message(message="Logged_in")
+    return TokenCSRF(csrf_token=csrf_token)
 
 
 @router.post("/logout", response_model=Message)

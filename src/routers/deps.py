@@ -104,6 +104,8 @@ async def csrf_protect(
 ) -> None:
     if request.url.path.startswith("/auth/login"):
         return
+    if request.url.path.startswith("/auth/logout"):
+        return
     if (
         request.url.path.startswith("/users")
         and request.method == HTTPMethod.POST
@@ -113,6 +115,8 @@ async def csrf_protect(
     if request.method in SAFE_METHODS:
         return
 
+    print(csrf_header)
+    print(csrf_cookie)
     if not csrf_header or not csrf_cookie:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
