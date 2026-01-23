@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from http import HTTPMethod
 from typing import Annotated
 
 import jwt
@@ -102,6 +103,11 @@ async def csrf_protect(
     csrf_cookie: str | None = Cookie(None, alias="csrf_token"),
 ) -> None:
     if request.url.path.startswith("/auth/login"):
+        return
+    if (
+        request.url.path.startswith("/users")
+        and request.method == HTTPMethod.POST
+    ):
         return
 
     if request.method in SAFE_METHODS:

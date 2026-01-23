@@ -60,7 +60,7 @@ async def login_session(
 
 
 @router.post("/logout", response_model=Message)
-async def logout_session(db: SessionDB, request=Request, response=Response):
+async def logout_session(db: SessionDB, request: Request, response: Response):
     session_uuid = request.cookies.get("session_uuid")
     if session_uuid:
         await AuthService.delete_session(db, session_uuid)
