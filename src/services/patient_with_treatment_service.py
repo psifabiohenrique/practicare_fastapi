@@ -25,7 +25,7 @@ class PatientWithTreatmentService:
         result = await db.execute(
             select(Patient)
             .join(Treatment, Patient.uuid == Treatment.patient_uuid)
-            .filter(Treatment.uuid == str(treatment_uuid))
+            .filter(Treatment.uuid == treatment_uuid)
             .options(joinedload(Patient.treatments))
         )
         patient = result.scalars().first()
@@ -36,7 +36,7 @@ class PatientWithTreatmentService:
         # found for simplicity, but the query ensures it matches
         # treatment_uuid)
         treatment = next(
-            (t for t in patient.treatments if t.uuid == str(treatment_uuid)),
+            (t for t in patient.treatments if t.uuid == treatment_uuid),
             None,
         )
         if treatment and treatment.user_uuid != user_uuid:

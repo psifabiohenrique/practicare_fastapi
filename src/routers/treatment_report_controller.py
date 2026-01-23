@@ -103,7 +103,7 @@ async def create_automated_report(
     job = await AutomatedReportService.create_job(
         db=db,
         treatment_uuid=treatment_uuid,
-        treatment_report_uuid=UUID(report.uuid),
+        treatment_report_uuid=report.uuid,
         user_uuid=user_uuid,
     )
 
@@ -111,7 +111,7 @@ async def create_automated_report(
     background_tasks.add_task(
         AutomatedReportService.process_automated_report_job,
         db=db,
-        job_uuid=UUID(job.uuid),
+        job_uuid=job.uuid,
     )
 
     return report

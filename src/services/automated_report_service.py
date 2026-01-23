@@ -100,7 +100,7 @@ class AutomatedReportService:
             try:
                 await TreatmentReportService.update_treatment_report(
                     db=db,
-                    treatment_report_uuid=UUID(job.treatment_report_uuid),
+                    treatment_report_uuid=job.treatment_report_uuid,
                     user_uuid=job.user_uuid,
                     schema=InternalTreatmentReportUpdate(
                         status=ReportStatus.FAILED,
@@ -121,7 +121,7 @@ class AutomatedReportService:
         treatment_patient = (
             await PatientWithTreatmentService.get_patient_with_treatment_uuid(
                 db=db,
-                treatment_uuid=UUID(job.treatment_uuid),
+                treatment_uuid=job.treatment_uuid,
                 user_uuid=job.user_uuid,
             )
         )
@@ -132,7 +132,7 @@ class AutomatedReportService:
         # 2. Buscar o relatório atual para pegar as datas do período
         current_report = await TreatmentReportService.get_treatment_report(
             db=db,
-            treatment_report_uuid=UUID(job.treatment_report_uuid),
+            treatment_report_uuid=job.treatment_report_uuid,
             user_uuid=job.user_uuid,
         )
 
@@ -162,7 +162,7 @@ class AutomatedReportService:
         # 4. Buscar prontuários do período
         records = await TreatmentRecordService.get_treatment_records(
             db=db,
-            treatment_uuid=UUID(job.treatment_uuid),
+            treatment_uuid=job.treatment_uuid,
             user_uuid=job.user_uuid,
             start_date=current_report.start_date_period,
             end_date=current_report.end_date_period,
@@ -190,7 +190,7 @@ class AutomatedReportService:
         # 6. Atualizar o relatório
         await TreatmentReportService.update_treatment_report(
             db=db,
-            treatment_report_uuid=UUID(job.treatment_report_uuid),
+            treatment_report_uuid=job.treatment_report_uuid,
             user_uuid=job.user_uuid,
             schema=InternalTreatmentReportUpdate(
                 demand_description=report_data.get("demand_description"),

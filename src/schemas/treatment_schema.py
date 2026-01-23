@@ -7,8 +7,6 @@ from src.models import Weekdays
 
 
 class TreatmentBase(BaseModel):
-    user_uuid: UUID
-    patient_uuid: UUID
     weekday: Weekdays
     start_time: time
     end_time: time
@@ -26,5 +24,7 @@ class TreatmentUpdate(BaseModel):
 
 class TreatmentRead(TreatmentBase):
     uuid: UUID
+    user_uuid: UUID
+    patient_uuid: UUID
 
     model_config = ConfigDict(from_attributes=True)

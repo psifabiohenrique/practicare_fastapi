@@ -179,7 +179,7 @@ async def reload_audio(
     background_tasks.add_task(
         AutomatedRecordService.process_automated_record_job,
         db=db,
-        job_uuid=UUID(job.uuid),
+        job_uuid=job.uuid,
         audio_path=audio_path,
     )
 
