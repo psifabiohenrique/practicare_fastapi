@@ -2,6 +2,9 @@ import logging
 import math
 import os
 import subprocess
+import wave
+
+import webrtcvad
 
 logger = logging.getLogger(__name__)
 
@@ -91,3 +94,108 @@ def split_audio(
             raise
 
     return chunks
+
+
+def convert_to_wav(input_path: str, output_path: str) -> str:
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-f",
+            "wav",
+            output_path,
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return output_path
+
+
+FRAME_MS = 30
+SILENCE_THRESHOLD_FRAMES = 10  # ~300ms
+MAX_CHUNK_BYTES = 20 * 1024 * 1024  # 20 MB
+
+
+def split_by_vad(wav_path: str, output_dir: str) -> list[str]:
+
+    vad = webrtcvad.Vad(3)
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    with wave.open(wav_path, "rb") as wf:
+        segments_paths = []
+        rate = wf.getframerate()
+        sample_width = wf.getsampwidth()  # deve ser 2
+        file_name = os.path.splitext(os.path.basename(wav_path))[0]
+
+        frame_size = int(rate * FRAME_MS / 1000) * sample_width
+
+        current_frames = []
+        current_bytes = 0
+        silence_count = 0
+        segment_index = 0
+
+        while True:
+            frame = wf.readframes(frame_size // sample_width)
+            if len(frame) < frame_size:
+                break
+
+            is_speech = vad.is_speech(frame, rate)
+
+            if is_speech:
+                current_frames.append(frame)
+                current_bytes += len(frame)
+                silence_count = 0
+            else:
+                silence_count += 1
+                silence_count = min(silence_count, SILENCE_THRESHOLD_FRAMES)
+
+            reached_size_limit = current_bytes >= MAX_CHUNK_BYTES
+            # reached_silence_limit = silence_count >= SILENCE_THRESHOLD_FRAMES
+
+            if reached_size_limit and current_frames:
+                segment_name = f"{file_name}_segment_{segment_index}"
+                segments_paths.append(
+                    save_segment(
+                        current_frames,
+                        output_dir,
+                        segment_name,
+                        rate,
+                    )
+                )
+
+                segment_index += 1
+                current_frames = []
+                current_bytes = 0
+                silence_count = 0
+
+        # flush final
+        if current_frames:
+            segment_name = f"{file_name}_segment_{segment_index}"
+            segments_paths.append(
+                save_segment(
+                    current_frames,
+                    output_dir,
+                    segment_name,
+                    rate,
+                )
+            )
+    return segments_paths
+
+
+def save_segment(frames, output_dir, file_name, rate) -> str:
+    path = f"{output_dir}/segment_{file_name}.wav"
+    with wave.open(path, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(rate)
+        wf.writeframes(b"".join(frames))
+    print(f'Segmento salvo: {path}')
+    return path

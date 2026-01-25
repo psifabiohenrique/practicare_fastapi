@@ -21,7 +21,6 @@ primary_region = 'gru'
 #  processes = ['web']
 
 [[vm]]
-  memory = '1gb'
+  memory = '512'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 1024

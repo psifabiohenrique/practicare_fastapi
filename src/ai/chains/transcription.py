@@ -28,7 +28,7 @@ class TranscriptionChain:
             # Whisper requires a file-like object with a name attribute
             # We'll use a temporary file if needed, but the API accepts a tuple (filename, file_bytes)  # noqa: E501
             response = await self.client.audio.transcriptions.create(
-                model="whisper-1",
+                model="gpt-4o-mini-transcribe",
                 file=(filename, audio_content),
             )
             return response.text

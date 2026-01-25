@@ -21,6 +21,7 @@ dependencies = [
     "aiofiles>=25.1.0",
     "langchain-openai>=1.1.7",
     "openai>=2.15.0",
+    "webrtcvad-wheels>=2.0.14",
 ]
 
 [dependency-groups]
