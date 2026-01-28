@@ -30,7 +30,7 @@ COPY --from=builder /app /app
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-CMD ["fastapi", "run", "src/main.py", "--port", "8080", "--host", "0.0.0.0"]
+CMD ["fastapi", "run", "src/main.py", "--port", "8000", "--host", "0.0.0.0"]
 # CMD ["uvicorn", "src:main", "--port", "8000", "--host", "0.0.0.0"]
 
 # COPY entrypoint.sh /entrypoint.sh
