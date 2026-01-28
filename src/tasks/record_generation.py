@@ -28,7 +28,7 @@ async def comunicate_record_fail(job_uuid: UUID, message: str):
     await db.close()
 
 
-async def _transcribe_audio(job_uuid: UUID, audio_id: str) -> None:
+async def _transcribe_audio(job_uuid: UUID, file_name: str) -> None:
     db = await get_async_session()
 
     await AutomatedRecordService.update_job_status(
@@ -38,7 +38,7 @@ async def _transcribe_audio(job_uuid: UUID, audio_id: str) -> None:
     )
 
     transcription = await AutomatedRecordService.generate_transcription(
-        db, audio_id, job_uuid
+        db, file_name, job_uuid
     )
 
     await AutomatedRecordService.update_job_status(
@@ -48,6 +48,7 @@ async def _transcribe_audio(job_uuid: UUID, audio_id: str) -> None:
         transcription=transcription,
     )
     await db.close()
+    print(f"Iniciando geração do prontuário... {transcription}")
     generate_record.delay(job_uuid=job_uuid)
 
 
@@ -85,14 +86,14 @@ async def _generate_record(job_uuid: UUID):
     name="Gerar Transcrição",
     bind=True,
     retry_backoff=30,
-    retry_backoff_max=60 * 60,
+    # retry_backoff_max=60 * 60,
     autoretry_for=(AITransientError,),
     retry_kwargs={"max_retries": 10},
     acks_late=True,
 )
-def transcribe_audio(self, job_uuid: UUID, audio_id: str):
+def transcribe_audio(self, job_uuid: UUID, file_name: str):
     try:
-        asyncio.run(_transcribe_audio(job_uuid, audio_id))
+        asyncio.run(_transcribe_audio(job_uuid, file_name))
     except AITransientError as e:
         asyncio.run(
             comunicate_record_fail(
@@ -101,10 +102,7 @@ def transcribe_audio(self, job_uuid: UUID, audio_id: str):
                 + " tentativa será realizada em breve",
             )
         )
-        logger.warning(
-            f"Erro transitório ao gerar prontuário. {self.request.retry} \n"
-            + str(e)
-        )
+        logger.warning("Erro transitório ao gerar prontuário. \n" + str(e))
         raise
 
     except AIFatalError as e:
@@ -137,7 +135,7 @@ def transcribe_audio(self, job_uuid: UUID, audio_id: str):
     name="Gerar prontuário",
     bind=True,
     retry_backoff=30,
-    retry_backoff_max=60 * 60,
+    # retry_backoff_max=60 * 60,
     autoretry_for=(AITransientError,),
     retry_kwargs={"max_retries": 10},
     acks_late=True,

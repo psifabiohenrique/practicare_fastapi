@@ -21,7 +21,7 @@ async def comunicate_report_fail(job_uuid: UUID, message: str):
     job = await AutomatedReportService.get_job(db, job_uuid)
     await TreatmentReportService.update_treatment_report(
         db,
-        UUID(job.treatment_report_uuid),  # type: ignore
+        job.treatment_report_uuid,  # type: ignore
         job.user_uuid,  # type: ignore
         InternalTreatmentReportUpdate(
             demand_description=message,
@@ -70,8 +70,7 @@ def generate_report_task(self, job_uuid: UUID):
             )
         )
         logger.warning(
-            f"Erro transitório ao gerar relatório. {self.request.retry}"
-            + str(e)
+            f"Erro transitório ao gerar relatório. {str(e)}"
         )
         raise
 

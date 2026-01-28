@@ -193,10 +193,10 @@ class AutomatedReportService:
             treatment_report_uuid=job.treatment_report_uuid,
             user_uuid=job.user_uuid,
             schema=InternalTreatmentReportUpdate(
-                demand_description=report_data.get("demand_description"),
-                procedures=report_data.get("procedures"),
-                analysis=report_data.get("analysis"),
-                conclusion=report_data.get("conclusion"),
+                demand_description=report_data.demand_description,
+                procedures=report_data.procedures,
+                analysis=report_data.analysis,
+                conclusion=report_data.conclusion,
                 status=ReportStatus.READY,
             ),
         )

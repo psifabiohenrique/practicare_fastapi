@@ -157,35 +157,33 @@ def split_by_vad(wav_path: str, output_dir: str) -> list[str]:
                 silence_count += 1
                 silence_count = min(silence_count, SILENCE_THRESHOLD_FRAMES)
 
-            reached_size_limit = current_bytes >= MAX_CHUNK_BYTES
-            # reached_silence_limit = silence_count >= SILENCE_THRESHOLD_FRAMES
+        #     reached_size_limit = current_bytes >= MAX_CHUNK_BYTES
+        #     # reached_silence_limit = silence_count >= SILENCE_THRESHOLD_FRAMES
 
-            if reached_size_limit and current_frames:
-                segment_name = f"{file_name}_segment_{segment_index}"
-                segments_paths.append(
-                    save_segment(
-                        current_frames,
-                        output_dir,
-                        segment_name,
-                        rate,
-                    )
-                )
+        #     if reached_size_limit and current_frames:
+        #         segment_name = f"{file_name}_segment_{segment_index}"
+        #         segments_paths.append(
+        #             save_segment(
+        #                 current_frames,
+        #                 output_dir,
+        #                 segment_name,
+        #                 rate,
+        #             )
+        #         )
 
-                segment_index += 1
-                current_frames = []
-                current_bytes = 0
-                silence_count = 0
+        #         segment_index += 1
+        #         current_frames = []
+        #         current_bytes = 0
+        #         silence_count = 0
 
         # flush final
         if current_frames:
             segment_name = f"{file_name}_segment_{segment_index}"
-            segments_paths.append(
-                save_segment(
-                    current_frames,
-                    output_dir,
-                    segment_name,
-                    rate,
-                )
+            segments_paths = save_segment(
+                current_frames,
+                output_dir,
+                segment_name,
+                rate,
             )
     return segments_paths
 
@@ -197,5 +195,5 @@ def save_segment(frames, output_dir, file_name, rate) -> str:
         wf.setsampwidth(2)
         wf.setframerate(rate)
         wf.writeframes(b"".join(frames))
-    print(f'Segmento salvo: {path}')
+    print(f"Segmento salvo: {path}")
     return path

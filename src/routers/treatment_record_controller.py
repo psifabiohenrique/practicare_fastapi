@@ -1,3 +1,5 @@
+import os
+import tempfile
 from datetime import date
 from http import HTTPStatus
 from typing import Annotated
@@ -22,6 +24,7 @@ from src.schemas.treatment_record_schema import (
 from src.services.automated_record_service import AutomatedRecordService
 from src.services.treatment_record_service import TreatmentRecordService
 from src.services.treatment_service import TreatmentService
+from src.tasks.record_generation import transcribe_audio
 
 router = APIRouter(prefix="/treatment-records", tags=["Treatment records"])
 
@@ -123,11 +126,18 @@ async def upload_audio(  # noqa: PLR0913, PLR0917
     with open(audio_path, "wb") as f:
         f.write(await audio_file.read())
 
-    background_tasks.add_task(
-        AutomatedRecordService.process_automated_record_job,
-        db=db,
-        job_uuid=job.uuid,
-        audio_path=audio_path,
+    uploaded_audio = await AutomatedRecordService.upload_audio_file(
+        db=db, job_uuid=job.uuid, audio_path=audio_path
+    )
+
+    print(uploaded_audio)
+
+    transcribe_audio.apply_async(
+        kwargs={
+            "job_uuid": job.uuid,
+            "file_name": uploaded_audio.name
+        },
+        countdown=30,
     )
 
     return record
@@ -172,25 +182,31 @@ async def reload_audio(
     )
 
     # Save audio temporarily to disk
-    audio_path = f"audio_{job.uuid}.webm"
-    with open(audio_path, "wb") as f:
-        f.write(await audio_file.read())
+    with tempfile.TemporaryDirectory() as temp_dir:
+        audio_path = f"{temp_dir}/audio_{job.uuid}.webm"
+        with open(audio_path, "wb") as f:
+            f.write(await audio_file.read())
 
-    background_tasks.add_task(
-        AutomatedRecordService.process_automated_record_job,
-        db=db,
-        job_uuid=job.uuid,
-        audio_path=audio_path,
-    )
+        uploaded_audio = await AutomatedRecordService.upload_audio_file(
+            db=db, job_uuid=job.uuid, audio_path=audio_path
+        )
 
-    record = await TreatmentRecordService.update_treatment_record(
-        db,
-        record.uuid,
-        user_uuid,
-        TreatmentRecordUpdate(content="Reprocessando o áudio, aguarde..."),
-    )
+        transcribe_audio.apply_async(
+            kwargs={
+                "job_uuid": job.uuid,
+                "file_name": uploaded_audio.name
+            },
+            countdown=30,
+        )
 
-    return record
+        record = await TreatmentRecordService.update_treatment_record(
+            db,
+            record.uuid,
+            user_uuid,
+            TreatmentRecordUpdate(content="Reprocessando o áudio, aguarde..."),
+        )
+
+        return record
 
 
 @router.patch("/{treatment_record_uuid}", response_model=TreatmentRecordRead)

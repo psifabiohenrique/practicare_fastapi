@@ -14,6 +14,7 @@ from src.security import (
     verify_password,
 )
 from src.services.user_service import UserService
+from src.settings import settings
 
 
 class AuthService:
@@ -44,7 +45,7 @@ class AuthService:
             uuid=uuid4(),
             user_uuid=user_uuid,
             expires_at=now
-            + timedelta(minutes=AuthService.SESSION_TTL_MINUTES),
+            + timedelta(minutes=settings.ACCESS_SESSION_EXPIRE_MINUTES),
             last_accessed_at=now,
         )
 

@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import select
@@ -33,13 +34,14 @@ class AutomatedRecordService:
         treatment_uuid: UUID,
         treatment_record_uuid: UUID,
         user_uuid: str,
+        audio_path: str = "",
     ):
         job = AutomatedRecordJob(
             user_uuid=user_uuid,
             treatment_uuid=str(treatment_uuid),
             treatment_record_uuid=str(treatment_record_uuid),
             status=JobStatus.PENDING,
-            audio_path="",
+            audio_path=audio_path,
         )
         db.add(job)
         await db.commit()
@@ -65,6 +67,7 @@ class AutomatedRecordService:
         status: JobStatus,
         transcription: str | None = None,
         error_message: str | None = None,
+        audio_path: str | None = None,
     ):
         job = await AutomatedRecordService.get_job(db, job_uuid)
         job.status = status
@@ -72,12 +75,14 @@ class AutomatedRecordService:
             job.error_message = error_message
         if transcription:
             job.transcription = transcription
+        if audio_path:
+            job.audio_path = audio_path
         await db.commit()
         await db.refresh(job)
         return job
 
     @staticmethod
-    async def process_automated_record_job(
+    async def upload_audio_file(
         db: AsyncSession,  # AsyncSession factory or session
         job_uuid: UUID,
         audio_path: str,
@@ -91,84 +96,38 @@ class AutomatedRecordService:
             await AutomatedRecordService.update_job_status(
                 db, job_uuid, JobStatus.TRANSCRIBING
             )
-            print("#1")
-
-            # 2. Split audio if needed
-            logger.info("Enviando áudio para o split")
-            temp_dir = f"temp_audio_{str(job_uuid)}"
-            os.makedirs(temp_dir, exist_ok=True)
-            print("#2")
             try:
-                # chunks = split_audio(audio_path, temp_dir, max_size_mb=20)
-                converted_audio_path = convert_to_wav(
-                    audio_path, f"{temp_dir}/converted.wav"
-                )
-                print(f'Arquivo convertido: {converted_audio_path}')
-                chunks = split_by_vad(converted_audio_path, temp_dir)
-                print(f'Chunks separados: {chunks}')
-                # 3. Transcribe each chunk
-                logger.info("Enviando áudio para a transcrição")
+                converted_path = audio_path.replace(".webm", ".wav")
+                reduced_path = converted_path.replace(".wav", "_reduced.wav")
+                directory = Path(reduced_path).parent
+
+                convert_to_wav(audio_path, converted_path)
+                reduced_path = split_by_vad(converted_path, directory)
                 transcription_chain = TranscriptionChain()
-                full_transcription = ""
-                for chunk in chunks:
-                    with open(chunk, "rb") as f:
-                        audio_content = f.read()
-
-                    chunk_transcription = await transcription_chain.transcribe(
-                        audio_content=audio_content,
-                        filename=os.path.basename(chunk),
-                    )
-                    full_transcription += chunk_transcription + " "
-
-                full_transcription = full_transcription.strip()
-                logger.info("Transcrição de áudio recebida")
-                print("#3")
+                audio_file_name = await transcription_chain.upload_audio(
+                    reduced_path
+                )
                 await AutomatedRecordService.update_job_status(
                     db,
                     job_uuid,
                     JobStatus.TRANSCRIBED,
-                    transcription=full_transcription,
+                    audio_path=audio_file_name.name,
                 )
-                print("#3.5")
-
-                # 4. Generate record
+                return audio_file_name
+            except Exception as e:
                 await AutomatedRecordService.update_job_status(
-                    db, job_uuid, JobStatus.GENERATING_RECORD
+                    db, job_uuid, JobStatus.FAILED, error_message=str(e)
                 )
-                print("#4")
-
-                logger.info("Enviando transcrição para geração de prontuário")
-                record_text = await AutomatedRecordService.generate_record(
-                    db, full_transcription, job
-                )
-                logger.info("Prontuário recebido")
-                print("#4.5")
-                # 5. Complete job
-                await AutomatedRecordService.update_job_status(
-                    db,
-                    job_uuid,
-                    JobStatus.COMPLETED,
-                )
-                print("#5")
-
-                # Update the treatment record content
-
-                await TreatmentRecordService.update_treatment_record(
-                    db,
-                    job.treatment_record_uuid,
-                    job.user_uuid,
-                    InternalTreatmentRecordUpdate(
-                        content=record_text, status=RecordStatus.READY
-                    ),
-                )
-                print("#5.5")
+                raise e
 
             finally:
-                # Cleanup
-                if os.path.exists(temp_dir):
-                    shutil.rmtree(temp_dir)
+                # Cleanup temporary audio file
                 if os.path.exists(audio_path):
                     os.remove(audio_path)
+                if os.path.exists(converted_path):
+                    os.remove(converted_path)
+                if os.path.exists(reduced_path):
+                    os.remove(reduced_path)
 
         except Exception as e:
             logger.error(f"Error processing job {job_uuid}: {e}")
@@ -188,6 +147,15 @@ class AutomatedRecordService:
                 pass
 
     @staticmethod
+    async def generate_transcription(
+        db: AsyncSession, file_name: str, job_uuid: UUID
+    ) -> str:
+        # job = await AutomatedRecordService.get_job(db, job_uuid)
+        transcription_chain = TranscriptionChain()
+        transcription = await transcription_chain.transcribe(file_name)
+        return transcription
+
+    @staticmethod
     async def generate_record(
         db: AsyncSession, transcription: str, job: AutomatedRecordJob
     ) -> str:
@@ -196,13 +164,18 @@ class AutomatedRecordService:
             treatment_uuid=job.treatment_uuid,
             user_uuid=job.user_uuid,
         )
-        print("record: #1")
         last_report_context = "Nenhum relatório produzido ainda. Está é a sessão inicial ou uma das sessões iniciais."  # noqa: E501
         if report_list:
-            last_report_context = report_list[
-                0
-            ].analysis  # Use analysis or a summary
-        print("record: #2")
+            report = report_list[0]  # Use analysis or a summary
+            last_report_context = (
+                report.demand_description
+                + "\n"
+                + report.procedures
+                + "\n"
+                + report.analysis
+                + "\n"
+                + report.conclusion
+            )
         treatment_patient = (
             await PatientWithTreatmentService.get_patient_with_treatment_uuid(
                 db=db,
@@ -210,7 +183,6 @@ class AutomatedRecordService:
                 user_uuid=job.user_uuid,
             )
         )
-        print("record: #3")
 
         record_chain = RecordGenerationChain()
         try:
@@ -219,7 +191,6 @@ class AutomatedRecordService:
                 gender=treatment_patient.gender,
                 context=last_report_context,
             )
+            return record_text
         except Exception as e:
             print(e)
-        print("record: #4")
-        return record_text

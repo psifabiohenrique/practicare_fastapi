@@ -12,6 +12,7 @@ from src.schemas.treatment_report_schema import (
 )
 from src.services.automated_report_service import AutomatedReportService
 from src.services.treatment_report_service import TreatmentReportService
+from src.tasks.report_generation import generate_report_task
 
 router = APIRouter(prefix="/treatment-reports", tags=["Treatment reports"])
 
@@ -107,11 +108,6 @@ async def create_automated_report(
         user_uuid=user_uuid,
     )
 
-    # 3. Disparar a background task
-    background_tasks.add_task(
-        AutomatedReportService.process_automated_report_job,
-        db=db,
-        job_uuid=job.uuid,
-    )
+    generate_report_task.delay(job_uuid=job.uuid)
 
     return report

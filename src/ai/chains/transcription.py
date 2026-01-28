@@ -1,5 +1,7 @@
 import logging
 
+from google import genai
+from google.genai.types import File
 from openai import AsyncOpenAI
 
 from src.ai.exceptions import AIFatalError, AITransientError
@@ -9,29 +11,36 @@ logger = logging.getLogger(__name__)
 
 
 class TranscriptionChain:
-    def __init__(self, provider: str = "openai"):
-        self.provider = provider
-        if provider == "openai":
-            self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-        else:
-            raise ValueError(
-                f"Provider {provider} not supported for Whisper yet"
-            )
+    def __init__(self):
+        self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
-    async def transcribe(
-        self, audio_content: bytes, filename: str = "audio.webm"
-    ) -> str:
-        """
-        Transcribes audio using OpenAI Whisper.
-        """
+    async def upload_audio(self, file_path: str) -> str:
         try:
-            # Whisper requires a file-like object with a name attribute
-            # We'll use a temporary file if needed, but the API accepts a tuple (filename, file_bytes)  # noqa: E501
-            response = await self.client.audio.transcriptions.create(
-                model="gpt-4o-mini-transcribe",
-                file=(filename, audio_content),
+            response = await self.client.aio.files.upload(file=file_path)
+            return response
+        except Exception as e:
+            logger.error(f"Error uploading audio to Google GenAI: {str(e)}")
+            raise AIFatalError(
+                f"Erro ao enviar áudio para transcrição: {str(e)}"
+            ) from e
+
+    async def transcribe(self, file_name: str) -> str:
+        try:
+            file = self.client.files.get(name=file_name)
+            if file.state != genai.types.FileState.ACTIVE:
+                raise AITransientError("O arquivo de áudio ainda não está pronto para transcrição.")  # noqa: E501
+
+            response = self.client.models.generate_content(
+                model=settings.TRANSCRIPTION_MODEL,
+                contents=[
+                    "transcreva este trecho de atendimento clínico de forma precisa e detalhada.",  # noqa: E501
+                    file,
+                ],
             )
             return response.text
+
+        except AITransientError as e:
+            raise e
 
         except Exception as e:
             err_msg = str(e).lower()
@@ -40,6 +49,7 @@ class TranscriptionChain:
             if any(
                 sub in err_msg
                 for sub in (
+                    "400",
                     "429",
                     "rate limit",
                     "503",
@@ -55,7 +65,6 @@ class TranscriptionChain:
             if any(
                 sub in err_msg
                 for sub in (
-                    "400",
                     "403",
                     "401",
                     "invalid_api_key",

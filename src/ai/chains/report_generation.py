@@ -1,18 +1,48 @@
 import json
+import httpx
+import httpcore
+import re
+import socket
 
+from google import genai
 from openai import AsyncOpenAI
+from pydantic import BaseModel
 
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.ai.prompts.report_prompts import REPORT_GENERATION_SYSTEM_PROMPT
 from src.settings import settings
 
 
+class ReportJSON(BaseModel):
+    demand_description: str
+    procedures: str
+    analysis: str
+    conclusion: str
+
+
+def extract_json(text: str) -> str:
+    """
+    Remove fences ```json ... ``` ou ``` ... ``` e retorna JSON puro.
+    """
+    text = text.strip()
+
+    # Caso venha em markdown
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+
+    return text.strip()
+
+
 class ReportGenerationChain:
-    def __init__(self, provider: str = "openai"):
+    def __init__(self, provider: str = settings.LLM_PROVIDER):
         self.provider = provider
         if provider == "openai":
             self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-            self.model = "gpt-5-mini"  # User requested gpt-5-mini
+            self.model = settings.LLM_MODEL  # User requested gpt-5-mini
+        elif provider == "google":
+            self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+            self.model = settings.LLM_MODEL
         else:
             raise ValueError(f"Provider {provider} not supported")
 
@@ -34,21 +64,45 @@ class ReportGenerationChain:
                 records_context=records_context,
             )
 
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {
-                        "role": "user",
-                        "content": f"Gere o relatório para o paciente {patient_first_name}.",  # noqa: E501
-                    },
-                ],
-                # temperature=0,
-                response_format={"type": "json_object"},
-            )
+            if self.provider == "openai":
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {
+                            "role": "user",
+                            "content": f"Gere o relatório para o paciente {patient_first_name}.",  # noqa: E501
+                        },
+                    ],
+                    # temperature=0,
+                    response_format={"type": "json_object"},
+                )
 
-            content = response.choices[0].message.content or "{}"
-            return json.loads(content)
+                content = response.choices[0].message.content or "{}"
+                return json.loads(content)
+            elif self.provider == "google":
+                response = self.client.models.generate_content(
+                    model=self.model,
+                    config=genai.types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        temperature=0.1,
+                    ),
+                    contents=[
+                        f"Gere o relatório para o paciente {patient_first_name} em JSON estruturado."
+                    ],
+                )
+                report = ReportJSON.model_validate_json(
+                    extract_json(response.text)
+                )
+                return report
+
+        except (
+            httpx.ConnectError,
+            httpcore.ConnectError,
+            socket.gaierror,
+        ) as e:
+            # cobre DNS, timeout, falha de socket, etc.
+            raise AITransientError("Erro de rede ao chamar o Gemini") from e
 
         except Exception as e:
             err_msg = str(e).lower()
