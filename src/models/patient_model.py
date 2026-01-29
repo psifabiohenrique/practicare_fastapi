@@ -2,7 +2,7 @@ import uuid as uuid_pkg
 from enum import Enum
 
 from sqlalchemy import UUID as SQLUUID
-from sqlalchemy import Column, Date, Integer, String
+from sqlalchemy import Column, Date, String
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
@@ -19,10 +19,13 @@ class Gender(str, Enum):
 class Patient(Base):
     __tablename__ = "patients"
 
-    id = Column(Integer, primary_key=True, index=True)
     uuid = Column(
-        SQLUUID, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
+        SQLUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid_pkg.uuid4,
+        index=True,
     )
+
     first_name = Column(String)
     last_name = Column(String)
     email = Column(String, nullable=True)

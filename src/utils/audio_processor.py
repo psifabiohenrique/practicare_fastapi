@@ -158,7 +158,7 @@ def split_by_vad(wav_path: str, output_dir: str) -> list[str]:
                 silence_count = min(silence_count, SILENCE_THRESHOLD_FRAMES)
 
         #     reached_size_limit = current_bytes >= MAX_CHUNK_BYTES
-        #     # reached_silence_limit = silence_count >= SILENCE_THRESHOLD_FRAMES
+        #     # reached_silence_limit = silence_count >= SILENCE_THRESHOLD_FRAMES  # noqa: E501
 
         #     if reached_size_limit and current_frames:
         #         segment_name = f"{file_name}_segment_{segment_index}"

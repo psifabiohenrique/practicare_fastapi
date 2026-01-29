@@ -8,7 +8,6 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
-    Integer,
     String,
 )
 from sqlalchemy import (
@@ -29,9 +28,11 @@ class ReportStatus(str, Enum):
 class TreatmentReport(Base):
     __tablename__ = "treatment_reports"
 
-    id = Column(Integer, primary_key=True, index=True)
     uuid = Column(
-        SQLUUID, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
+        SQLUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid_pkg.uuid4,
+        index=True,
     )
     treatment_uuid = Column(SQLUUID, ForeignKey("treatments.uuid"))
     automated_report_job_uuid = Column(

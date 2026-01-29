@@ -1,4 +1,3 @@
-import os
 import tempfile
 from datetime import date
 from http import HTTPStatus
@@ -131,10 +130,7 @@ async def upload_audio(  # noqa: PLR0913, PLR0917
     )
 
     transcribe_audio.apply_async(
-        kwargs={
-            "job_uuid": job.uuid,
-            "file_name": uploaded_audio.name
-        },
+        kwargs={"job_uuid": job.uuid, "file_name": uploaded_audio.name},
         countdown=30,
     )
 
@@ -190,10 +186,7 @@ async def reload_audio(
         )
 
         transcribe_audio.apply_async(
-            kwargs={
-                "job_uuid": job.uuid,
-                "file_name": uploaded_audio.name
-            },
+            kwargs={"job_uuid": job.uuid, "file_name": uploaded_audio.name},
             countdown=30,
         )
 

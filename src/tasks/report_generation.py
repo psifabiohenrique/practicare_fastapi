@@ -69,9 +69,7 @@ def generate_report_task(self, job_uuid: UUID):
                 + " tentativa será realizada em breve",
             )
         )
-        logger.warning(
-            f"Erro transitório ao gerar relatório. {str(e)}"
-        )
+        logger.warning(f"Erro transitório ao gerar relatório. {str(e)}")
         raise
 
     except AIFatalError as e:

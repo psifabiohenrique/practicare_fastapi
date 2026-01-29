@@ -1,9 +1,9 @@
 import json
-import httpx
-import httpcore
 import re
 import socket
 
+import httpcore
+import httpx
 from google import genai
 from openai import AsyncOpenAI
 from pydantic import BaseModel
@@ -88,7 +88,7 @@ class ReportGenerationChain:
                         temperature=0.1,
                     ),
                     contents=[
-                        f"Gere o relatório para o paciente {patient_first_name} em JSON estruturado."
+                        f"Gere o relatório para o paciente {patient_first_name} em JSON estruturado."  # noqa: E501
                     ],
                 )
                 report = ReportJSON.model_validate_json(

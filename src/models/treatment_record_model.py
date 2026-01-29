@@ -31,9 +31,11 @@ class TreatmentRecord(Base):
 
     __table_args__ = (UniqueConstraint("treatment_uuid", "record_number"),)
 
-    id = Column(Integer, primary_key=True, index=True)
     uuid = Column(
-        SQLUUID, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
+        SQLUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid_pkg.uuid4,
+        index=True,
     )
     treatment_uuid = Column(SQLUUID, ForeignKey("treatments.uuid"))
     automated_record_job_uuid = Column(

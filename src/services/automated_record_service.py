@@ -1,6 +1,5 @@
 import logging
 import os
-import shutil
 from pathlib import Path
 from uuid import UUID
 
@@ -61,7 +60,7 @@ class AutomatedRecordService:
         return job
 
     @staticmethod
-    async def update_job_status(
+    async def update_job_status(  # noqa: PLR0913, PLR0917
         db: AsyncSession,
         job_uuid: UUID,
         status: JobStatus,

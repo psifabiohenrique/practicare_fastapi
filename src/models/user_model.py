@@ -2,7 +2,7 @@ import uuid as uuid_pkg
 from datetime import datetime
 
 from sqlalchemy import UUID as SQLUUID
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Column, DateTime, String
 from sqlalchemy.orm import relationship
 
 from src.database import Base
@@ -11,9 +11,11 @@ from src.database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
     uuid = Column(
-        SQLUUID, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
+        SQLUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid_pkg.uuid4,
+        index=True,
     )
     name = Column(String)
     email = Column(String, unique=True, index=True)

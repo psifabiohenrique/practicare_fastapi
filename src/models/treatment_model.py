@@ -2,7 +2,7 @@ import uuid as uuid_pkg
 from enum import Enum
 
 from sqlalchemy import UUID as SQLUUID
-from sqlalchemy import Column, ForeignKey, Integer, Time
+from sqlalchemy import Column, ForeignKey, Time
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
@@ -22,10 +22,13 @@ class Weekdays(str, Enum):
 class Treatment(Base):
     __tablename__ = "treatments"
 
-    id = Column(Integer, primary_key=True, index=True)
     uuid = Column(
-        SQLUUID, default=lambda: str(uuid_pkg.uuid4()), unique=True, index=True
+        SQLUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid_pkg.uuid4,
+        index=True,
     )
+
     user_uuid = Column(SQLUUID, ForeignKey("users.uuid"))
     patient_uuid = Column(SQLUUID, ForeignKey("patients.uuid"))
     weekday = Column(

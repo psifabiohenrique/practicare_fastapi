@@ -1,8 +1,6 @@
 import logging
 
 from google import genai
-from google.genai.types import File
-from openai import AsyncOpenAI
 
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.settings import settings
@@ -28,7 +26,9 @@ class TranscriptionChain:
         try:
             file = self.client.files.get(name=file_name)
             if file.state != genai.types.FileState.ACTIVE:
-                raise AITransientError("O arquivo de áudio ainda não está pronto para transcrição.")  # noqa: E501
+                raise AITransientError(
+                    "O arquivo de áudio ainda não está pronto para transcrição."
+                )  # noqa: E501
 
             response = self.client.models.generate_content(
                 model=settings.TRANSCRIPTION_MODEL,
