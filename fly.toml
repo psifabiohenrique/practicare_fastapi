@@ -10,7 +10,7 @@ primary_region = 'gru'
 
 [processes]
   web = 'fastapi run src/main.py --host 0.0.0.0 --port 8000'
-  worker = "celery -A src.celery_app worker -l info --concurrency=2"
+  worker = "celery -A src.celery_app worker -l info --concurrency=2 --prefetch-multiplier=1 --max-tasks-per-child=20"
 
 [http_service]
   internal_port = 8000
@@ -20,7 +20,14 @@ primary_region = 'gru'
   min_machines_running = 0
   processes = ['web']
 
+
 [[vm]]
   memory = '512'
   cpu_kind = 'shared'
   cpus = 1
+
+[[vm]]
+  memory = '512'
+  cpu_kind = 'shared'
+  cpus = 1
+  processes = ['worker']

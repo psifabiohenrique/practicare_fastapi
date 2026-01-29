@@ -195,5 +195,4 @@ def save_segment(frames, output_dir, file_name, rate) -> str:
         wf.setsampwidth(2)
         wf.setframerate(rate)
         wf.writeframes(b"".join(frames))
-    print(f"Segmento salvo: {path}")
     return path

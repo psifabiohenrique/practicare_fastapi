@@ -193,4 +193,4 @@ class AutomatedRecordService:
             )
             return record_text
         except Exception as e:
-            print(e)
+            logger.error(e)

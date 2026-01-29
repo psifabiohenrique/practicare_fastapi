@@ -48,7 +48,6 @@ async def _transcribe_audio(job_uuid: UUID, file_name: str) -> None:
         transcription=transcription,
     )
     await db.close()
-    print(f"Iniciando geração do prontuário... {transcription}")
     generate_record.delay(job_uuid=job_uuid)
 
 

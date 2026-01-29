@@ -130,8 +130,6 @@ async def upload_audio(  # noqa: PLR0913, PLR0917
         db=db, job_uuid=job.uuid, audio_path=audio_path
     )
 
-    print(uploaded_audio)
-
     transcribe_audio.apply_async(
         kwargs={
             "job_uuid": job.uuid,
