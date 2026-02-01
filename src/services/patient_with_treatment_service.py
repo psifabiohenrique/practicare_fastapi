@@ -233,23 +233,22 @@ class PatientWithTreatmentService:
         return result.scalar_one()
 
     @staticmethod
-    async def inactive_patient_with_treatment(
+    async def change_treatment_status(
         db: AsyncSession, treatment_uuid: UUID, user_uuid: str
     ) -> None:
         db_treatment = await PatientWithTreatmentService.get_treatment_with_treatment_uuid(  # noqa: E501
             db, treatment_uuid, user_uuid
         )
-        # treatment_uuid_value = db_treatment.uuid
-        # dict_db_treatment = db_treatment.__dict__
-        # dict_db_treatment["status"] = TreatmentStatus.INACTIVE
-        # treatment_inactive = TreatmentUpdateInternal(**dict_db_treatment)
-        # treatment_inactive.status = TreatmentStatus.INACTIVE
-        treatment_inactive = TreatmentUpdateInternal(
-            status=TreatmentStatus.INACTIVE
-        )
-        print(treatment_inactive.status)
+
+        if db_treatment.status == TreatmentStatus.ACTIVE:
+            treatment_inactive = TreatmentUpdateInternal(
+                status=TreatmentStatus.INACTIVE
+            )
+        else:
+            treatment_inactive = TreatmentUpdateInternal(
+                status=TreatmentStatus.ACTIVE
+            )
         result = await TreatmentService.update_treatment(
             db, db_treatment, treatment_inactive
         )
-        print(result.status)
         return result
