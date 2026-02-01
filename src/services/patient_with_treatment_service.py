@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from src.core.exceptions import ForbiddenError, NotFoundError
-from src.models import Gender, Patient, Treatment, Weekdays
+from src.models import Gender, Patient, Treatment, TreatmentStatus, Weekdays
 from src.schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
     PatientWithTreatmentUpdate,
@@ -96,6 +96,7 @@ class PatientWithTreatmentService:
         order_dir: str = "asc",
         gender: Gender | None = None,
         weekday: Weekdays | None = None,
+        status: TreatmentStatus | None = None,
         search: str | None = None,
     ):
         """Returns all treatments for a specific user,
@@ -111,6 +112,8 @@ class PatientWithTreatmentService:
             query = query.filter(Patient.gender == gender)
         if weekday:
             query = query.filter(Treatment.weekday == weekday)
+        if status:
+            query = query.filter(Treatment.status == status)
         if search:
             query = query.filter(
                 or_(

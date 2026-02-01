@@ -19,6 +19,11 @@ class Weekdays(str, Enum):
     SUNDAY = "Sunday"
 
 
+class TreatmentStatus(str, Enum):
+    ACTIVE = "Active"
+    INACTIVE = "Inactive"
+
+
 class Treatment(Base):
     __tablename__ = "treatments"
 
@@ -33,6 +38,11 @@ class Treatment(Base):
     patient_uuid = Column(SQLUUID, ForeignKey("patients.uuid"))
     weekday = Column(
         SQLEnum(Weekdays), default=Weekdays.MONDAY, nullable=False
+    )
+    status = Column(
+        SQLEnum(TreatmentStatus),
+        default=TreatmentStatus.ACTIVE,
+        nullable=False,
     )
     start_time = Column(Time)
     end_time = Column(Time)

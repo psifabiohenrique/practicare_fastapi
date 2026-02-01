@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from src.models import Gender, Weekdays
+from src.models import Gender, TreatmentStatus, Weekdays
 from src.routers.deps import CurrentUser, SessionDB
 from src.schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
@@ -68,6 +68,7 @@ async def get_patients_with_treatment(  # noqa: PLR0913
     order_dir: str = Query("asc", pattern="^(asc|desc)$"),
     gender: Gender | None = Query(None),
     weekday: Weekdays | None = Query(None),
+    status: TreatmentStatus | None = Query(None),
     search: str | None = Query(None),
 ) -> any:
     """
@@ -84,6 +85,7 @@ async def get_patients_with_treatment(  # noqa: PLR0913
         order_dir=order_dir,
         gender=gender,
         weekday=weekday,
+        status=status,
         search=search,
     )
 

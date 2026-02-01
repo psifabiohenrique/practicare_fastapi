@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from src.models import Weekdays
+from src.models import TreatmentStatus, Weekdays
 
 
 class TreatmentBase(BaseModel):
@@ -26,5 +26,6 @@ class TreatmentRead(TreatmentBase):
     uuid: UUID
     user_uuid: UUID
     patient_uuid: UUID
+    status: TreatmentStatus
 
     model_config = ConfigDict(from_attributes=True)
