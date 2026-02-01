@@ -27,8 +27,8 @@ class TranscriptionChain:
             file = self.client.files.get(name=file_name)
             if file.state != genai.types.FileState.ACTIVE:
                 raise AITransientError(
-                    "O arquivo de áudio ainda não está pronto para transcrição."
-                )  # noqa: E501
+                    "O arquivo de áudio ainda não está pronto para transcrição."  # noqa: E501
+                )
 
             response = self.client.models.generate_content(
                 model=settings.TRANSCRIPTION_MODEL,

@@ -127,3 +127,20 @@ async def update_patient_with_treatment(
         )
     )
     return updated_treatment
+
+
+@router.delete("/{treatment_uuid}", response_model=TreatmentWithPatientRead)
+async def delete_patient_with_treatment(
+    *,
+    db: SessionDB,
+    current_user: CurrentUser,
+    treatment_uuid: str,
+) -> TreatmentWithPatientRead:
+    """
+    Delete a specific treatment for the current user.
+    """
+    result = await PatientWithTreatmentService.inactive_patient_with_treatment(
+        db=db, user_uuid=current_user.uuid, treatment_uuid=treatment_uuid
+    )
+    print(result.__dict__)
+    return result

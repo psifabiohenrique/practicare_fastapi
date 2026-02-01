@@ -22,6 +22,12 @@ class TreatmentUpdate(BaseModel):
     end_time: time | None = None
 
 
+class TreatmentUpdateInternal(TreatmentUpdate):
+    status: TreatmentStatus = TreatmentStatus.ACTIVE
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TreatmentRead(TreatmentBase):
     uuid: UUID
     user_uuid: UUID

@@ -11,6 +11,7 @@ from src.schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
     PatientWithTreatmentUpdate,
 )
+from src.schemas.treatment_schema import TreatmentUpdateInternal
 from src.services.patient_service import PatientService
 from src.services.treatment_service import TreatmentService
 
@@ -114,6 +115,8 @@ class PatientWithTreatmentService:
             query = query.filter(Treatment.weekday == weekday)
         if status:
             query = query.filter(Treatment.status == status)
+        else:
+            query = query.filter(Treatment.status == TreatmentStatus.ACTIVE)
         if search:
             query = query.filter(
                 or_(
@@ -228,3 +231,25 @@ class PatientWithTreatmentService:
         )
         result = await db.execute(stmt)
         return result.scalar_one()
+
+    @staticmethod
+    async def inactive_patient_with_treatment(
+        db: AsyncSession, treatment_uuid: UUID, user_uuid: str
+    ) -> None:
+        db_treatment = await PatientWithTreatmentService.get_treatment_with_treatment_uuid(  # noqa: E501
+            db, treatment_uuid, user_uuid
+        )
+        # treatment_uuid_value = db_treatment.uuid
+        # dict_db_treatment = db_treatment.__dict__
+        # dict_db_treatment["status"] = TreatmentStatus.INACTIVE
+        # treatment_inactive = TreatmentUpdateInternal(**dict_db_treatment)
+        # treatment_inactive.status = TreatmentStatus.INACTIVE
+        treatment_inactive = TreatmentUpdateInternal(
+            status=TreatmentStatus.INACTIVE
+        )
+        print(treatment_inactive.status)
+        result = await TreatmentService.update_treatment(
+            db, db_treatment, treatment_inactive
+        )
+        print(result.status)
+        return result

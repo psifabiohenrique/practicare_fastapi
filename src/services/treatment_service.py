@@ -5,7 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.exceptions import ForbiddenError, NotFoundError
 from src.models import Treatment
-from src.schemas import TreatmentCreate, TreatmentUpdate
+from src.schemas import (
+    TreatmentCreate,
+    TreatmentUpdate,
+    TreatmentUpdateInternal,
+)
 
 
 class TreatmentService:
@@ -49,7 +53,7 @@ class TreatmentService:
     async def update_treatment(
         db: AsyncSession,
         db_treatment: Treatment,
-        treatment_in: TreatmentUpdate,
+        treatment_in: TreatmentUpdate | TreatmentUpdateInternal,
     ) -> Treatment:
         TreatmentService._apply_update(db_treatment, treatment_in)
         db.add(db_treatment)

@@ -30,6 +30,9 @@ from .treatment_report_schema import (
 from .treatment_schema import TreatmentCreate as TreatmentCreate
 from .treatment_schema import TreatmentRead as TreatmentRead
 from .treatment_schema import TreatmentUpdate as TreatmentUpdate
+from .treatment_schema import (
+    TreatmentUpdateInternal as TreatmentUpdateInternal,
+)
 from .user_schema import UserCreate as UserCreate
 from .user_schema import UserRead as UserRead
 from .user_schema import UserUpdate as UserUpdate
