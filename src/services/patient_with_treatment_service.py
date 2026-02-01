@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -120,8 +120,12 @@ class PatientWithTreatmentService:
         if search:
             query = query.filter(
                 or_(
-                    Patient.first_name.ilike(f"%{search}%"),
-                    Patient.last_name.ilike(f"%{search}%"),
+                    func.unaccent(func.lower(Patient.first_name)).ilike(
+                        func.unaccent(func.lower(f"%{search}%"))
+                    ),
+                    func.unaccent(func.lower(Patient.last_name)).ilike(
+                        func.unaccent(func.lower(f"%{search}%"))
+                    ),
                 )
             )
 

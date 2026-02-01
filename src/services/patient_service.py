@@ -39,6 +39,8 @@ class PatientService:
     @staticmethod
     def _create_patient_model(patient_in: PatientCreate) -> Patient:
         data = patient_in.model_dump()
+        data['first_name'] = data['first_name'].strip().title()
+        data['last_name'] = data['last_name'].strip().title()
         if data.get("phone"):
             try:
                 data["phone"] = validate_and_normalize_phone(data["phone"])
