@@ -106,6 +106,16 @@ class AutomatedRecordService:
                 audio_file_name = await transcription_chain.upload_audio(
                     reduced_path
                 )
+                if not audio_file_name.name:
+                    await AutomatedRecordService.update_job_status(
+                        db,
+                        job_uuid,
+                        JobStatus.FAILED,
+                        error_message="Audio file upload failed.",
+                    )
+                    raise NotFoundError(
+                        "Audio file name is missing after upload."
+                    )
                 await AutomatedRecordService.update_job_status(
                     db,
                     job_uuid,

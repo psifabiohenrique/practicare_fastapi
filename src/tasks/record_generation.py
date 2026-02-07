@@ -40,6 +40,8 @@ async def _transcribe_audio(job_uuid: UUID, file_name: str) -> None:
     transcription = await AutomatedRecordService.generate_transcription(
         db, file_name, job_uuid
     )
+    if not isinstance(transcription, str) or not transcription.strip():
+        raise AITransientError()
 
     await AutomatedRecordService.update_job_status(
         db=db,
@@ -64,6 +66,9 @@ async def _generate_record(job_uuid: UUID):
     record_text = await AutomatedRecordService.generate_record(
         db, job.transcription, job
     )
+
+    if not isinstance(record_text, str) or not record_text.strip():
+        raise AITransientError("Registro de prontuário em formato indevido.")
 
     await TreatmentRecordService.update_treatment_record(
         db=db,

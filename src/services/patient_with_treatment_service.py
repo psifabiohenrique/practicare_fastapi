@@ -166,6 +166,7 @@ class PatientWithTreatmentService:
             select(Treatment)
             .filter(Treatment.user_uuid == user_uuid)
             .filter(Treatment.weekday == weekday)
+            .filter(Treatment.status == TreatmentStatus.ACTIVE)
             .options(joinedload(Treatment.patient))
             .order_by(Treatment.start_time.asc())
         )
