@@ -125,7 +125,7 @@ MAX_CHUNK_BYTES = 20 * 1024 * 1024  # 20 MB
 
 def split_by_vad(wav_path: str, output_dir: str) -> list[str]:
 
-    vad = webrtcvad.Vad(2)
+    vad = webrtcvad.Vad(1)
 
     os.makedirs(output_dir, exist_ok=True)
 
