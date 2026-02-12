@@ -123,76 +123,71 @@ SILENCE_THRESHOLD_FRAMES = 10  # ~300ms
 MAX_CHUNK_BYTES = 20 * 1024 * 1024  # 20 MB
 
 
-def split_by_vad(wav_path: str, output_dir: str) -> list[str]:
-
+def split_by_vad(wav_path: str, output_dir: str) -> str:
     vad = webrtcvad.Vad(1)
 
     os.makedirs(output_dir, exist_ok=True)
 
+    input_name = os.path.splitext(os.path.basename(wav_path))[0]
+    output_path = os.path.join(output_dir, f"{input_name}_vad.wav")
+
     with wave.open(wav_path, "rb") as wf:
-        segments_paths = []
         rate = wf.getframerate()
-        sample_width = wf.getsampwidth()  # deve ser 2
-        file_name = os.path.splitext(os.path.basename(wav_path))[0]
+        sample_width = wf.getsampwidth()
+        n_channels = wf.getnchannels()
 
-        frame_size = int(rate * FRAME_MS / 1000) * sample_width
+        if sample_width != 2:  # noqa: PLR2004
+            raise ValueError("Audio must be 16-bit PCM (sample_width=2)")
 
-        current_frames = []
-        current_bytes = 0
+        frame_samples = int(rate * FRAME_MS / 1000)
+        frame_size_bytes = frame_samples * sample_width
+
         silence_count = 0
-        segment_index = 0
+        wrote_any_speech = False
 
-        while True:
-            frame = wf.readframes(frame_size // sample_width)
-            if len(frame) < frame_size:
-                break
+        # Arquivo de saída é aberto uma única vez
+        with save_segment(
+            output_path,
+            rate,
+            n_channels,
+            sample_width,
+        ) as out_wf:
 
-            is_speech = vad.is_speech(frame, rate)
+            while True:
+                frame = wf.readframes(frame_samples)
+                if len(frame) < frame_size_bytes:
+                    break
 
-            if is_speech:
-                current_frames.append(frame)
-                current_bytes += len(frame)
-                silence_count = 0
-            else:
-                silence_count += 1
-                silence_count = min(silence_count, SILENCE_THRESHOLD_FRAMES)
+                is_speech = vad.is_speech(frame, rate)
 
-        #     reached_size_limit = current_bytes >= MAX_CHUNK_BYTES
-        #     # reached_silence_limit = silence_count >= SILENCE_THRESHOLD_FRAMES  # noqa: E501
+                if is_speech:
+                    silence_count = 0
+                    out_wf.writeframes(frame)
+                    wrote_any_speech = True
+                else:
+                    silence_count += 1
+                    silence_count = min(
+                        silence_count,
+                        SILENCE_THRESHOLD_FRAMES,
+                    )
 
-        #     if reached_size_limit and current_frames:
-        #         segment_name = f"{file_name}_segment_{segment_index}"
-        #         segments_paths.append(
-        #             save_segment(
-        #                 current_frames,
-        #                 output_dir,
-        #                 segment_name,
-        #                 rate,
-        #             )
-        #         )
+    # Se nenhum trecho de fala foi detectado,
+    # você pode optar por remover o arquivo
+    if not wrote_any_speech:
+        os.remove(output_path)
+        raise ValueError("No speech detected in audio.")
 
-        #         segment_index += 1
-        #         current_frames = []
-        #         current_bytes = 0
-        #         silence_count = 0
-
-        # flush final
-        if current_frames:
-            segment_name = f"{file_name}_segment_{segment_index}"
-            segments_paths = save_segment(
-                current_frames,
-                output_dir,
-                segment_name,
-                rate,
-            )
-    return segments_paths
+    return output_path
 
 
-def save_segment(frames, output_dir, file_name, rate) -> str:
-    path = f"{output_dir}/segment_{file_name}.wav"
-    with wave.open(path, "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(rate)
-        wf.writeframes(b"".join(frames))
-    return path
+def save_segment(
+    path: str,
+    rate: int,
+    n_channels: int,
+    sample_width: int,
+):
+    wf = wave.open(path, "wb")
+    wf.setnchannels(n_channels)
+    wf.setsampwidth(sample_width)
+    wf.setframerate(rate)
+    return wf

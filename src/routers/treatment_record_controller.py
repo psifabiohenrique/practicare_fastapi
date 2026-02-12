@@ -126,7 +126,8 @@ async def upload_audio(  # noqa: PLR0913, PLR0917
     with open(audio_path, "wb") as f:
         # f.write(await audio_file.read())
         shutil.copyfileobj(audio_file.file, f)
-
+    await audio_file.close()
+    del audio_file
     uploaded_audio = await AutomatedRecordService.upload_audio_file(
         db=db, job_uuid=job.uuid, audio_path=audio_path
     )
@@ -183,6 +184,9 @@ async def reload_audio(
         with open(audio_path, "wb") as f:
             # f.write(await audio_file.read())
             shutil.copyfileobj(audio_file.file, f)
+
+        await audio_file.close()
+        del audio_file
 
         uploaded_audio = await AutomatedRecordService.upload_audio_file(
             db=db, job_uuid=job.uuid, audio_path=audio_path
