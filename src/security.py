@@ -20,6 +20,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(subject: str | Any) -> str:
+    """Deprecated: JWT auth is legacy. Kept for backward compatibility."""
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
@@ -31,6 +32,7 @@ def create_access_token(subject: str | Any) -> str:
 
 
 def create_refresh_token(subject: str | Any) -> str:
+    """Deprecated: JWT auth is legacy. Kept for backward compatibility."""
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES
     )

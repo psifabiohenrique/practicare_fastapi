@@ -22,6 +22,8 @@ SessionDB = Annotated[AsyncSession, Depends(get_db)]
 async def get_current_user_jwt(
     db: SessionDB, token: str = Depends(reusable_oauth2)
 ) -> User:
+    """Deprecated: Use get_current_user_session instead.
+    Kept for backward compatibility with JWT-based auth endpoints."""
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
