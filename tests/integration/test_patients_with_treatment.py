@@ -3,13 +3,15 @@ from http import HTTPStatus
 
 import pytest
 
-from src.security import create_access_token
+from src.security import get_password_hash
+from src.services.auth_service import AuthService
 from tests.factories import TreatmentFactory, UserFactory
 
+pytestmark = pytest.mark.asyncio
 
-@pytest.mark.asyncio
-async def test_create_patient_with_treatment(user_client):
-    client, user, headers = user_client
+
+async def test_create_patient_with_treatment(session_client):
+    client, user = session_client
     payload = {
         "patient_schema": {
             "first_name": "Valid",
@@ -19,32 +21,27 @@ async def test_create_patient_with_treatment(user_client):
             "birth_date": "1990-01-01",
         },
         "treatment_schema": {
-            "user_uuid": "will_be_overridden",
-            "patient_uuid": "will_be_overridden",
             "weekday": "Monday",
             "start_time": "08:00:00",
             "end_time": "09:00:00",
         },
     }
 
-    response = client.post(
-        "/patients-with-treatment/", json=payload, headers=headers
-    )
+    response = client.post("/patients-with-treatment", json=payload)
     assert response.status_code == HTTPStatus.CREATED
     data = response.json()
     assert data["patient"]["phone"] == "+5511999999999"
-    assert data["user_uuid"] == user.uuid
+    assert data["user_uuid"] == str(user.uuid)
     assert data["patient"]["first_name"] == "Valid"
     assert data["weekday"] == "Monday"
 
 
-@pytest.mark.asyncio
-async def test_list_my_patients_with_treatment(user_client, db_session):
-    client, user, headers = user_client
-
+async def test_list_my_patients_with_treatment(
+    session_client, db_session
+):
+    client, user = session_client
     number_of_treatments = 3
 
-    # Create some treatments for this user
     treatments = TreatmentFactory.build_batch(
         number_of_treatments, user=user, user_uuid=user.uuid
     )
@@ -56,35 +53,40 @@ async def test_list_my_patients_with_treatment(user_client, db_session):
     db_session.add(other_treatment)
     await db_session.commit()
 
-    response = client.get("/patients-with-treatment/", headers=headers)
+    response = client.get("/patients-with-treatment")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert len(data) == number_of_treatments
     for item in data:
-        assert item["user_uuid"] == user.uuid
+        assert item["user_uuid"] == str(user.uuid)
 
 
-@pytest.mark.asyncio
-async def test_get_treatment_details(user_client, db_session):
-    client, user, headers = user_client
+async def test_get_treatment_details(session_client, db_session):
+    client, user = session_client
     treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
     db_session.add(treatment)
     await db_session.commit()
     await db_session.refresh(treatment)
 
     response = client.get(
-        f"/patients-with-treatment/{treatment.uuid}", headers=headers
+        f"/patients-with-treatment/{treatment.uuid}"
     )
     assert response.status_code == HTTPStatus.OK
     data = response.json()
-    assert data["uuid"] == treatment.uuid
-    assert data["patient"]["uuid"] == treatment.patient_uuid
+    assert data["uuid"] == str(treatment.uuid)
+    assert data["patient"]["uuid"] == str(treatment.patient_uuid)
 
 
-@pytest.mark.asyncio
-async def test_get_treatment_details_unauthorized(client, db_session):
-    user1 = UserFactory.build()
-    user2 = UserFactory.build()
+async def test_get_treatment_details_unauthorized(
+    client, db_session
+):
+    """A session user trying to access another user's treatment."""
+    user1 = UserFactory.build(
+        hashed_password=get_password_hash("pw"),
+    )
+    user2 = UserFactory.build(
+        hashed_password=get_password_hash("pw"),
+    )
     db_session.add_all([user1, user2])
     await db_session.commit()
     await db_session.refresh(user1)
@@ -95,29 +97,33 @@ async def test_get_treatment_details_unauthorized(client, db_session):
     await db_session.commit()
     await db_session.refresh(treatment)
 
-    token2 = create_access_token(subject=user2.uuid)
-    headers2 = {"Authorization": f"Bearer {token2}"}
+    # Authenticate as user2
+    session2 = await AuthService.create_session(db_session, user2.uuid)
+    csrf_token = AuthService.generate_csrf_token()
+    client.cookies.set("session_uuid", str(session2.uuid))
+    client.cookies.set("csrf_token", csrf_token)
+    client.headers["X-CSRF-Token"] = csrf_token
 
     response = client.get(
-        f"/patients-with-treatment/{treatment.uuid}", headers=headers2
+        f"/patients-with-treatment/{treatment.uuid}"
     )
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 
-@pytest.mark.asyncio
-async def test_get_treatment_details_not_found(user_client):
-    client, user, headers = user_client
+async def test_get_treatment_details_not_found(session_client):
+    client, _ = session_client
     random_uuid = str(uuid_pkg.uuid4())
     response = client.get(
-        f"/patients-with-treatment/{random_uuid}", headers=headers
+        f"/patients-with-treatment/{random_uuid}"
     )
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert "detail" in response.json()
 
 
-@pytest.mark.asyncio
-async def test_update_patient_with_treatment(user_client, db_session):
-    client, user, headers = user_client
+async def test_update_patient_with_treatment(
+    session_client, db_session
+):
+    client, user = session_client
     treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
     db_session.add(treatment)
     await db_session.commit()
@@ -131,7 +137,6 @@ async def test_update_patient_with_treatment(user_client, db_session):
     response = client.patch(
         f"/patients-with-treatment/{treatment.uuid}",
         json=payload,
-        headers=headers,
     )
     assert response.status_code == HTTPStatus.OK
     data = response.json()
@@ -139,11 +144,10 @@ async def test_update_patient_with_treatment(user_client, db_session):
     assert data["weekday"] == "Wednesday"
 
 
-@pytest.mark.asyncio
-async def test_update_pateint_with_treatment_phone_normalization(
-    user_client, db_session
+async def test_update_patient_with_treatment_phone_normalization(
+    session_client, db_session
 ):
-    client, user, headers = user_client
+    client, user = session_client
     treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
     db_session.add(treatment)
     await db_session.commit()
@@ -157,17 +161,19 @@ async def test_update_pateint_with_treatment_phone_normalization(
     response = client.patch(
         f"/patients-with-treatment/{treatment.uuid}",
         json=payload,
-        headers=headers,
     )
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert data["patient"]["phone"] == "+5511999999999"
 
 
-@pytest.mark.asyncio
 async def test_update_treatment_unauthorized(client, db_session):
-    user1 = UserFactory.build()
-    user2 = UserFactory.build()
+    user1 = UserFactory.build(
+        hashed_password=get_password_hash("pw"),
+    )
+    user2 = UserFactory.build(
+        hashed_password=get_password_hash("pw"),
+    )
     db_session.add_all([user1, user2])
     await db_session.commit()
     await db_session.refresh(user1)
@@ -178,36 +184,38 @@ async def test_update_treatment_unauthorized(client, db_session):
     await db_session.commit()
     await db_session.refresh(treatment)
 
-    token2 = create_access_token(subject=user2.uuid)
-    headers2 = {"Authorization": f"Bearer {token2}"}
+    # Authenticate as user2
+    session2 = await AuthService.create_session(db_session, user2.uuid)
+    csrf_token = AuthService.generate_csrf_token()
+    client.cookies.set("session_uuid", str(session2.uuid))
+    client.cookies.set("csrf_token", csrf_token)
+    client.headers["X-CSRF-Token"] = csrf_token
 
     payload = {"patient_schema": {}, "treatment_schema": {"weekday": "Friday"}}
 
     response = client.patch(
         f"/patients-with-treatment/{treatment.uuid}",
         json=payload,
-        headers=headers2,
     )
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 
-@pytest.mark.asyncio
-async def test_update_treatment_not_found(user_client):
-    client, user, headers = user_client
+async def test_update_treatment_not_found(session_client):
+    client, _ = session_client
     payload = {"patient_schema": {}, "treatment_schema": {"weekday": "Friday"}}
     random_uuid = str(uuid_pkg.uuid4())
     response = client.patch(
         f"/patients-with-treatment/{random_uuid}",
         json=payload,
-        headers=headers,
     )
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert "detail" in response.json()
 
 
-@pytest.mark.asyncio
-async def test_update_treatment_restricted_fields(user_client, db_session):
-    client, user, headers = user_client
+async def test_update_treatment_restricted_fields(
+    session_client, db_session
+):
+    client, user = session_client
     treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
     db_session.add(treatment)
     await db_session.commit()
@@ -228,25 +236,18 @@ async def test_update_treatment_restricted_fields(user_client, db_session):
     response = client.patch(
         f"/patients-with-treatment/{treatment.uuid}",
         json=payload,
-        headers=headers,
     )
-
     assert response.status_code == HTTPStatus.OK
     data = response.json()
-
-    # Verify that the allowed field was updated
     assert data["weekday"] == "Thursday"
-
-    # Verify that restricted fields remained unchanged
-    assert data["user_uuid"] == initial_user_uuid
-    assert data["patient"]["uuid"] == initial_patient_uuid
+    assert data["user_uuid"] == str(initial_user_uuid)
+    assert data["patient"]["uuid"] == str(initial_patient_uuid)
 
 
-@pytest.mark.asyncio
-async def test_update_pateint_with_treatment_with_invalid_phone(
-    user_client, db_session
+async def test_update_patient_with_treatment_with_invalid_phone(
+    session_client, db_session
 ):
-    client, user, headers = user_client
+    client, user = session_client
     treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
     db_session.add(treatment)
     await db_session.commit()
@@ -260,36 +261,29 @@ async def test_update_pateint_with_treatment_with_invalid_phone(
     response = client.patch(
         f"/patients-with-treatment/{treatment.uuid}",
         json=payload,
-        headers=headers,
     )
     assert response.status_code == HTTPStatus.BAD_REQUEST
     data = response.json()
     assert "Invalid phone number" in data["detail"]
 
 
-@pytest.mark.asyncio
-async def test_create_patient_with_invalid_phone(user_client):
-    client, user, headers = user_client
-
+async def test_create_patient_with_invalid_phone(session_client):
+    client, _ = session_client
     payload = {
         "patient_schema": {
             "first_name": "Invalid",
             "last_name": "Phone",
             "email": "john@example.com",
-            "phone": "123",  # Invalid
+            "phone": "123",
             "birth_date": "1990-01-01",
         },
         "treatment_schema": {
-            "user_uuid": "will_be_overridden",
-            "patient_uuid": "will_be_overridden",
             "weekday": "Monday",
             "start_time": "08:00:00",
             "end_time": "09:00:00",
         },
     }
 
-    response = client.post(
-        "/patients-with-treatment/", json=payload, headers=headers
-    )
+    response = client.post("/patients-with-treatment", json=payload)
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "Invalid phone number" in response.json()["detail"]

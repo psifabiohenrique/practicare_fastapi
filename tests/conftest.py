@@ -1,6 +1,7 @@
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
@@ -16,6 +17,13 @@ from tests.factories import (
     TreatmentReportFactory,
     UserFactory,
 )
+from src.settings import settings
+
+
+@pytest.fixture(autouse=True)
+def mock_audio_dir(tmp_path):
+    """Redirect audio operations to a temporary directory during tests."""
+    settings.BASE_AUDIO_DIR = tmp_path
 
 
 @pytest.fixture(scope="session")
@@ -28,6 +36,7 @@ def engine():
 @pytest_asyncio.fixture
 async def db_session(engine):
     async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent;"))
         await conn.run_sync(Base.metadata.create_all)
 
     async with AsyncSession(engine, expire_on_commit=False) as session:
@@ -48,7 +57,7 @@ async def client(db_session):
     async def override_get_db():
         yield db_session
 
-    async def no_csrf(*args, **kwargs):
+    async def no_csrf():
         return None
 
     with TestClient(app) as client:

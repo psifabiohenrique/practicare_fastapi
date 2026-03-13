@@ -7,11 +7,11 @@ from freezegun import freeze_time
 from src.models import Gender, Weekdays
 from tests.factories import PatientFactory, TreatmentFactory
 
+pytestmark = pytest.mark.asyncio
 
-@pytest.mark.asyncio
-async def test_pagination(user_client, db_session):
-    client, user, headers = user_client
-    # Create 5 treatments
+
+async def test_pagination(session_client, db_session):
+    client, user = session_client
     for _ in range(5):
         treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
         db_session.add(treatment)
@@ -19,21 +19,20 @@ async def test_pagination(user_client, db_session):
 
     limit = 2
     response = client.get(
-        f"/patients-with-treatment/?skip=0&limit={limit}", headers=headers
+        f"/patients-with-treatment?skip=0&limit={limit}"
     )
     assert response.status_code == HTTPStatus.OK
     assert len(response.json()) == limit
 
     response = client.get(
-        f"/patients-with-treatment/?skip=2&limit={limit}", headers=headers
+        f"/patients-with-treatment?skip=2&limit={limit}"
     )
     assert response.status_code == HTTPStatus.OK
     assert len(response.json()) == limit
 
 
-@pytest.mark.asyncio
-async def test_ordering_by_name(user_client, db_session):
-    client, user, headers = user_client
+async def test_ordering_by_name(session_client, db_session):
+    client, user = session_client
     p1 = PatientFactory.build(first_name="Alice")
     p2 = PatientFactory.build(first_name="Zelda")
     db_session.add_all([p1, p2])
@@ -51,25 +50,22 @@ async def test_ordering_by_name(user_client, db_session):
     await db_session.commit()
 
     response = client.get(
-        "/patients-with-treatment/?order_by=name&order_dir=asc",
-        headers=headers,
+        "/patients-with-treatment?order_by=name&order_dir=asc",
     )
     data = response.json()
     assert data[0]["patient"]["first_name"] == "Alice"
     assert data[1]["patient"]["first_name"] == "Zelda"
 
     response = client.get(
-        "/patients-with-treatment/?order_by=name&order_dir=desc",
-        headers=headers,
+        "/patients-with-treatment?order_by=name&order_dir=desc",
     )
     data = response.json()
     assert data[0]["patient"]["first_name"] == "Zelda"
     assert data[1]["patient"]["first_name"] == "Alice"
 
 
-@pytest.mark.asyncio
-async def test_filtering_by_gender(user_client, db_session):
-    client, user, headers = user_client
+async def test_filtering_by_gender(session_client, db_session):
+    client, user = session_client
     p_male = PatientFactory.build(gender=Gender.MALE)
     p_female = PatientFactory.build(gender=Gender.FEMALE)
     db_session.add_all([p_male, p_female])
@@ -93,17 +89,15 @@ async def test_filtering_by_gender(user_client, db_session):
     await db_session.commit()
 
     response = client.get(
-        f"/patients-with-treatment/?gender={Gender.MALE.value}",
-        headers=headers,
+        f"/patients-with-treatment?gender={Gender.MALE.value}",
     )
     data = response.json()
     assert len(data) == 1
     assert data[0]["patient"]["gender"] == Gender.MALE.value
 
 
-@pytest.mark.asyncio
-async def test_search_by_name(user_client, db_session):
-    client, user, headers = user_client
+async def test_search_by_name(session_client, db_session):
+    client, user = session_client
     p1 = PatientFactory.build(first_name="Jonathan")
     p2 = PatientFactory.build(first_name="Maria")
     db_session.add_all([p1, p2])
@@ -121,17 +115,16 @@ async def test_search_by_name(user_client, db_session):
     await db_session.commit()
 
     response = client.get(
-        "/patients-with-treatment/?search=Jon", headers=headers
+        "/patients-with-treatment?search=Jon",
     )
     data = response.json()
     assert len(data) == 1
     assert data[0]["patient"]["first_name"] == "Jonathan"
 
 
-@pytest.mark.asyncio
 @freeze_time("2025-12-29")  # It's a Monday
-async def test_daily_endpoint_today(user_client, db_session):
-    client, user, headers = user_client
+async def test_daily_endpoint_today(session_client, db_session):
+    client, user = session_client
     t1 = TreatmentFactory.build(
         user=user, user_uuid=user.uuid, weekday=Weekdays.MONDAY
     )
@@ -141,16 +134,17 @@ async def test_daily_endpoint_today(user_client, db_session):
     db_session.add_all([t1, t2])
     await db_session.commit()
 
-    response = client.get("/patients-with-treatment/daily", headers=headers)
+    response = client.get("/patients-with-treatment/daily")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert len(data) == 1
     assert data[0]["weekday"] == Weekdays.MONDAY.value
 
 
-@pytest.mark.asyncio
-async def test_daily_endpoint_specific_day(user_client, db_session):
-    client, user, headers = user_client
+async def test_daily_endpoint_specific_day(
+    session_client, db_session
+):
+    client, user = session_client
     t1 = TreatmentFactory.build(
         user=user, user_uuid=user.uuid, weekday=Weekdays.MONDAY
     )
@@ -160,24 +154,19 @@ async def test_daily_endpoint_specific_day(user_client, db_session):
     db_session.add_all([t1, t2])
     await db_session.commit()
 
-    treatments_in_tuesday = 1
-
     response = client.get(
         f"/patients-with-treatment/daily?weekday={Weekdays.TUESDAY.value}",
-        headers=headers,
     )
     assert response.status_code == HTTPStatus.OK
     data = response.json()
-    assert len(data) == treatments_in_tuesday
+    assert len(data) == 1
     assert data[0]["weekday"] == Weekdays.TUESDAY.value
 
 
-@pytest.mark.asyncio
-async def test_daily_endpoint_ordering(user_client, db_session):
-    client, user, headers = user_client
-    treatments_to_create = 2
+async def test_daily_endpoint_ordering(session_client, db_session):
+    client, user = session_client
 
-    for i in range(treatments_to_create):
+    for i in range(2):
         treatment = TreatmentFactory.build(
             user=user,
             user_uuid=user.uuid,
@@ -189,10 +178,8 @@ async def test_daily_endpoint_ordering(user_client, db_session):
 
     response = client.get(
         f"/patients-with-treatment/daily?weekday={Weekdays.MONDAY.value}",
-        headers=headers,
     )
     data = response.json()
-    assert len(data) == treatments_to_create
-    # Should be 00:00 then 01:00
+    assert len(data) == 2
     assert data[0]["start_time"] == "00:00:00"
     assert data[1]["start_time"] == "01:00:00"

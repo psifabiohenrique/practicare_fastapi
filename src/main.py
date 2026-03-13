@@ -95,6 +95,6 @@ app.include_router(treatment_record_controller.router)
 app.include_router(treatment_report_controller.router)
 
 
-@app.get("")
+@app.get("/")
 def read_root():
     return {"Hello": "World"}

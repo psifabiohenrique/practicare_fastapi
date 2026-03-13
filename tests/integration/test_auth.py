@@ -1,139 +1,128 @@
 from http import HTTPStatus
 
 import pytest
-from jwt import decode, encode
 
 from src.models import User
 from src.security import get_password_hash
-from src.settings import settings
 
 pytestmark = pytest.mark.asyncio
 
 
-async def test_login_success(client, db_session):
-    password = "testpassword"
+# ---- Session-based auth tests (current) ----
 
+
+async def test_session_login_success(client, db_session):
+    password = "testpassword"
     user = User(
-        email="test@example.com",
-        name="Test User",
+        email="session@example.com",
+        name="Session User",
         hashed_password=get_password_hash(password),
     )
     db_session.add(user)
     await db_session.commit()
 
-    response = client.post(
-        "/auth/login", data={"username": user.email, "password": password}
-    )
-    assert response.status_code == HTTPStatus.OK
-    data = response.json()
-    assert "access_token" in data
-    assert "refresh_token" not in data
-    assert data["token_type"] == "bearer"
-    assert "refresh_token" in response.cookies
-
-
-async def test_login_invalid_credentials(client):
     response = client.post(
         "/auth/login",
-        data={"username": "wrong@example.com", "password": "wrongpassword"},
+        json={"email": "session@example.com", "password": password},
     )
-    assert response.status_code == HTTPStatus.UNAUTHORIZED
-
-
-async def test_refresh_token(client, db_session):
-    password = "testpassword"
-
-    user = User(
-        email="refresh@example.com",
-        name="Refresh User",
-        hashed_password=get_password_hash(password),
-    )
-    db_session.add(user)
-    await db_session.commit()
-
-    login_response = client.post(
-        "/auth/login", data={"username": user.email, "password": password}
-    )
-    refresh_token = login_response.cookies["refresh_token"]
-
-    client.cookies.set("refresh_token", refresh_token)
-    response = client.post("/auth/refresh")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
-    assert "access_token" in data
-    assert "refresh_token" not in data
-    assert "refresh_token" in response.cookies
+    assert "csrf_token" in data
+    assert "session_uuid" in response.cookies
+    assert "csrf_token" in response.cookies
 
 
-async def test_refresh_token_invalid_type(client, db_session):
-    password = "testpassword"
-
-    user = User(
-        email="refresh@example.com",
-        name="Refresh User",
-        hashed_password=get_password_hash(password),
+async def test_session_login_invalid_credentials(client):
+    response = client.post(
+        "/auth/login",
+        json={"email": "wrong@example.com", "password": "wrongpassword"},
     )
-    db_session.add(user)
-    await db_session.commit()
-
-    login_response = client.post(
-        "/auth/login", data={"username": user.email, "password": password}
-    )
-    refresh_token = login_response.cookies["refresh_token"]
-    payload = decode(
-        refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-    )
-    payload["type"] = "wrong"
-    refresh_token = encode(
-        payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM
-    )
-
-    client.cookies.set("refresh_token", refresh_token)
-    response = client.post("/auth/refresh")
     assert response.status_code == HTTPStatus.UNAUTHORIZED
-    data = response.json()
-    assert "detail" in data
 
 
-async def test_refresh_token_invalid_secret(client):
-    payload = {"sub": "1", "type": "refresh"}
-    refresh_token = encode(payload, "wrong", algorithm=settings.ALGORITHM)
-
-    client.cookies.set("refresh_token", refresh_token)
-    response = client.post("/auth/refresh")
-    assert response.status_code == HTTPStatus.FORBIDDEN
-    data = response.json()
-    assert "detail" in data
-
-
-async def test_refresh_token_without_cookie(client):
-    response = client.post("/auth/refresh")
-    assert response.status_code == HTTPStatus.UNAUTHORIZED
-    data = response.json()
-    assert "detail" in data
-
-
-async def test_logout_success(client, db_session):
+async def test_session_logout(client, db_session):
     password = "testpassword"
     user = User(
-        email="logout@example.com",
+        email="logout-session@example.com",
         name="Logout User",
         hashed_password=get_password_hash(password),
     )
     db_session.add(user)
     await db_session.commit()
 
-    # Login to get the cookie
+    # Login
     login_response = client.post(
-        "/auth/login", data={"username": user.email, "password": password}
+        "/auth/login",
+        json={"email": user.email, "password": password},
     )
-    assert "refresh_token" in login_response.cookies
+    assert "session_uuid" in login_response.cookies
+
+    # Set cookies for logout
+    client.cookies.set(
+        "session_uuid", login_response.cookies["session_uuid"]
+    )
 
     # Logout
     response = client.post("/auth/logout")
     assert response.status_code == HTTPStatus.OK
-    assert response.json()["detail"] == "Successfully logged out"
+    assert response.json()["message"] == "logged_out"
 
-    # Check if cookie is cleared
-    # FastAPI delete_cookie sets it to empty and expired
-    assert not response.cookies.get("refresh_token")
+
+async def test_session_login_missing_email(client):
+    response = client.post(
+        "/auth/login",
+        json={"password": "test"},
+    )
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+async def test_session_login_invalid_email_format(client):
+    response = client.post(
+        "/auth/login",
+        json={"email": "not-an-email", "password": "test"},
+    )
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+# ---- JWT auth tests (deprecated/legacy) ----
+
+
+@pytest.mark.skip(reason="JWT authentication is deprecated")
+async def test_login_jwt_success(client, db_session):
+    """Deprecated: Tests legacy JWT login endpoint."""
+    password = "testpassword"
+    user = User(
+        email="jwt@example.com",
+        name="JWT User",
+        hashed_password=get_password_hash(password),
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    response = client.post(
+        "/auth/login-jwt",
+        data={"username": user.email, "password": password},
+    )
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    assert "refresh_token" in response.cookies
+
+
+@pytest.mark.skip(reason="JWT authentication is deprecated")
+async def test_login_jwt_invalid_credentials(client):
+    """Deprecated: Tests legacy JWT login failure."""
+    response = client.post(
+        "/auth/login-jwt",
+        data={"username": "wrong@example.com", "password": "wrongpassword"},
+    )
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+
+@pytest.mark.skip(reason="JWT authentication is deprecated")
+async def test_logout_jwt(client):
+    """Deprecated: Tests legacy JWT logout endpoint."""
+    response = client.post("/auth/logout-jwt")
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["detail"] == "Successfully logged out"
