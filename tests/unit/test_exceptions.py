@@ -1,3 +1,5 @@
+import pytest
+
 from src.core.exceptions import (
     BadRequestError,
     ConflictError,
@@ -53,7 +55,6 @@ class TestDomainExceptions:
             UnauthorizedError,
             BadRequestError,
         ]:
-            try:
+            with pytest.raises(exc_cls) as exc_info:
                 raise exc_cls("test")
-            except Exception as e:
-                assert str(e) == "test"
+            assert str(exc_info.value) == "test"

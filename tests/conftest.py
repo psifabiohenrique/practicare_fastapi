@@ -10,6 +10,7 @@ from src.main import app
 from src.routers.deps import csrf_protect
 from src.security import create_access_token, get_password_hash
 from src.services.auth_service import AuthService
+from src.settings import settings
 from tests.factories import (
     PatientFactory,
     TreatmentFactory,
@@ -17,7 +18,6 @@ from tests.factories import (
     TreatmentReportFactory,
     UserFactory,
 )
-from src.settings import settings
 
 
 @pytest.fixture(autouse=True)

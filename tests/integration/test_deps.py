@@ -99,7 +99,7 @@ async def test_get_current_user_session_expired(db_session):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Impossible in Postgres due to ForeignKey constraints")
+@pytest.mark.skip(reason="Impossible in Postgres due to FK constraints")
 async def test_get_current_user_session_user_not_found(db_session):
     # Create a session pointing to a non-existent user
     non_existent_uuid = uuid.uuid4()
@@ -127,8 +127,8 @@ async def test_get_current_user_session_user_not_found(db_session):
 @pytest.mark.skip(reason="JWT authentication is deprecated")
 async def test_get_current_user_jwt_valid(db_session, user):
     """Deprecated: Tests legacy JWT-based get_current_user_jwt."""
-    from src.routers.deps import get_current_user_jwt
-    from src.security import create_access_token
+    from src.routers.deps import get_current_user_jwt  # noqa: PLC0415
+    from src.security import create_access_token  # noqa: PLC0415
 
     access_token = create_access_token(subject=user.uuid)
     current_user = await get_current_user_jwt(
@@ -141,8 +141,8 @@ async def test_get_current_user_jwt_valid(db_session, user):
 @pytest.mark.skip(reason="JWT authentication is deprecated")
 async def test_get_current_user_jwt_invalid_type(db_session, user):
     """Deprecated: Tests legacy JWT rejection of refresh tokens."""
-    from src.routers.deps import get_current_user_jwt
-    from src.security import create_refresh_token
+    from src.routers.deps import get_current_user_jwt  # noqa: PLC0415
+    from src.security import create_refresh_token  # noqa: PLC0415
 
     refresh_token = create_refresh_token(subject=user.uuid)
     with pytest.raises(HTTPException) as exc:

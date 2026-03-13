@@ -46,6 +46,9 @@ extend-exclude = ['alembic/versions', 'migrations']
 preview = true
 select = ['I', 'F', 'E', 'W', 'PL', 'PT']
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["PLR6301", "PLR2004", "PLR0913"]
+
 [tool.ruff.format]
 preview = true
 quote-style = 'double'

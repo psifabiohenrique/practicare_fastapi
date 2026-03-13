@@ -134,7 +134,7 @@ class TestUserServiceUpdateUser:
         mock_db.execute.return_value = result_mock
 
         user_update = UserUpdate(name="Updated Name")
-        result = await UserService.update_user(
+        await UserService.update_user(
             mock_db, user_uuid, user_update
         )
 
@@ -168,7 +168,7 @@ class TestUserServiceDeleteUser:
         result_mock.scalars.return_value.first.return_value = mock_user
         mock_db.execute.return_value = result_mock
 
-        result = await UserService.delete_user(mock_db, user_uuid)
+        await UserService.delete_user(mock_db, user_uuid)
         mock_db.delete.assert_awaited_once_with(mock_user)
         mock_db.commit.assert_awaited_once()
 
