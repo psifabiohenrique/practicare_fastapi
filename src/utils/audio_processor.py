@@ -152,7 +152,6 @@ def split_by_vad(wav_path: str, output_dir: str) -> str:
             n_channels,
             sample_width,
         ) as out_wf:
-
             while True:
                 frame = wf.readframes(frame_samples)
                 if len(frame) < frame_size_bytes:

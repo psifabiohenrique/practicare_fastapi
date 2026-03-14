@@ -58,9 +58,7 @@ async def test_session_logout(client, db_session):
     assert "session_uuid" in login_response.cookies
 
     # Set cookies for logout
-    client.cookies.set(
-        "session_uuid", login_response.cookies["session_uuid"]
-    )
+    client.cookies.set("session_uuid", login_response.cookies["session_uuid"])
 
     # Logout
     response = client.post("/auth/logout")

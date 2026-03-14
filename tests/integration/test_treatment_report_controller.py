@@ -21,9 +21,7 @@ async def test_get_treatment_report(session_client, db_session):
     await db_session.commit()
     await db_session.refresh(treatment_report)
 
-    response = client.get(
-        f"/treatment-reports/{treatment_report.uuid}"
-    )
+    response = client.get(f"/treatment-reports/{treatment_report.uuid}")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert data["uuid"] == str(treatment_report.uuid)
@@ -42,9 +40,7 @@ async def test_list_treatment_reports(session_client, db_session):
     TreatmentReportFactory.create_batch(batch_size, treatment=treatment)
     await db_session.commit()
 
-    response = client.get(
-        f"/treatment-reports/treatment/{treatment.uuid}"
-    )
+    response = client.get(f"/treatment-reports/treatment/{treatment.uuid}")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert len(data) == batch_size
@@ -98,9 +94,7 @@ async def test_update_treatment_report(session_client, db_session):
     assert response.json()["demand_description"] == "Updated demand"
 
 
-async def test_get_treatment_report_forbidden(
-    session_client, db_session
-):
+async def test_get_treatment_report_forbidden(session_client, db_session):
     client, user = session_client
 
     # Create another user and their treatment
@@ -115,9 +109,7 @@ async def test_get_treatment_report_forbidden(
     await db_session.commit()
     await db_session.refresh(treatment_report)
 
-    response = client.get(
-        f"/treatment-reports/{treatment_report.uuid}"
-    )
+    response = client.get(f"/treatment-reports/{treatment_report.uuid}")
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 

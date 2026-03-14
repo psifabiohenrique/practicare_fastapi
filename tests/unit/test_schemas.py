@@ -202,9 +202,7 @@ class TestTreatmentReportSchemas:
 class TestPatientWithTreatmentSchemas:
     def test_patient_with_treatment_create(self):
         schema = PatientWithTreatmentCreate(
-            patient_schema=PatientCreate(
-                first_name="John", last_name="Doe"
-            ),
+            patient_schema=PatientCreate(first_name="John", last_name="Doe"),
             treatment_schema=TreatmentCreate(
                 weekday=Weekdays.MONDAY,
                 start_time=time(9, 0),

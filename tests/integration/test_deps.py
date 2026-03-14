@@ -83,9 +83,7 @@ async def test_get_current_user_session_expired(db_session):
     await db_session.commit()
     await db_session.refresh(expired_session)
 
-    request = _FakeRequest(
-        cookies={"session_uuid": str(expired_session.uuid)}
-    )
+    request = _FakeRequest(cookies={"session_uuid": str(expired_session.uuid)})
     # Expired session: the function deletes it then continues
     # Since the session is expired and was deleted, subsequent
     # code tries to use it with last_accessed_at update, which

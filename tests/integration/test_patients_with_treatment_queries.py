@@ -18,15 +18,11 @@ async def test_pagination(session_client, db_session):
         await db_session.commit()
 
     limit = 2
-    response = client.get(
-        f"/patients-with-treatment?skip=0&limit={limit}"
-    )
+    response = client.get(f"/patients-with-treatment?skip=0&limit={limit}")
     assert response.status_code == HTTPStatus.OK
     assert len(response.json()) == limit
 
-    response = client.get(
-        f"/patients-with-treatment?skip=2&limit={limit}"
-    )
+    response = client.get(f"/patients-with-treatment?skip=2&limit={limit}")
     assert response.status_code == HTTPStatus.OK
     assert len(response.json()) == limit
 
@@ -141,9 +137,7 @@ async def test_daily_endpoint_today(session_client, db_session):
     assert data[0]["weekday"] == Weekdays.MONDAY.value
 
 
-async def test_daily_endpoint_specific_day(
-    session_client, db_session
-):
+async def test_daily_endpoint_specific_day(session_client, db_session):
     client, user = session_client
     t1 = TreatmentFactory.build(
         user=user, user_uuid=user.uuid, weekday=Weekdays.MONDAY

@@ -26,7 +26,7 @@ from src.routers import (
 from src.routers.deps import csrf_protect
 from src.settings import settings
 
-if sys.platform == "win32":
+if sys.platform == "win32":  # pragma: no cover
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 

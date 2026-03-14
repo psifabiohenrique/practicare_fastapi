@@ -134,9 +134,7 @@ class TestUserServiceUpdateUser:
         mock_db.execute.return_value = result_mock
 
         user_update = UserUpdate(name="Updated Name")
-        await UserService.update_user(
-            mock_db, user_uuid, user_update
-        )
+        await UserService.update_user(mock_db, user_uuid, user_update)
 
         mock_db.add.assert_called_once()
         mock_db.commit.assert_awaited_once()

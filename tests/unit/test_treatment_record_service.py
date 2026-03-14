@@ -20,9 +20,7 @@ class TestGetTreatmentRecord:
         result_mock.scalars.return_value.first.return_value = None
         mock_db.execute.return_value = result_mock
 
-        with pytest.raises(
-            NotFoundError, match="Treatment record not found"
-        ):
+        with pytest.raises(NotFoundError, match="Treatment record not found"):
             await TreatmentRecordService.get_treatment_record(
                 mock_db, uuid4(), str(uuid4())
             )
@@ -42,9 +40,7 @@ class TestGetTreatmentRecord:
         result_mock.scalars.return_value.first.return_value = mock_record
         mock_db.execute.return_value = result_mock
 
-        with pytest.raises(
-            ForbiddenError, match="Access denied"
-        ):
+        with pytest.raises(ForbiddenError, match="Access denied"):
             await TreatmentRecordService.get_treatment_record(
                 mock_db, uuid4(), user_uuid
             )

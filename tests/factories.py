@@ -105,8 +105,10 @@ class AuthSessionFactory(factory.alchemy.SQLAlchemyModelFactory):
     uuid = factory.LazyFunction(uuid_pkg.uuid4)
     user_uuid = factory.LazyFunction(uuid_pkg.uuid4)
     expires_at = factory.LazyFunction(
-        lambda: datetime.datetime.now(datetime.timezone.utc)
-        + datetime.timedelta(hours=2)
+        lambda: (
+            datetime.datetime.now(datetime.timezone.utc)
+            + datetime.timedelta(hours=2)
+        )
     )
     last_accessed_at = factory.LazyFunction(
         lambda: datetime.datetime.now(datetime.timezone.utc)

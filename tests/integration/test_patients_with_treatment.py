@@ -36,9 +36,7 @@ async def test_create_patient_with_treatment(session_client):
     assert data["weekday"] == "Monday"
 
 
-async def test_list_my_patients_with_treatment(
-    session_client, db_session
-):
+async def test_list_my_patients_with_treatment(session_client, db_session):
     client, user = session_client
     number_of_treatments = 3
 
@@ -68,18 +66,14 @@ async def test_get_treatment_details(session_client, db_session):
     await db_session.commit()
     await db_session.refresh(treatment)
 
-    response = client.get(
-        f"/patients-with-treatment/{treatment.uuid}"
-    )
+    response = client.get(f"/patients-with-treatment/{treatment.uuid}")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert data["uuid"] == str(treatment.uuid)
     assert data["patient"]["uuid"] == str(treatment.patient_uuid)
 
 
-async def test_get_treatment_details_unauthorized(
-    client, db_session
-):
+async def test_get_treatment_details_unauthorized(client, db_session):
     """A session user trying to access another user's treatment."""
     user1 = UserFactory.build(
         hashed_password=get_password_hash("pw"),
@@ -104,25 +98,19 @@ async def test_get_treatment_details_unauthorized(
     client.cookies.set("csrf_token", csrf_token)
     client.headers["X-CSRF-Token"] = csrf_token
 
-    response = client.get(
-        f"/patients-with-treatment/{treatment.uuid}"
-    )
+    response = client.get(f"/patients-with-treatment/{treatment.uuid}")
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 
 async def test_get_treatment_details_not_found(session_client):
     client, _ = session_client
     random_uuid = str(uuid_pkg.uuid4())
-    response = client.get(
-        f"/patients-with-treatment/{random_uuid}"
-    )
+    response = client.get(f"/patients-with-treatment/{random_uuid}")
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert "detail" in response.json()
 
 
-async def test_update_patient_with_treatment(
-    session_client, db_session
-):
+async def test_update_patient_with_treatment(session_client, db_session):
     client, user = session_client
     treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
     db_session.add(treatment)
@@ -212,9 +200,7 @@ async def test_update_treatment_not_found(session_client):
     assert "detail" in response.json()
 
 
-async def test_update_treatment_restricted_fields(
-    session_client, db_session
-):
+async def test_update_treatment_restricted_fields(session_client, db_session):
     client, user = session_client
     treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
     db_session.add(treatment)

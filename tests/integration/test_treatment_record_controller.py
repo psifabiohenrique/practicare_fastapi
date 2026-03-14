@@ -23,9 +23,7 @@ async def test_get_treatment_record(session_client, db_session):
     await db_session.commit()
     await db_session.refresh(treatment_record)
 
-    response = client.get(
-        f"/treatment-records/{treatment_record.uuid}"
-    )
+    response = client.get(f"/treatment-records/{treatment_record.uuid}")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert data["uuid"] == str(treatment_record.uuid)
@@ -44,17 +42,13 @@ async def test_list_treatment_records(session_client, db_session):
     TreatmentRecordFactory.create_batch(batch_size, treatment=treatment)
     await db_session.commit()
 
-    response = client.get(
-        f"/treatment-records/treatment/{treatment.uuid}"
-    )
+    response = client.get(f"/treatment-records/treatment/{treatment.uuid}")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert len(data) == batch_size
 
 
-async def test_create_treatment_record_sequential(
-    session_client, db_session
-):
+async def test_create_treatment_record_sequential(session_client, db_session):
     client, user = session_client
 
     treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
@@ -106,9 +100,7 @@ async def test_update_treatment_record(session_client, db_session):
     assert response.json()["content"] == "Updated content"
 
 
-async def test_get_treatment_record_forbidden(
-    session_client, db_session
-):
+async def test_get_treatment_record_forbidden(session_client, db_session):
     client, user = session_client
 
     # Create another user and their treatment
@@ -125,9 +117,7 @@ async def test_get_treatment_record_forbidden(
     await db_session.commit()
     await db_session.refresh(treatment_record)
 
-    response = client.get(
-        f"/treatment-records/{treatment_record.uuid}"
-    )
+    response = client.get(f"/treatment-records/{treatment_record.uuid}")
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 
