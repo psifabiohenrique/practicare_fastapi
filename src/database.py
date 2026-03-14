@@ -29,5 +29,5 @@ async def get_db():  # pragma: no cover
         yield session
 
 
-async def get_async_session() -> AsyncSession:
+async def get_async_session() -> AsyncSession:  # pragma: no cover
     return SessionLocal()
