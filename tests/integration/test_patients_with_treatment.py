@@ -3,6 +3,7 @@ from http import HTTPStatus
 
 import pytest
 
+from src.models import TreatmentStatus
 from src.security import get_password_hash
 from src.services.auth_service import AuthService
 from tests.factories import TreatmentFactory, UserFactory
@@ -273,3 +274,76 @@ async def test_create_patient_with_invalid_phone(session_client):
     response = client.post("/patients-with-treatment", json=payload)
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "Invalid phone number" in response.json()["detail"]
+
+
+async def test_delete_patient_with_treatment(
+    session_client, db_session
+):
+    client, user = session_client
+    treatment = TreatmentFactory.build(
+        user=user, user_uuid=user.uuid, status=TreatmentStatus.ACTIVE
+    )
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
+
+    response = client.post(f"/patients-with-treatment/{treatment.uuid}")
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert data["status"] == TreatmentStatus.INACTIVE
+
+    # Verify in DB
+    await db_session.refresh(treatment)
+    assert treatment.status == TreatmentStatus.INACTIVE
+
+
+async def test_delete_patient_with_treatment_toggles_back(
+    session_client, db_session
+):
+    client, user = session_client
+    treatment = TreatmentFactory.build(
+        user=user, user_uuid=user.uuid, status=TreatmentStatus.INACTIVE
+    )
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
+
+    response = client.post(f"/patients-with-treatment/{treatment.uuid}")
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert data["status"] == TreatmentStatus.ACTIVE
+
+
+async def test_delete_treatment_unauthorized(client, db_session):
+    user1 = UserFactory.build(
+        hashed_password=get_password_hash("pw"),
+    )
+    user2 = UserFactory.build(
+        hashed_password=get_password_hash("pw"),
+    )
+    db_session.add_all([user1, user2])
+    await db_session.commit()
+    await db_session.refresh(user1)
+    await db_session.refresh(user2)
+
+    treatment = TreatmentFactory.build(user=user1, user_uuid=user1.uuid)
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
+
+    # Authenticate as user2
+    session2 = await AuthService.create_session(db_session, user2.uuid)
+    csrf_token = AuthService.generate_csrf_token()
+    client.cookies.set("session_uuid", str(session2.uuid))
+    client.cookies.set("csrf_token", csrf_token)
+    client.headers["X-CSRF-Token"] = csrf_token
+
+    response = client.post(f"/patients-with-treatment/{treatment.uuid}")
+    assert response.status_code == HTTPStatus.FORBIDDEN
+
+
+async def test_delete_treatment_not_found(session_client):
+    client, _ = session_client
+    random_uuid = str(uuid_pkg.uuid4())
+    response = client.post(f"/patients-with-treatment/{random_uuid}")
+    assert response.status_code == HTTPStatus.NOT_FOUND
