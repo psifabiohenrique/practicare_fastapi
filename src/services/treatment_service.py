@@ -71,10 +71,10 @@ class TreatmentService:
 
     @staticmethod
     async def delete_treatment(
-        db: AsyncSession, treatment_id: int
+        db: AsyncSession, treatment_uuid: UUID
     ) -> Treatment | None:
         result = await db.execute(
-            select(Treatment).filter(Treatment.id == treatment_id)
+            select(Treatment).filter(Treatment.uuid == str(treatment_uuid))
         )
         db_treatment = result.scalars().first()
         if db_treatment:

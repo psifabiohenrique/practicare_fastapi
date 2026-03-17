@@ -9,14 +9,6 @@ from src.security import get_password_hash
 
 class UserService:
     @staticmethod
-    async def get_user_by_id(db: AsyncSession, user_id: int) -> User:
-        result = await db.execute(select(User).filter(User.id == user_id))
-        user = result.scalars().first()
-        if not user:
-            raise NotFoundError("User not found")
-        return user
-
-    @staticmethod
     async def get_user_by_uuid(db: AsyncSession, user_uuid: str) -> User:
         result = await db.execute(
             select(User).filter(User.uuid == str(user_uuid))
