@@ -34,7 +34,7 @@ async def comunicate_report_fail(job_uuid: UUID, message: str):
     await db.close()
 
 
-async def _generate_report(job_uuid: UUID):
+async def generate_report_logic(job_uuid: UUID):
     db = await get_async_session()
     await AutomatedReportService.update_job_status(
         db=db,
@@ -48,18 +48,9 @@ async def _generate_report(job_uuid: UUID):
     await db.close()
 
 
-@celery_app.task(
-    name="Gerar relatório",
-    bind=True,
-    retry_backoff=30,
-    retry_backoff_max=60 * 60,
-    autoretry_for=(AITransientError,),
-    retry_kwargs={"max_retries": 10},
-    acks_late=True,
-)
-def generate_report_task(self, job_uuid: UUID):
+def do_generate_report(job_uuid: UUID):
     try:
-        asyncio.run(_generate_report(job_uuid))
+        asyncio.run(generate_report_logic(job_uuid))
 
     except AITransientError as e:
         asyncio.run(
@@ -94,3 +85,16 @@ def generate_report_task(self, job_uuid: UUID):
         )
         logger.exception("Erro inesperado na task de relatório")
         raise
+
+
+@celery_app.task(
+    name="Gerar relatório",
+    # bind=True,
+    retry_backoff=30,
+    retry_backoff_max=60 * 60,
+    autoretry_for=(AITransientError,),
+    retry_kwargs={"max_retries": 10},
+    acks_late=True,
+)
+def generate_report_task(job_uuid: UUID):
+    return do_generate_report(job_uuid)

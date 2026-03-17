@@ -2,6 +2,8 @@ import asyncio
 import logging
 from uuid import UUID
 
+from celery import current_task
+
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.celery_app import celery_app
 from src.database import get_async_session
@@ -28,7 +30,7 @@ async def comunicate_record_fail(job_uuid: UUID, message: str):
     await db.close()
 
 
-async def _transcribe_audio(job_uuid: UUID, file_name: str) -> None:
+async def transcribe_audio_logic(job_uuid: UUID, file_name: str) -> None:
     db = await get_async_session()
 
     await AutomatedRecordService.update_job_status(
@@ -53,7 +55,7 @@ async def _transcribe_audio(job_uuid: UUID, file_name: str) -> None:
     generate_record.delay(job_uuid=job_uuid)
 
 
-async def _generate_record(job_uuid: UUID):
+async def generate_record_logic(job_uuid: UUID):
     db = await get_async_session()
     await AutomatedRecordService.update_job_status(
         db=db,
@@ -86,18 +88,9 @@ async def _generate_record(job_uuid: UUID):
     await db.close()
 
 
-@celery_app.task(
-    name="Gerar Transcrição",
-    bind=True,
-    retry_backoff=30,
-    # retry_backoff_max=60 * 60,
-    autoretry_for=(AITransientError,),
-    retry_kwargs={"max_retries": 10},
-    acks_late=True,
-)
-def transcribe_audio(self, job_uuid: UUID, file_name: str):
+def do_transcribe_audio(job_uuid: UUID, file_name: str):
     try:
-        asyncio.run(_transcribe_audio(job_uuid, file_name))
+        asyncio.run(transcribe_audio_logic(job_uuid, file_name))
     except AITransientError as e:
         asyncio.run(
             comunicate_record_fail(
@@ -136,17 +129,21 @@ def transcribe_audio(self, job_uuid: UUID, file_name: str):
 
 
 @celery_app.task(
-    name="Gerar prontuário",
-    bind=True,
+    name="Gerar Transcrição",
+    # bind=True,
     retry_backoff=30,
     # retry_backoff_max=60 * 60,
     autoretry_for=(AITransientError,),
     retry_kwargs={"max_retries": 10},
     acks_late=True,
 )
-def generate_record(self, job_uuid: UUID):
+def transcribe_audio(job_uuid: UUID, file_name: str):
+    return do_transcribe_audio(job_uuid, file_name)
+
+
+def do_generate_record(job_uuid: UUID, retry_count: int = 0):
     try:
-        asyncio.run(_generate_record(job_uuid))
+        asyncio.run(generate_record_logic(job_uuid))
 
     except AITransientError as e:
         asyncio.run(
@@ -157,7 +154,7 @@ def generate_record(self, job_uuid: UUID):
             )
         )
         logger.warning(
-            f"Erro transitório ao gerar prontuário. {self.request.retry}"
+            f"Erro transitório ao gerar prontuário. Retry: {retry_count} "
             + str(e)
         )
         raise
@@ -186,3 +183,19 @@ def generate_record(self, job_uuid: UUID):
         )
         logger.exception("Erro inesperado na task")
         raise
+
+
+@celery_app.task(
+    name="Gerar prontuário",
+    # bind=True,
+    retry_backoff=30,
+    # retry_backoff_max=60 * 60,
+    autoretry_for=(AITransientError,),
+    retry_kwargs={"max_retries": 10},
+    acks_late=True,
+)
+def generate_record(job_uuid: UUID):
+    retry_count = 0
+    if current_task and hasattr(current_task, "request"):
+        retry_count = getattr(current_task.request, "retries", 0)
+    return do_generate_record(job_uuid, retry_count)
