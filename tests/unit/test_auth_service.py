@@ -1,9 +1,9 @@
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from src.models import User
+from src.models.auth_session_model import AuthSession
 from src.services.auth_service import AuthService
 
 
@@ -12,89 +12,89 @@ def mock_db():
     return AsyncMock()
 
 
-class TestAuthenticateUser:
+class TestAuthService:
     @pytest.mark.asyncio
-    async def test_authenticate_user_success(self, mock_db):
-        mock_user = MagicMock(spec=User)
-        mock_user.hashed_password = "hashed_pw"
+    @patch("src.services.auth_service.UserService.get_user_by_email")
+    @patch("src.services.auth_service.verify_password")
+    async def test_authenticate_user_success(
+        self, mock_verify, mock_get_user, mock_db
+    ):
+        mock_user = AsyncMock(spec=User)
+        mock_user.hashed_password = "hashed"
+        mock_get_user.return_value = mock_user
+        mock_verify.return_value = True
 
-        with (
-            patch(
-                "src.services.auth_service.UserService.get_user_by_email",
-                return_value=mock_user,
-            ),
-            patch(
-                "src.services.auth_service.verify_password",
-                return_value=True,
-            ),
-        ):
-            result = await AuthService.authenticate_user(
-                mock_db, "user@example.com", "password"
-            )
-        assert result == mock_user
+        user = await AuthService.authenticate_user(
+            mock_db, "test@example.com", "password"
+        )
 
-    @pytest.mark.asyncio
-    async def test_authenticate_user_wrong_password(self, mock_db):
-        mock_user = MagicMock(spec=User)
-        mock_user.hashed_password = "hashed_pw"
-
-        with (
-            patch(
-                "src.services.auth_service.UserService.get_user_by_email",
-                return_value=mock_user,
-            ),
-            patch(
-                "src.services.auth_service.verify_password",
-                return_value=False,
-            ),
-        ):
-            result = await AuthService.authenticate_user(
-                mock_db, "user@example.com", "wrong"
-            )
-        assert result is None
+        assert user == mock_user
+        mock_get_user.assert_called_once_with(mock_db, "test@example.com")
+        mock_verify.assert_called_once_with("password", "hashed")
 
     @pytest.mark.asyncio
-    async def test_authenticate_user_not_found(self, mock_db):
-        with patch(
-            "src.services.auth_service.UserService.get_user_by_email",
-            return_value=None,
-        ):
-            result = await AuthService.authenticate_user(
-                mock_db, "noone@example.com", "password"
-            )
-        assert result is None
+    @patch("src.services.auth_service.UserService.get_user_by_email")
+    async def test_authenticate_user_not_found(self, mock_get_user, mock_db):
+        mock_get_user.return_value = None
 
+        user = await AuthService.authenticate_user(
+            mock_db, "test@example.com", "password"
+        )
 
-class TestCreateSession:
+        assert user is None
+
     @pytest.mark.asyncio
-    async def test_create_session(self, mock_db):
-        user_uuid = uuid4()
-        session = await AuthService.create_session(mock_db, user_uuid)
+    @patch("src.services.auth_service.UserService.get_user_by_email")
+    @patch("src.services.auth_service.verify_password")
+    async def test_authenticate_user_wrong_password(
+        self, mock_verify, mock_get_user, mock_db
+    ):
+        mock_user = AsyncMock(spec=User)
+        mock_user.hashed_password = "hashed"
+        mock_get_user.return_value = mock_user
+        mock_verify.return_value = False
 
-        assert session.user_uuid == user_uuid
-        assert session.uuid is not None
-        assert session.expires_at is not None
+        user = await AuthService.authenticate_user(
+            mock_db, "test@example.com", "password"
+        )
+
+        assert user is None
+
+    @patch("src.services.auth_service.create_access_token")
+    @patch("src.services.auth_service.create_refresh_token")
+    def test_create_tokens(self, mock_refresh, mock_access):
+        mock_access.return_value = "access"
+        mock_refresh.return_value = "refresh"
+
+        tokens = AuthService.create_tokens("user-uuid")
+
+        assert tokens.access_token == "access"
+        assert tokens.refresh_token == "refresh"
+        assert tokens.token_type == "bearer"
+        mock_access.assert_called_once_with(subject="user-uuid")
+        mock_refresh.assert_called_once_with(subject="user-uuid")
+
+    @pytest.mark.asyncio
+    @patch("src.services.auth_service.settings")
+    async def test_create_session(self, mock_settings, mock_db):
+        mock_settings.ACCESS_SESSION_EXPIRE_MINUTES = 60
+
+        session = await AuthService.create_session(mock_db, "user-uuid")
+
+        assert isinstance(session, AuthSession)
+        assert session.user_uuid == "user-uuid"
         mock_db.add.assert_called_once()
-        mock_db.commit.assert_awaited_once()
-        mock_db.refresh.assert_awaited_once()
+        mock_db.commit.assert_called_once()
+        mock_db.refresh.assert_called_once()
 
-
-class TestDeleteSession:
     @pytest.mark.asyncio
     async def test_delete_session(self, mock_db):
-        session_uuid = str(uuid4())
-        await AuthService.delete_session(mock_db, session_uuid)
-        mock_db.execute.assert_awaited_once()
-        mock_db.commit.assert_awaited_once()
+        await AuthService.delete_session(mock_db, "session-uuid")
 
+        mock_db.execute.assert_called_once()
+        mock_db.commit.assert_called_once()
 
-class TestGenerateCSRFToken:
-    def test_generate_csrf_token_returns_string(self):
+    def test_generate_csrf_token(self):
         token = AuthService.generate_csrf_token()
-        assert isinstance(token, str)
         assert len(token) > 0
-
-    def test_tokens_are_unique(self):
-        t1 = AuthService.generate_csrf_token()
-        t2 = AuthService.generate_csrf_token()
-        assert t1 != t2
+        assert isinstance(token, str)

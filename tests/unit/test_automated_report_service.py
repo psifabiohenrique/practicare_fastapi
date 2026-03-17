@@ -1,0 +1,324 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+
+import pytest
+
+from src.core.exceptions import NotFoundError
+from src.models.automated_report_job import AutomatedReportJob, ReportJobStatus
+from src.services.automated_report_service import AutomatedReportService
+
+
+@pytest.fixture
+def mock_db():
+    return AsyncMock()
+
+
+@pytest.fixture
+def mock_job():
+    job = MagicMock(spec=AutomatedReportJob)
+    job.uuid = uuid4()
+    job.user_uuid = "user-123"
+    job.treatment_uuid = uuid4()
+    job.treatment_report_uuid = uuid4()
+    job.status = ReportJobStatus.PENDING
+    job.error_message = None
+    return job
+
+
+class TestAutomatedReportServiceLifecycle:
+    @pytest.mark.asyncio
+    async def test_create_job(self, mock_db):
+        treatment_uuid = uuid4()
+        report_uuid = uuid4()
+        user_uuid = "user-123"
+
+        job = await AutomatedReportService.create_job(
+            mock_db, treatment_uuid, report_uuid, user_uuid
+        )
+
+        assert isinstance(job, AutomatedReportJob)
+        assert job.user_uuid == user_uuid
+        assert job.treatment_uuid == str(treatment_uuid)
+        assert job.treatment_report_uuid == str(report_uuid)
+        assert job.status == ReportJobStatus.PENDING
+        mock_db.add.assert_called_once()
+        mock_db.commit.assert_called_once()
+        mock_db.refresh.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_job_success(self, mock_db, mock_job):
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = mock_job
+        mock_db.execute.return_value = result_mock
+
+        job = await AutomatedReportService.get_job(mock_db, mock_job.uuid)
+
+        assert job == mock_job
+
+    @pytest.mark.asyncio
+    async def test_get_job_not_found(self, mock_db):
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = result_mock
+
+        with pytest.raises(NotFoundError, match="Job not found"):
+            await AutomatedReportService.get_job(mock_db, uuid4())
+
+    @pytest.mark.asyncio
+    async def test_update_job_status(self, mock_db, mock_job):
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = mock_job
+        mock_db.execute.return_value = result_mock
+
+        await AutomatedReportService.update_job_status(
+            mock_db, mock_job.uuid, ReportJobStatus.COMPLETED, "Some error"
+        )
+
+        assert mock_job.status == ReportJobStatus.COMPLETED
+        assert mock_job.error_message == "Some error"
+        mock_db.commit.assert_called_once()
+
+
+class TestAutomatedReportServiceProcessing:
+    @pytest.mark.asyncio
+    @patch(
+        "src.services.automated_report_service.AutomatedReportService.get_job"
+    )
+    @patch(
+        "src.services.automated_report_service.AutomatedReportService.update_job_status"
+    )
+    @patch(
+        "src.services.automated_report_service.AutomatedReportService.generate_report_content"
+    )
+    async def test_process_automated_report_job_success(
+        self,
+        mock_generate,
+        mock_update_status,
+        mock_get_job,
+        mock_db,
+        mock_job,
+    ):
+        mock_get_job.return_value = mock_job
+
+        await AutomatedReportService.process_automated_report_job(
+            mock_db, mock_job.uuid
+        )
+
+        assert mock_update_status.call_count == 2
+        mock_generate.assert_called_once_with(mock_db, mock_job)
+
+    @pytest.mark.asyncio
+    @patch(
+        "src.services.automated_report_service.AutomatedReportService.get_job"
+    )
+    @patch(
+        "src.services.automated_report_service.AutomatedReportService.update_job_status"
+    )
+    @patch(
+        "src.services.automated_report_service.AutomatedReportService.generate_report_content"
+    )
+    @patch(
+        "src.services.automated_report_service.TreatmentReportService.update_treatment_report"
+    )
+    async def test_process_automated_report_job_failure(  # noqa: PLR0917
+        self,
+        mock_update_report,
+        mock_generate,
+        mock_update_status,
+        mock_get_job,
+        mock_db,
+        mock_job,
+    ):
+        mock_get_job.return_value = mock_job
+        mock_generate.side_effect = Exception("Generation failed")
+
+        await AutomatedReportService.process_automated_report_job(
+            mock_db, mock_job.uuid
+        )
+
+        # 1. Update status to GENERATING_REPORT
+        # 2. Update status to FAILED
+        assert mock_update_status.call_count == 2
+        mock_update_status.assert_any_call(
+            mock_db,
+            mock_job.uuid,
+            ReportJobStatus.FAILED,
+            error_message="Generation failed",
+        )
+        mock_update_report.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch(
+        "src.services.automated_report_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
+    )
+    @patch(
+        "src.services.automated_report_service.TreatmentReportService.get_treatment_report"
+    )
+    @patch(
+        "src.services.automated_report_service.TreatmentRecordService.get_treatment_records"
+    )
+    @patch("src.services.automated_report_service.ReportGenerationChain")
+    @patch(
+        "src.services.automated_report_service.TreatmentReportService.update_treatment_report"
+    )
+    async def test_generate_report_content(  # noqa: PLR0917
+        self,
+        mock_update_report,
+        MockChain,
+        mock_get_records,
+        mock_get_report,
+        mock_get_patient,
+        mock_db,
+        mock_job,
+    ):
+        # Mock patient
+        patient = MagicMock()
+        patient.first_name = "Jane Doe"
+        patient.gender = "Female"
+        mock_get_patient.return_value = patient
+
+        # Mock current report
+        current_report = MagicMock()
+        current_report.start_date_period = "2023-01-01"
+        current_report.end_date_period = "2023-01-31"
+        mock_get_report.return_value = current_report
+
+        # Mock previous report query
+        prev_report = MagicMock()
+        prev_report.demand_description = "demand"
+        prev_report.procedures = "procs"
+        prev_report.analysis = "anal"
+        prev_report.conclusion = "conc"
+
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.side_effect = [prev_report]
+        mock_db.execute.return_value = result_mock
+
+        # Mock records
+        record = MagicMock()
+        record.date = "2023-01-15"
+        record.content = "Session content"
+        mock_get_records.return_value = [record]
+
+        # Mock AI Chain
+        chain_instance = MockChain.return_value
+        chain_instance.generate = AsyncMock()
+        report_data = MagicMock()
+        report_data.demand_description = "new demand"
+        report_data.procedures = "new procs"
+        report_data.analysis = "new anal"
+        report_data.conclusion = "new conc"
+        chain_instance.generate.return_value = report_data
+
+        result = await AutomatedReportService.generate_report_content(
+            mock_db, mock_job
+        )
+
+        assert result == report_data
+        mock_update_report.assert_called_once()
+        chain_instance.generate.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch(
+        "src.services.automated_report_service.AutomatedReportService.get_job"
+    )
+    @patch(
+        "src.services.automated_report_service.AutomatedReportService.update_job_status"
+    )
+    @patch(
+        "src.services.automated_report_service.AutomatedReportService.generate_report_content"
+    )
+    @patch(
+        "src.services.automated_report_service.TreatmentReportService.update_treatment_report"
+    )
+    async def test_process_automated_report_job_double_failure(  # noqa: PLR0917
+        self,
+        mock_update_report,
+        mock_generate,
+        mock_update_status,
+        mock_get_job,
+        mock_db,
+        mock_job,
+    ):
+        mock_get_job.return_value = mock_job
+        mock_generate.side_effect = Exception("First failure")
+        mock_update_report.side_effect = Exception("Second failure")
+
+        # This should not raise because of the internal try-except
+        await AutomatedReportService.process_automated_report_job(
+            mock_db, mock_job.uuid
+        )
+
+        mock_update_status.assert_any_call(
+            mock_db,
+            mock_job.uuid,
+            ReportJobStatus.FAILED,
+            error_message="First failure",
+        )
+
+    @pytest.mark.asyncio
+    @patch(
+        "src.services.automated_report_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
+    )
+    @patch(
+        "src.services.automated_report_service.TreatmentReportService.get_treatment_report"
+    )
+    @patch(
+        "src.services.automated_report_service.TreatmentRecordService.get_treatment_records"
+    )
+    @patch("src.services.automated_report_service.ReportGenerationChain")
+    @patch(
+        "src.services.automated_report_service.TreatmentReportService.update_treatment_report"
+    )
+    async def test_generate_report_content_no_prev_no_records(  # noqa: PLR0917
+        self,
+        mock_update_report,
+        MockChain,
+        mock_get_records,
+        mock_get_report,
+        mock_get_patient,
+        mock_db,
+        mock_job,
+    ):
+        # Mock patient
+        patient = MagicMock()
+        patient.first_name = "Jane"
+        patient.gender = "Female"
+        mock_get_patient.return_value = patient
+
+        # Mock current report
+        current_report = MagicMock()
+        mock_get_report.return_value = current_report
+
+        # Mock previous report query (None)
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = result_mock
+
+        # Mock records (Empty)
+        mock_get_records.return_value = []
+
+        # Mock AI Chain return value properly with strings
+        report_data = MagicMock()
+        report_data.demand_description = "demand"
+        report_data.procedures = "procs"
+        report_data.analysis = "anal"
+        report_data.conclusion = "conc"
+
+        chain_instance = MockChain.return_value
+        chain_instance.generate = AsyncMock()
+        chain_instance.generate.return_value = report_data
+
+        await AutomatedReportService.generate_report_content(mock_db, mock_job)
+
+        chain_instance.generate.assert_called_once()
+        # Verify context strings passed to AI
+        args, kwargs = chain_instance.generate.call_args
+        assert (
+            kwargs["previous_report_context"]
+            == "Nenhum relatório anterior encontrado."
+        )
+        assert (
+            kwargs["records_context"]
+            == "Nenhum prontuário encontrado para este período."
+        )

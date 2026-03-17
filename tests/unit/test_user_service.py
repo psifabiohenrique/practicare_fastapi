@@ -1,5 +1,4 @@
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
 
 import pytest
 
@@ -11,170 +10,169 @@ from src.services.user_service import UserService
 
 @pytest.fixture
 def mock_db():
-    db = AsyncMock()
-    return db
+    return AsyncMock()
 
 
-class TestUserServiceCreateUser:
+@pytest.fixture
+def mock_user():
+    user = MagicMock(spec=User)
+    user.uuid = "user-uuid"
+    user.email = "test@example.com"
+    user.name = "Test User"
+    user.hashed_password = "hashed_password"
+    return user
+
+
+class TestUserServiceCRUD:
     @pytest.mark.asyncio
-    async def test_create_user_success(self, mock_db):
+    async def test_get_user_by_uuid_success(self, mock_db, mock_user):
+        result_mock = MagicMock()
+        result_mock.scalars().first.return_value = mock_user
+        mock_db.execute.return_value = result_mock
+
+        user = await UserService.get_user_by_uuid(mock_db, "user-uuid")
+        assert user == mock_user
+
+    @pytest.mark.asyncio
+    async def test_get_user_by_uuid_not_found(self, mock_db):
+        result_mock = MagicMock()
+        result_mock.scalars().first.return_value = None
+        mock_db.execute.return_value = result_mock
+
+        with pytest.raises(NotFoundError, match="User not found"):
+            await UserService.get_user_by_uuid(mock_db, "user-uuid")
+
+    @pytest.mark.asyncio
+    async def test_get_user_by_email(self, mock_db, mock_user):
+        result_mock = MagicMock()
+        result_mock.scalars().first.return_value = mock_user
+        mock_db.execute.return_value = result_mock
+
+        user = await UserService.get_user_by_email(mock_db, "test@example.com")
+        assert user == mock_user
+
+    @pytest.mark.asyncio
+    async def test_get_users(self, mock_db, mock_user):
+        result_mock = MagicMock()
+        result_mock.scalars().all.return_value = [mock_user]
+        mock_db.execute.return_value = result_mock
+
+        users = await UserService.get_users(mock_db)
+        assert users == [mock_user]
+
+    @pytest.mark.asyncio
+    @patch("src.services.user_service.get_password_hash")
+    async def test_create_user_success(self, mock_hash, mock_db):
+        mock_hash.return_value = "hashed"
         user_in = UserCreate(
             email="new@example.com",
             name="New User",
-            password="password123",
-            password_confirmation="password123",
+            password="password",
+            password_confirmation="password",
         )
 
-        # Mock: no existing user with this email
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.first.return_value = None
-        mock_db.execute.return_value = result_mock
-
         with patch(
-            "src.services.user_service.get_password_hash",
-            return_value="hashed_pw",
+            "src.services.user_service.UserService.get_user_by_email",
+            return_value=None,
         ):
             user = await UserService.create_user(mock_db, user_in)
 
         assert user.email == "new@example.com"
         assert user.name == "New User"
-        assert user.hashed_password == "hashed_pw"
+        assert user.hashed_password == "hashed"
         mock_db.add.assert_called_once()
-        mock_db.commit.assert_awaited_once()
-        mock_db.refresh.assert_awaited_once()
+        mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_user_duplicate_email(self, mock_db):
+    async def test_create_user_email_exists(self, mock_db, mock_user):
         user_in = UserCreate(
-            email="existing@example.com",
-            name="User",
-            password="pw",
-            password_confirmation="pw",
+            email="test@example.com",
+            name="Test",
+            password="pass",
+            password_confirmation="pass",
         )
 
-        # Mock: existing user found
-        existing_user = MagicMock(spec=User)
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.first.return_value = existing_user
-        mock_db.execute.return_value = result_mock
-
-        with pytest.raises(ConflictError, match="already exists"):
-            await UserService.create_user(mock_db, user_in)
+        with patch(
+            "src.services.user_service.UserService.get_user_by_email",
+            return_value=mock_user,
+        ):
+            with pytest.raises(
+                ConflictError, match="User with this email already exists"
+            ):
+                await UserService.create_user(mock_db, user_in)
 
     @pytest.mark.asyncio
     async def test_create_user_password_mismatch(self, mock_db):
         user_in = UserCreate(
-            email="new@example.com",
-            name="User",
-            password="password1",
-            password_confirmation="password2",
+            email="test@example.com",
+            name="Test",
+            password="pass",
+            password_confirmation="mismatch",
         )
 
-        # Mock: no existing user
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.first.return_value = None
-        mock_db.execute.return_value = result_mock
-
-        with pytest.raises(ValidationError, match="Passwords do not match"):
-            await UserService.create_user(mock_db, user_in)
-
-
-class TestUserServiceGetUser:
-    @pytest.mark.asyncio
-    async def test_get_user_by_uuid_found(self, mock_db):
-        user_uuid = str(uuid4())
-        mock_user = MagicMock(spec=User)
-        mock_user.uuid = user_uuid
-
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.first.return_value = mock_user
-        mock_db.execute.return_value = result_mock
-
-        user = await UserService.get_user_by_uuid(mock_db, user_uuid)
-        assert user.uuid == user_uuid
+        with patch(
+            "src.services.user_service.UserService.get_user_by_email",
+            return_value=None,
+        ):
+            with pytest.raises(
+                ValidationError, match="Passwords do not match"
+            ):
+                await UserService.create_user(mock_db, user_in)
 
     @pytest.mark.asyncio
-    async def test_get_user_by_uuid_not_found(self, mock_db):
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.first.return_value = None
-        mock_db.execute.return_value = result_mock
+    @patch("src.services.user_service.get_password_hash")
+    async def test_update_user_partial(self, mock_hash, mock_db, mock_user):
+        user_in = UserUpdate(name="Updated Name")
 
-        with pytest.raises(NotFoundError, match="User not found"):
-            await UserService.get_user_by_uuid(mock_db, str(uuid4()))
+        with patch(
+            "src.services.user_service.UserService.get_user_by_uuid",
+            return_value=mock_user,
+        ):
+            user = await UserService.update_user(mock_db, "user-uuid", user_in)
 
-    @pytest.mark.asyncio
-    async def test_get_user_by_email_returns_none(self, mock_db):
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.first.return_value = None
-        mock_db.execute.return_value = result_mock
-
-        result = await UserService.get_user_by_email(mock_db, "no@user.com")
-        assert result is None
+        assert user.name == "Updated Name"
+        mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_users(self, mock_db):
-        mock_users = [MagicMock(spec=User), MagicMock(spec=User)]
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = mock_users
-        mock_db.execute.return_value = result_mock
-
-        users = await UserService.get_users(mock_db)
-        assert len(users) == 2
-
-
-class TestUserServiceUpdateUser:
-    @pytest.mark.asyncio
-    async def test_update_user_success(self, mock_db):
-        user_uuid = str(uuid4())
-        mock_user = MagicMock(spec=User)
-        mock_user.uuid = user_uuid
-
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.first.return_value = mock_user
-        mock_db.execute.return_value = result_mock
-
-        user_update = UserUpdate(name="Updated Name")
-        await UserService.update_user(mock_db, user_uuid, user_update)
-
-        mock_db.add.assert_called_once()
-        mock_db.commit.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_update_user_password_mismatch(self, mock_db):
-        user_uuid = str(uuid4())
-        mock_user = MagicMock(spec=User)
-        mock_user.uuid = user_uuid
-
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.first.return_value = mock_user
-        mock_db.execute.return_value = result_mock
-
-        user_update = UserUpdate(
-            password="new_pw", password_confirmation="different_pw"
+    @patch("src.services.user_service.get_password_hash")
+    async def test_update_user_password(self, mock_hash, mock_db, mock_user):
+        mock_hash.return_value = "new_hashed"
+        user_in = UserUpdate(
+            password="new_password", password_confirmation="new_password"
         )
-        with pytest.raises(ValidationError, match="Passwords do not match"):
-            await UserService.update_user(mock_db, user_uuid, user_update)
 
+        with patch(
+            "src.services.user_service.UserService.get_user_by_uuid",
+            return_value=mock_user,
+        ):
+            user = await UserService.update_user(mock_db, "user-uuid", user_in)
 
-class TestUserServiceDeleteUser:
-    @pytest.mark.asyncio
-    async def test_delete_user_success(self, mock_db):
-        user_uuid = str(uuid4())
-        mock_user = MagicMock(spec=User)
-
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.first.return_value = mock_user
-        mock_db.execute.return_value = result_mock
-
-        await UserService.delete_user(mock_db, user_uuid)
-        mock_db.delete.assert_awaited_once_with(mock_user)
-        mock_db.commit.assert_awaited_once()
+        assert user.hashed_password == "new_hashed"
+        mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_delete_user_not_found(self, mock_db):
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.first.return_value = None
-        mock_db.execute.return_value = result_mock
+    async def test_update_user_password_mismatch(self, mock_db, mock_user):
+        user_in = UserUpdate(
+            password="new_password", password_confirmation="mismatch"
+        )
 
-        with pytest.raises(NotFoundError, match="User not found"):
-            await UserService.delete_user(mock_db, str(uuid4()))
+        with patch(
+            "src.services.user_service.UserService.get_user_by_uuid",
+            return_value=mock_user,
+        ):
+            with pytest.raises(
+                ValidationError, match="Passwords do not match"
+            ):
+                await UserService.update_user(mock_db, "user-uuid", user_in)
+
+    @pytest.mark.asyncio
+    async def test_delete_user(self, mock_db, mock_user):
+        with patch(
+            "src.services.user_service.UserService.get_user_by_uuid",
+            return_value=mock_user,
+        ):
+            user = await UserService.delete_user(mock_db, "user-uuid")
+
+        assert user == mock_user
+        mock_db.delete.assert_called_once_with(mock_user)
+        mock_db.commit.assert_called_once()

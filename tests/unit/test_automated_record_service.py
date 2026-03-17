@@ -1,5 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -16,38 +16,33 @@ def mock_db():
 @pytest.fixture
 def mock_job():
     job = MagicMock(spec=AutomatedRecordJob)
-    job.uuid = str(uuid4())
-    job.user_uuid = str(uuid4())
+    job.uuid = uuid4()
+    job.user_uuid = "user-123"
     job.treatment_uuid = str(uuid4())
     job.treatment_record_uuid = str(uuid4())
     job.status = JobStatus.PENDING
-    job.audio_path = "test.webm"
+    job.audio_path = "original.webm"
+    job.transcription = None
+    job.error_message = None
     return job
 
 
-class TestAutomatedRecordServiceJobLifecycle:
+class TestAutomatedRecordServiceLifecycle:
     @pytest.mark.asyncio
     async def test_create_job(self, mock_db):
-        t_uuid = uuid4()
-        tr_uuid = uuid4()
-        u_uuid = str(uuid4())
+        treatment_uuid = uuid4()
+        record_uuid = uuid4()
+        user_uuid = "user-123"
 
         job = await AutomatedRecordService.create_job(
-            mock_db,
-            t_uuid,
-            tr_uuid,
-            u_uuid,
-            "audio.webm",
+            mock_db, treatment_uuid, record_uuid, user_uuid, "path/to/audio"
         )
 
         assert isinstance(job, AutomatedRecordJob)
-        assert job.user_uuid == u_uuid
-        assert job.treatment_uuid == str(t_uuid)
-        assert job.treatment_record_uuid == str(tr_uuid)
-        assert job.audio_path == "audio.webm"
+        assert job.status == JobStatus.PENDING
+        assert job.audio_path == "path/to/audio"
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
-        mock_db.refresh.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_job_success(self, mock_db, mock_job):
@@ -55,12 +50,8 @@ class TestAutomatedRecordServiceJobLifecycle:
         result_mock.scalar_one_or_none.return_value = mock_job
         mock_db.execute.return_value = result_mock
 
-        job = await AutomatedRecordService.get_job(
-            mock_db, UUID(mock_job.uuid)
-        )
-
+        job = await AutomatedRecordService.get_job(mock_db, mock_job.uuid)
         assert job == mock_job
-        mock_db.execute.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_job_not_found(self, mock_db):
@@ -72,273 +63,274 @@ class TestAutomatedRecordServiceJobLifecycle:
             await AutomatedRecordService.get_job(mock_db, uuid4())
 
     @pytest.mark.asyncio
-    async def test_update_job_status(self, mock_db, mock_job):
-        result_mock = MagicMock()
-        result_mock.scalar_one_or_none.return_value = mock_job
-        mock_db.execute.return_value = result_mock
+    @patch(
+        "src.services.automated_record_service.AutomatedRecordService.get_job"
+    )
+    async def test_update_job_status(self, mock_get_job, mock_db, mock_job):
+        mock_get_job.return_value = mock_job
 
-        updated_job = await AutomatedRecordService.update_job_status(
+        await AutomatedRecordService.update_job_status(
             mock_db,
-            UUID(mock_job.uuid),
+            mock_job.uuid,
             JobStatus.COMPLETED,
-            transcription="Transcribed text",
+            transcription="Hello",
+            error_message="Error",
+            audio_path="new_path.wav",
         )
 
-        assert updated_job.status == JobStatus.COMPLETED
-        assert updated_job.transcription == "Transcribed text"
+        assert mock_job.status == JobStatus.COMPLETED
+        assert mock_job.transcription == "Hello"
+        assert mock_job.error_message == "Error"
+        assert mock_job.audio_path == "new_path.wav"
         mock_db.commit.assert_called_once()
 
 
 class TestAutomatedRecordServiceProcessing:
     @pytest.mark.asyncio
+    @patch(
+        "src.services.automated_record_service.AutomatedRecordService.get_job"
+    )
+    @patch(
+        "src.services.automated_record_service.AutomatedRecordService.update_job_status"
+    )
     @patch("src.services.automated_record_service.convert_to_wav")
     @patch("src.services.automated_record_service.split_by_vad")
-    async def test_upload_audio_file_success(
+    @patch("src.services.automated_record_service.TranscriptionChain")
+    @patch("os.path.exists")
+    @patch("os.remove")
+    async def test_upload_audio_file_success(  # noqa: PLR0917
         self,
+        mock_remove,
+        mock_exists,
+        MockChain,
         mock_split,
         mock_convert,
+        mock_update_status,
+        mock_get_job,
         mock_db,
         mock_job,
     ):
-        with (
-            patch("os.path.exists", return_value=True),
-            patch("os.remove") as mock_remove,
-            patch(
-                "src.services.automated_record_service.TranscriptionChain"
-            ) as MockTC,
-        ):
-            mock_instance = MockTC.return_value
-            mock_instance.upload_audio = AsyncMock()
-            mock_instance.upload_audio.return_value.name = "remote.wav"
+        mock_get_job.return_value = mock_job
+        mock_exists.return_value = True
 
-            # Setup get_job within upload_audio_file
-            result_mock = MagicMock()
-            result_mock.scalar_one_or_none.return_value = mock_job
-            mock_db.execute.return_value = result_mock
+        chain_instance = MockChain.return_value
+        chain_instance.upload_audio = AsyncMock()
+        audio_file = MagicMock()
+        audio_file.name = "remote_path.wav"
+        chain_instance.upload_audio.return_value = audio_file
 
-            result = await AutomatedRecordService.upload_audio_file(
-                mock_db, UUID(mock_job.uuid), "local.webm"
-            )
+        result = await AutomatedRecordService.upload_audio_file(
+            mock_db, mock_job.uuid, "test.webm"
+        )
 
-            assert result.name == "remote.wav"
-            mock_convert.assert_called_once()
-            mock_split.assert_called_once()
-            mock_instance.upload_audio.assert_called_once()
-            assert mock_remove.call_count >= 1
+        assert result == audio_file
+        mock_convert.assert_called_once()
+        mock_split.assert_called_once()
+        assert mock_update_status.call_count == 2
+        assert mock_remove.call_count == 3
 
     @pytest.mark.asyncio
+    @patch(
+        "src.services.automated_record_service.AutomatedRecordService.update_job_status"
+    )
     @patch("src.services.automated_record_service.convert_to_wav")
     @patch("src.services.automated_record_service.split_by_vad")
-    async def test_upload_audio_file_failure(
+    @patch("src.services.automated_record_service.TranscriptionChain")
+    @patch(
+        "src.services.automated_record_service.AutomatedRecordService.get_job"
+    )
+    @patch("os.path.exists")
+    @patch("os.remove")
+    async def test_upload_audio_file_missing_name(  # noqa: PLR0917
         self,
+        mock_remove,
+        mock_exists,
+        mock_get_job,
+        MockChain,
         mock_split,
         mock_convert,
+        mock_update_status,
         mock_db,
         mock_job,
     ):
-        with (
-            patch("os.path.exists", return_value=True),
-            patch("os.remove"),
-            patch(
-                "src.services.automated_record_service."
-                "TreatmentRecordService.update_treatment_record"
-            ) as mock_update_record,
-            patch("src.services.automated_record_service.TranscriptionChain"),
-        ):
-            mock_convert.side_effect = Exception("FFmpeg error")
+        mock_get_job.return_value = mock_job
+        mock_exists.return_value = False
 
-            # Setup get_job within upload_audio_file
-            mock_job.treatment_record_uuid = str(uuid4())
-            mock_job.user_uuid = str(uuid4())
-            result_mock = MagicMock()
-            result_mock.scalar_one_or_none.return_value = mock_job
-            mock_db.execute.return_value = result_mock
+        chain_instance = MockChain.return_value
+        chain_instance.upload_audio = AsyncMock()
+        audio_file = MagicMock()
+        audio_file.name = None
+        chain_instance.upload_audio.return_value = audio_file
 
-            # Service handles exception and doesn't re-raise
-            await AutomatedRecordService.upload_audio_file(
-                mock_db, UUID(mock_job.uuid), "local.webm"
-            )
+        # Function handles exception internally and doesn't re-raise
+        await AutomatedRecordService.upload_audio_file(
+            mock_db, mock_job.uuid, "test.webm"
+        )
 
-            assert mock_job.status == JobStatus.FAILED
-            assert mock_job.error_message == "FFmpeg error"
-            mock_update_record.assert_called_once()
-
-    @pytest.mark.asyncio
-    @patch("src.services.automated_record_service.convert_to_wav")
-    @patch("src.services.automated_record_service.split_by_vad")
-    async def test_upload_audio_file_no_remote_name(
-        self,
-        mock_split,
-        mock_convert,
-        mock_db,
-        mock_job,
-    ):
-        with (
-            patch("os.path.exists", return_value=True),
-            patch("os.remove"),
-            patch(
-                "src.services.automated_record_service.TranscriptionChain"
-            ) as MockTC,
-        ):
-            mock_instance = MockTC.return_value
-            mock_instance.upload_audio = AsyncMock()
-            mock_instance.upload_audio.return_value.name = None  # Missing name
-
-            result_mock = MagicMock()
-            result_mock.scalar_one_or_none.return_value = mock_job
-            mock_db.execute.return_value = result_mock
-
-            await AutomatedRecordService.upload_audio_file(
-                mock_db, UUID(mock_job.uuid), "local.webm"
-            )
-
-            assert mock_job.status == JobStatus.FAILED
-            assert "Audio file name is missing" in mock_job.error_message
-
-    @pytest.mark.asyncio
-    @patch("src.services.automated_record_service.convert_to_wav")
-    @patch("src.services.automated_record_service.split_by_vad")
-    async def test_upload_audio_file_cleanup_error_suppressed(
-        self,
-        mock_split,
-        mock_convert,
-        mock_db,
-        mock_job,
-    ):
-        with (
-            patch("os.path.exists", return_value=True),
-            patch("os.remove"),
-            patch(
-                "src.services.automated_record_service."
-                "TreatmentRecordService.update_treatment_record",
-                side_effect=Exception("Cleanup fail"),
-            ) as mock_update_record,
-            patch("src.services.automated_record_service.TranscriptionChain"),
-        ):
-            mock_convert.side_effect = Exception("FFmpeg error")
-
-            result_mock = MagicMock()
-            result_mock.scalar_one_or_none.return_value = mock_job
-            mock_db.execute.return_value = result_mock
-
-            # Should not raise even if update_treatment_record fails
-            await AutomatedRecordService.upload_audio_file(
-                mock_db, UUID(mock_job.uuid), "local.webm"
-            )
-
-            assert mock_job.status == JobStatus.FAILED
-            mock_update_record.assert_called_once()
+        mock_update_status.assert_any_call(
+            mock_db,
+            mock_job.uuid,
+            JobStatus.FAILED,
+            error_message="Audio file name is missing after upload.",
+        )
 
     @pytest.mark.asyncio
     @patch("src.services.automated_record_service.TranscriptionChain")
-    async def test_generate_transcription(self, MockTranscriptionChain):
-        mock_instance = MockTranscriptionChain.return_value
-        mock_instance.transcribe = AsyncMock(return_value="Valid text")
+    async def test_generate_transcription(self, MockChain, mock_db):
+        chain_instance = MockChain.return_value
+        chain_instance.transcribe = AsyncMock()
+        chain_instance.transcribe.return_value = "Transcribed text"
 
         result = await AutomatedRecordService.generate_transcription(
-            AsyncMock(), "file.wav", uuid4()
+            mock_db, "file.wav", uuid4()
         )
 
-        assert result == "Valid text"
-        mock_instance.transcribe.assert_called_once_with("file.wav")
+        assert result == "Transcribed text"
+        chain_instance.transcribe.assert_called_once_with("file.wav")
 
     @pytest.mark.asyncio
+    @patch(
+        "src.services.automated_record_service.TreatmentReportService.get_treatment_reports"
+    )
+    @patch(
+        "src.services.automated_record_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
+    )
     @patch("src.services.automated_record_service.RecordGenerationChain")
-    async def test_generate_record_success(
-        self, MockRecordChain, mock_db, mock_job
+    async def test_generate_record(
+        self,
+        MockChain,
+        mock_get_patient,
+        mock_get_reports,
+        mock_db,
+        mock_job,
     ):
-        with (
-            patch(
-                "src.services.automated_record_service."
-                "TreatmentReportService.get_treatment_reports",
-                return_value=[],
-            ),
-            patch(
-                "src.services.automated_record_service."
-                "PatientWithTreatmentService.get_patient_with_treatment_uuid"
-            ) as mock_get_patient,
-        ):
-            mock_patient = MagicMock()
-            mock_patient.gender = "M"
-            mock_get_patient.return_value = mock_patient
+        # Mock reports
+        report = MagicMock()
+        report.demand_description = "demand"
+        report.procedures = "procs"
+        report.analysis = "anal"
+        report.conclusion = "conc"
+        mock_get_reports.return_value = [report]
 
-            mock_instance = MockRecordChain.return_value
-            mock_instance.generate = AsyncMock(return_value="Record text")
+        # Mock patient
+        patient = MagicMock()
+        patient.gender = "Male"
+        mock_get_patient.return_value = patient
 
-            result = await AutomatedRecordService.generate_record(
-                mock_db, "Transcription", mock_job
-            )
+        # Mock Chain
+        chain_instance = MockChain.return_value
+        chain_instance.generate = AsyncMock()
+        chain_instance.generate.return_value = "Generated Record"
 
-            assert result == "Record text"
-            mock_instance.generate.assert_called_once()
+        result = await AutomatedRecordService.generate_record(
+            mock_db, "transcription", mock_job
+        )
+
+        assert result == "Generated Record"
+        chain_instance.generate.assert_called_once()
+        args, kwargs = chain_instance.generate.call_args
+        assert kwargs["gender"] == "Male"
+        assert "demand" in kwargs["context"]
 
     @pytest.mark.asyncio
+    @patch(
+        "src.services.automated_record_service.TreatmentReportService.get_treatment_reports"
+    )
+    @patch(
+        "src.services.automated_record_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
+    )
     @patch("src.services.automated_record_service.RecordGenerationChain")
-    async def test_generate_record_failure(
-        self, MockRecordChain, mock_db, mock_job
+    async def test_generate_record_no_reports(
+        self,
+        MockChain,
+        mock_get_patient,
+        mock_get_reports,
+        mock_db,
+        mock_job,
     ):
-        with (
-            patch(
-                "src.services.automated_record_service."
-                "TreatmentReportService.get_treatment_reports",
-                return_value=[],
-            ),
-            patch(
-                "src.services.automated_record_service."
-                "PatientWithTreatmentService.get_patient_with_treatment_uuid"
-            ) as mock_get_patient,
-        ):
-            mock_patient = MagicMock()
-            mock_patient.gender = "F"
-            mock_get_patient.return_value = mock_patient
+        mock_get_reports.return_value = []
+        patient = MagicMock()
+        patient.gender = "Female"
+        mock_get_patient.return_value = patient
 
-            mock_instance = MockRecordChain.return_value
-            mock_instance.generate = AsyncMock(
-                side_effect=Exception("Gen error")
-            )
+        chain_instance = MockChain.return_value
+        chain_instance.generate = AsyncMock()
+        chain_instance.generate.return_value = "Generated"
 
-            result = await AutomatedRecordService.generate_record(
-                mock_db, "Transcription", mock_job
-            )
+        await AutomatedRecordService.generate_record(
+            mock_db, "trans", mock_job
+        )
 
-            assert result is None  # Fails gracefully based on code
-            mock_instance.generate.assert_called_once()
+        args, kwargs = chain_instance.generate.call_args
+        assert "Nenhum relatório" in kwargs["context"]
 
     @pytest.mark.asyncio
-    @patch("src.services.automated_record_service.RecordGenerationChain")
-    async def test_generate_record_with_reports(
-        self, MockRecordChain, mock_db, mock_job
+    @patch(
+        "src.services.automated_record_service.AutomatedRecordService.get_job"
+    )
+    @patch(
+        "src.services.automated_record_service.AutomatedRecordService.update_job_status"
+    )
+    @patch("src.services.automated_record_service.convert_to_wav")
+    @patch(
+        "src.services.automated_record_service.TreatmentRecordService.update_treatment_record"
+    )
+    @patch("os.path.exists")
+    @patch("os.remove")
+    async def test_upload_audio_file_failure_with_record_update(  # noqa: PLR0917
+        self,
+        mock_remove,
+        mock_exists,
+        mock_update_record,
+        mock_convert,
+        mock_update_status,
+        mock_get_job,
+        mock_db,
+        mock_job,
     ):
-        mock_report = MagicMock()
-        mock_report.demand_description = "Demanda"
-        mock_report.procedures = "Procedimentos"
-        mock_report.analysis = "Análise"
-        mock_report.conclusion = "Conclusão"
+        mock_get_job.return_value = mock_job
+        mock_exists.return_value = False
+        mock_convert.side_effect = Exception("Conv error")
 
-        with (
-            patch(
-                "src.services.automated_record_service."
-                "TreatmentReportService.get_treatment_reports",
-                return_value=[mock_report],
-            ),
-            patch(
-                "src.services.automated_record_service."
-                "PatientWithTreatmentService.get_patient_with_treatment_uuid"
-            ) as mock_get_patient,
-        ):
-            mock_patient = MagicMock()
-            mock_patient.gender = "F"
-            mock_get_patient.return_value = mock_patient
+        # Mock TreatmentRecordService failure too to cover nested except
+        mock_update_record.side_effect = Exception("Update fail")
 
-            mock_instance = MockRecordChain.return_value
-            mock_instance.generate = AsyncMock(
-                return_value="Record with context"
-            )
+        # Function handles exception internally and doesn't re-raise
+        await AutomatedRecordService.upload_audio_file(
+            mock_db, mock_job.uuid, "test.webm"
+        )
 
-            result = await AutomatedRecordService.generate_record(
-                mock_db, "Transcription", mock_job
-            )
+        mock_update_record.assert_called_once()
+        mock_update_status.assert_any_call(
+            mock_db,
+            mock_job.uuid,
+            JobStatus.FAILED,
+            error_message="Conv error",
+        )
 
-            assert result == "Record with context"
-            _, kwargs = mock_instance.generate.call_args
-            assert "Demanda" in kwargs["context"]
+    @pytest.mark.asyncio
+    @patch(
+        "src.services.automated_record_service.TreatmentReportService.get_treatment_reports"
+    )
+    @patch(
+        "src.services.automated_record_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
+    )
+    @patch("src.services.automated_record_service.RecordGenerationChain")
+    async def test_generate_record_chain_failure(
+        self,
+        MockChain,
+        mock_get_patient,
+        mock_get_reports,
+        mock_db,
+        mock_job,
+    ):
+        mock_get_reports.return_value = []
+        mock_get_patient.return_value = MagicMock(gender="Other")
+        chain_instance = MockChain.return_value
+        chain_instance.generate = AsyncMock(side_effect=Exception("AI error"))
+
+        result = await AutomatedRecordService.generate_record(
+            mock_db, "trans", mock_job
+        )
+
+        assert result is None

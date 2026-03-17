@@ -6,7 +6,11 @@ import pytest
 
 from src.core.exceptions import ForbiddenError, NotFoundError
 from src.models import Treatment
-from src.schemas.treatment_schema import TreatmentCreate, TreatmentUpdate
+from src.schemas import (
+    TreatmentCreate,
+    TreatmentUpdate,
+    TreatmentUpdateInternal,
+)
 from src.services.treatment_service import TreatmentService
 
 
@@ -15,74 +19,107 @@ def mock_db():
     return AsyncMock()
 
 
-class TestCreateTreatmentModel:
-    def test_creates_treatment_from_schema(self):
-        schema = TreatmentCreate(
-            weekday="Monday",
-            start_time=time(9, 0),
-            end_time=time(10, 0),
-        )
-        treatment = TreatmentService._create_treatment_model(schema)
-        assert isinstance(treatment, Treatment)
-        assert treatment.weekday == "Monday"
-        assert treatment.start_time == time(9, 0)
-        assert treatment.end_time == time(10, 0)
+@pytest.fixture
+def mock_treatment():
+    treatment = MagicMock(spec=Treatment)
+    treatment.uuid = uuid4()
+    treatment.user_uuid = "user-123"
+    treatment.patient_uuid = uuid4()
+    return treatment
 
 
-class TestApplyUpdate:
-    def test_apply_update_partial(self):
-        treatment = Treatment(weekday="Monday", start_time=time(9, 0))
-        update = TreatmentUpdate(weekday="Friday")
-        TreatmentService._apply_update(treatment, update)
-        assert treatment.weekday == "Friday"
-        assert treatment.start_time == time(9, 0)  # Unchanged
-
-    def test_apply_update_empty(self):
-        treatment = Treatment(weekday="Monday")
-        update = TreatmentUpdate()
-        TreatmentService._apply_update(treatment, update)
-        assert treatment.weekday == "Monday"
-
-
-class TestGetTreatmentByUUID:
+class TestTreatmentServiceCRUD:
     @pytest.mark.asyncio
-    async def test_get_treatment_not_found(self, mock_db):
+    async def test_get_treatment_by_uuid_success(
+        self, mock_db, mock_treatment
+    ):
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.first.return_value = mock_treatment
+        mock_db.execute.return_value = result_mock
+
+        treatment = await TreatmentService.get_treatment_by_uuid(
+            mock_db, mock_treatment.uuid, mock_treatment.user_uuid
+        )
+
+        assert treatment == mock_treatment
+
+    @pytest.mark.asyncio
+    async def test_get_treatment_by_uuid_not_found(self, mock_db):
         result_mock = MagicMock()
         result_mock.scalars.return_value.first.return_value = None
         mock_db.execute.return_value = result_mock
 
         with pytest.raises(NotFoundError, match="Treatment not found"):
-            await TreatmentService.get_treatment_by_uuid(
-                mock_db, uuid4(), str(uuid4())
-            )
+            await TreatmentService.get_treatment_by_uuid(mock_db, uuid4(), "u")
 
     @pytest.mark.asyncio
-    async def test_get_treatment_forbidden(self, mock_db):
-        user_uuid = str(uuid4())
-        other_user_uuid = str(uuid4())
-        mock_treatment = MagicMock(spec=Treatment)
-        mock_treatment.user_uuid = other_user_uuid
-
+    async def test_get_treatment_by_uuid_forbidden(
+        self, mock_db, mock_treatment
+    ):
         result_mock = MagicMock()
         result_mock.scalars.return_value.first.return_value = mock_treatment
         mock_db.execute.return_value = result_mock
 
         with pytest.raises(ForbiddenError, match="Access denied"):
             await TreatmentService.get_treatment_by_uuid(
-                mock_db, uuid4(), user_uuid
+                mock_db, mock_treatment.uuid, "wrong-user"
             )
 
     @pytest.mark.asyncio
-    async def test_get_treatment_success(self, mock_db):
-        user_uuid = str(uuid4())
-        mock_treatment = MagicMock(spec=Treatment)
-        mock_treatment.user_uuid = user_uuid
+    async def test_get_treatments(self, mock_db, mock_treatment):
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = [mock_treatment]
+        mock_db.execute.return_value = result_mock
 
+        treatments = await TreatmentService.get_treatments(mock_db)
+
+        assert treatments == [mock_treatment]
+
+    @pytest.mark.asyncio
+    async def test_create_treatment(self, mock_db):
+        treatment_in = TreatmentCreate(
+            weekday="Monday",
+            start_time=time(9, 0),
+            end_time=time(10, 0),
+        )
+
+        treatment = await TreatmentService.create_treatment(
+            mock_db, treatment_in
+        )
+
+        assert treatment.weekday == "Monday"
+        mock_db.add.assert_called_once()
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_treatment(self, mock_db, mock_treatment):
+        treatment_in = TreatmentUpdate(weekday="Tuesday")
+
+        updated = await TreatmentService.update_treatment(
+            mock_db, mock_treatment, treatment_in
+        )
+
+        assert updated.weekday == "Tuesday"
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_treatment_internal(self, mock_db, mock_treatment):
+        treatment_in = TreatmentUpdateInternal(status="Inactive")
+
+        updated = await TreatmentService.update_treatment(
+            mock_db, mock_treatment, treatment_in
+        )
+
+        assert updated.status == "Inactive"
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_treatment(self, mock_db, mock_treatment):
         result_mock = MagicMock()
         result_mock.scalars.return_value.first.return_value = mock_treatment
         mock_db.execute.return_value = result_mock
 
-        result = await TreatmentService.get_treatment_by_uuid(
-            mock_db, uuid4(), user_uuid
-        )
-        assert result == mock_treatment
+        await TreatmentService.delete_treatment(mock_db, mock_treatment.uuid)
+
+        mock_db.delete.assert_called_once_with(mock_treatment)
+        mock_db.commit.assert_called_once()
