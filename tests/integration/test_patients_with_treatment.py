@@ -276,9 +276,7 @@ async def test_create_patient_with_invalid_phone(session_client):
     assert "Invalid phone number" in response.json()["detail"]
 
 
-async def test_delete_patient_with_treatment(
-    session_client, db_session
-):
+async def test_delete_patient_with_treatment(session_client, db_session):
     client, user = session_client
     treatment = TreatmentFactory.build(
         user=user, user_uuid=user.uuid, status=TreatmentStatus.ACTIVE
