@@ -1,5 +1,8 @@
 import logging
 import os
+import shutil
+import tempfile
+from datetime import date
 from pathlib import Path
 from uuid import UUID
 
@@ -13,6 +16,7 @@ from src.models.automated_record_job import AutomatedRecordJob, JobStatus
 from src.models.treatment_record_model import RecordStatus
 from src.schemas.treatment_record_schema import (
     InternalTreatmentRecordUpdate,
+    TreatmentRecordCreate,
 )
 from src.services.patient_with_treatment_service import (
     PatientWithTreatmentService,
@@ -21,6 +25,7 @@ from src.services.treatment_record_service import (
     TreatmentRecordService,
 )
 from src.services.treatment_report_service import TreatmentReportService
+from src.services.treatment_service import TreatmentService
 from src.utils.audio_processor import convert_to_wav, split_by_vad
 
 logger = logging.getLogger(__name__)
@@ -46,6 +51,83 @@ class AutomatedRecordService:
         await db.commit()
         await db.refresh(job)
         return job
+
+    @staticmethod
+    async def initialize_job(
+        db: AsyncSession,
+        user_uuid: str,
+        treatment_uuid: UUID | None = None,
+        treatment_record_uuid: UUID | None = None,
+        session_date: date | None = None,
+    ):
+        if treatment_record_uuid:
+            record = await TreatmentRecordService.get_treatment_record(
+                db=db,
+                treatment_record_uuid=treatment_record_uuid,
+                user_uuid=user_uuid,
+            )
+        else:
+            treatment = await TreatmentService.get_treatment_by_uuid(
+                db=db, treatment_uuid=treatment_uuid, user_uuid=user_uuid
+            )
+            record = await TreatmentRecordService.create_treatment_record(
+                db=db,
+                schema=TreatmentRecordCreate(
+                    treatment_uuid=treatment_uuid,
+                    date=session_date,
+                    start_time=treatment.start_time,
+                    end_time=treatment.end_time,
+                    content="Processando áudio e gerando prontuário...",
+                ),
+                user_uuid=user_uuid,
+            )
+
+        job = await AutomatedRecordService.create_job(
+            db=db,
+            treatment_uuid=record.treatment_uuid,
+            user_uuid=user_uuid,
+            treatment_record_uuid=record.uuid,
+        )
+
+        return record, job
+
+    @staticmethod
+    async def prepare_chunk_dir(job_uuid: UUID) -> Path:
+        chunk_dir = Path(tempfile.gettempdir()) / f"chunks_{job_uuid}"
+        chunk_dir.mkdir(parents=True, exist_ok=True)
+        return chunk_dir
+
+    @staticmethod
+    async def save_audio_chunk(
+        job_uuid: UUID, chunk_index: int, chunk_data: bytes
+    ):
+        chunk_dir = await AutomatedRecordService.prepare_chunk_dir(job_uuid)
+        chunk_path = chunk_dir / f"chunk_{chunk_index:05d}"
+        with open(chunk_path, "wb") as f:
+            f.write(chunk_data)
+
+    @staticmethod
+    async def finalize_chunked_upload(
+        db: AsyncSession, job_uuid: UUID, total_chunks: int
+    ) -> str:
+        chunk_dir = await AutomatedRecordService.prepare_chunk_dir(job_uuid)
+        chunks = sorted(list(chunk_dir.glob("chunk_*")))
+
+        if len(chunks) != total_chunks:
+            raise ValueError(
+                f"Missing chunks. Expected {total_chunks}, got {len(chunks)}"
+            )
+
+        final_path = Path(tempfile.gettempdir()) / f"audio_{job_uuid}.webm"
+        with open(final_path, "wb") as outfile:
+            for chunk_file in chunks:
+                with open(chunk_file, "rb") as infile:
+                    shutil.copyfileobj(infile, outfile)
+
+        # Cleanup chunks
+        shutil.rmtree(chunk_dir)
+
+        return str(final_path)
 
     @staticmethod
     async def get_job(db: AsyncSession, job_uuid: UUID):

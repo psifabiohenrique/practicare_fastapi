@@ -38,3 +38,8 @@ class TreatmentRecordRead(TreatmentRecordBase):
     record_number: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AutomatedRecordInitializeResponse(BaseModel):
+    record: TreatmentRecordRead
+    job_uuid: UUID
