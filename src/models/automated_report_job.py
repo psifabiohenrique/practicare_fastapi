@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 
 from sqlalchemy import UUID as SQLUUID
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Column, DateTime, Float, String
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
@@ -33,6 +33,8 @@ class AutomatedReportJob(Base):
     error_message = Column(String, nullable=True)
 
     generated_report_json = Column(String, nullable=True)
+    audio_duration_seconds = Column(Float, nullable=True)
+    audio_duration_after_vad_seconds = Column(Float, nullable=True)
 
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(
