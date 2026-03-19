@@ -2,6 +2,7 @@ import logging
 
 from google import genai
 
+from src.ai.ai_result import AIResult
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.settings import settings
 
@@ -22,7 +23,7 @@ class TranscriptionChain:
                 f"Erro ao enviar áudio para transcrição: {str(e)}"
             ) from e
 
-    async def transcribe(self, file_name: str) -> str:
+    async def transcribe(self, file_name: str) -> AIResult:
         try:
             file = self.client.files.get(name=file_name)
             if file.state != genai.types.FileState.ACTIVE:
@@ -37,7 +38,20 @@ class TranscriptionChain:
                     file,
                 ],
             )
-            return response.text
+
+            input_tokens = 0
+            output_tokens = 0
+            if response.usage_metadata:
+                input_tokens = response.usage_metadata.prompt_token_count or 0
+                output_tokens = (
+                    response.usage_metadata.candidates_token_count or 0
+                )
+
+            return AIResult(
+                content=response.text,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            )
 
         except AITransientError as e:
             raise e

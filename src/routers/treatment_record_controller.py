@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from typing import Annotated
 from uuid import UUID
@@ -23,6 +24,7 @@ from src.services.treatment_record_service import TreatmentRecordService
 from src.tasks.record_generation import transcribe_audio
 
 router = APIRouter(prefix="/treatment-records", tags=["Treatment records"])
+logger = logging.getLogger(__name__)
 
 
 @router.get(
@@ -158,6 +160,12 @@ async def finalize_audio_upload(
         return {"status": "processing"}
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error finalizing audio upload: {e}")
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao processar áudio: {str(e)}",
+        )
 
 
 @router.patch("/{treatment_record_uuid}", response_model=TreatmentRecordRead)

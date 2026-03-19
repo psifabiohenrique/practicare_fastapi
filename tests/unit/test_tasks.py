@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import pytest
 
+from src.ai.ai_result import AIResult
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.models.automated_record_job import JobStatus
 from src.models.automated_report_job import ReportJobStatus
@@ -66,7 +67,11 @@ class TestRecordGenerationTasks:
     ):
         mock_gas.return_value = mock_db
         mock_ars.generate_transcription = AsyncMock(
-            return_value="transcription result"
+            return_value=AIResult(
+                content="transcription result",
+                input_tokens=10,
+                output_tokens=10,
+            )
         )
         mock_ars.update_job_status = AsyncMock()
 
@@ -86,7 +91,9 @@ class TestRecordGenerationTasks:
     ):
         mock_gas.return_value = mock_db
         mock_ars.update_job_status = AsyncMock()
-        mock_ars.generate_transcription = AsyncMock(return_value="")
+        mock_ars.generate_transcription = AsyncMock(
+            return_value=AIResult(content="", input_tokens=0, output_tokens=0)
+        )
 
         with pytest.raises(AITransientError):
             await transcribe_audio_logic(job_uuid, "test.wav")
@@ -104,7 +111,11 @@ class TestRecordGenerationTasks:
         mock_job.user_uuid = str(uuid4())
         mock_job.transcription = "some transcription"
         mock_ars.get_job = AsyncMock(return_value=mock_job)
-        mock_ars.generate_record = AsyncMock(return_value="record content")
+        mock_ars.generate_record = AsyncMock(
+            return_value=AIResult(
+                content="record content", input_tokens=50, output_tokens=50
+            )
+        )
         mock_ars.update_job_status = AsyncMock()
         mock_trs.update_treatment_record = AsyncMock()
 

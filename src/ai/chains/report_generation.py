@@ -8,6 +8,7 @@ from google import genai
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 
+from src.ai.ai_result import AIResult
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.ai.prompts.report_prompts import REPORT_GENERATION_SYSTEM_PROMPT
 from src.settings import settings
@@ -52,7 +53,7 @@ class ReportGenerationChain:
         gender: str,
         previous_report_context: str,
         records_context: str,
-    ) -> dict:
+    ) -> AIResult:
         """
         Generates a structured report from records and context using OpenAI directly.
         """  # noqa: E501
@@ -77,9 +78,18 @@ class ReportGenerationChain:
                     # temperature=0,
                     response_format={"type": "json_object"},
                 )
+                input_tokens = 0
+                output_tokens = 0
+                if response.usage:
+                    input_tokens = response.usage.prompt_tokens or 0
+                    output_tokens = response.usage.completion_tokens or 0
 
                 content = response.choices[0].message.content or "{}"
-                return json.loads(content)
+                return AIResult(
+                    content=json.loads(content),
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                )
             elif self.provider == "google":
                 response = self.client.models.generate_content(
                     model=self.model,
@@ -91,10 +101,23 @@ class ReportGenerationChain:
                         f"Gere o relatório para o paciente {patient_first_name} em JSON estruturado."  # noqa: E501
                     ],
                 )
+                input_tokens = 0
+                output_tokens = 0
+                if response.usage_metadata:
+                    input_tokens = (
+                        response.usage_metadata.prompt_token_count or 0
+                    )
+                    output_tokens = (
+                        response.usage_metadata.candidates_token_count or 0
+                    )
                 report = ReportJSON.model_validate_json(
                     extract_json(response.text)
                 )
-                return report
+                return AIResult(
+                    content=report,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                )
 
         except (
             httpx.ConnectError,

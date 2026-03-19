@@ -5,6 +5,7 @@ from .patient_model import Gender, Patient
 from .treatment_model import Treatment, TreatmentStatus, Weekdays
 from .treatment_record_model import TreatmentRecord
 from .treatment_report_model import TreatmentReport
+from .usage_statistic import ProcessType, UsageStatistic
 from .user_model import User
 
 __all__ = [
@@ -21,4 +22,6 @@ __all__ = [
     "AutomatedReportJob",
     "ReportJobStatus",
     "AuthSession",
+    "UsageStatistic",
+    "ProcessType",
 ]

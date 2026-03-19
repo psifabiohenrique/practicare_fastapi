@@ -1,6 +1,7 @@
 from google import genai
 from openai import AsyncOpenAI
 
+from src.ai.ai_result import AIResult
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.ai.prompts.record_prompts import RECORD_GENERATION_SYSTEM_PROMPT
 from src.settings import settings
@@ -20,7 +21,7 @@ class RecordGenerationChain:
 
     async def generate(
         self, transcription: str, gender: str, context: str
-    ) -> str:
+    ) -> AIResult:
         """
         Generates a structured record from a transcription using OpenAI directly.
         """  # noqa: E501
@@ -40,7 +41,16 @@ class RecordGenerationChain:
                     ],
                     # temperature=0,
                 )
-                return response.choices[0].message.content or ""
+                input_tokens = 0
+                output_tokens = 0
+                if response.usage:
+                    input_tokens = response.usage.prompt_tokens or 0
+                    output_tokens = response.usage.completion_tokens or 0
+                return AIResult(
+                    content=response.choices[0].message.content or "",
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                )
             elif self.provider == "google":
                 response = self.client.models.generate_content(
                     model=self.model,
@@ -49,7 +59,20 @@ class RecordGenerationChain:
                     ),
                     contents=transcription,
                 )
-                return response.text
+                input_tokens = 0
+                output_tokens = 0
+                if response.usage_metadata:
+                    input_tokens = (
+                        response.usage_metadata.prompt_token_count or 0
+                    )
+                    output_tokens = (
+                        response.usage_metadata.candidates_token_count or 0
+                    )
+                return AIResult(
+                    content=response.text,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                )
 
         except Exception as e:
             err_msg = str(e).lower()

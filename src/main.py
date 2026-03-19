@@ -18,6 +18,7 @@ from src.core.exceptions import (
 )
 from src.routers import (
     auth_controller,
+    dashboard_controller,
     patients_with_treatment_controller,
     treatment_record_controller,
     treatment_report_controller,
@@ -93,6 +94,7 @@ app.include_router(users_controller.router)
 app.include_router(patients_with_treatment_controller.router)
 app.include_router(treatment_record_controller.router)
 app.include_router(treatment_report_controller.router)
+app.include_router(dashboard_controller.router)
 
 
 @app.get("/")

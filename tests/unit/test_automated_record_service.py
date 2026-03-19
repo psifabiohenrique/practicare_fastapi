@@ -4,9 +4,11 @@ from uuid import uuid4
 
 import pytest
 
+from src.ai.ai_result import AIResult
 from src.core.exceptions import NotFoundError
 from src.models.automated_record_job import AutomatedRecordJob, JobStatus
 from src.services.automated_record_service import AutomatedRecordService
+from src.utils.audio_processor import VADResult
 
 
 @pytest.fixture
@@ -214,6 +216,7 @@ class TestAutomatedRecordServiceLifecycle:
 
 class TestAutomatedRecordServiceProcessing:
     @pytest.mark.asyncio
+    @patch("src.services.automated_record_service.UsageStatisticService")
     @patch(
         "src.services.automated_record_service.AutomatedRecordService.get_job"
     )
@@ -234,11 +237,18 @@ class TestAutomatedRecordServiceProcessing:
         mock_convert,
         mock_update_status,
         mock_get_job,
+        mock_usage_service,
         mock_db,
         mock_job,
     ):
         mock_get_job.return_value = mock_job
+        mock_usage_service.create_statistic = AsyncMock()
         mock_exists.return_value = True
+        mock_split.return_value = VADResult(
+            output_path="path_vad.wav",
+            original_duration_seconds=10.0,
+            vad_duration_seconds=8.0,
+        )
 
         chain_instance = MockChain.return_value
         chain_instance.upload_audio = AsyncMock()
@@ -255,8 +265,11 @@ class TestAutomatedRecordServiceProcessing:
         mock_split.assert_called_once()
         assert mock_update_status.call_count == 2
         assert mock_remove.call_count == 3
+        assert mock_job.audio_duration_seconds == 10.0
+        assert mock_job.audio_duration_after_vad_seconds == 8.0
 
     @pytest.mark.asyncio
+    @patch("src.services.automated_record_service.UsageStatisticService")
     @patch(
         "src.services.automated_record_service.AutomatedRecordService.update_job_status"
     )
@@ -277,11 +290,17 @@ class TestAutomatedRecordServiceProcessing:
         mock_split,
         mock_convert,
         mock_update_status,
+        mock_usage_service,
         mock_db,
         mock_job,
     ):
         mock_get_job.return_value = mock_job
         mock_exists.return_value = False
+        mock_split.return_value = VADResult(
+            output_path="path_vad.wav",
+            original_duration_seconds=10.0,
+            vad_duration_seconds=8.0,
+        )
 
         chain_instance = MockChain.return_value
         chain_instance.upload_audio = AsyncMock()
@@ -289,10 +308,11 @@ class TestAutomatedRecordServiceProcessing:
         audio_file.name = None
         chain_instance.upload_audio.return_value = audio_file
 
-        # Function handles exception internally and doesn't re-raise
-        await AutomatedRecordService.upload_audio_file(
-            mock_db, mock_job.uuid, "test.webm"
-        )
+        # Function now re-raises exceptions
+        with pytest.raises(NotFoundError):
+            await AutomatedRecordService.upload_audio_file(
+                mock_db, mock_job.uuid, "test.webm"
+            )
 
         mock_update_status.assert_any_call(
             mock_db,
@@ -302,20 +322,33 @@ class TestAutomatedRecordServiceProcessing:
         )
 
     @pytest.mark.asyncio
+    @patch("src.services.automated_record_service.UsageStatisticService")
+    @patch(
+        "src.services.automated_record_service.AutomatedRecordService.get_job"
+    )
     @patch("src.services.automated_record_service.TranscriptionChain")
-    async def test_generate_transcription(self, MockChain, mock_db):
+    async def test_generate_transcription(
+        self, MockChain, mock_get_job, mock_usage_service, mock_db, mock_job
+    ):
+        mock_get_job.return_value = mock_job
+        mock_usage_service.create_statistic = AsyncMock()
         chain_instance = MockChain.return_value
         chain_instance.transcribe = AsyncMock()
-        chain_instance.transcribe.return_value = "Transcribed text"
-
-        result = await AutomatedRecordService.generate_transcription(
-            mock_db, "file.wav", uuid4()
+        chain_instance.transcribe.return_value = AIResult(
+            content="Transcribed text", input_tokens=100, output_tokens=200
         )
 
-        assert result == "Transcribed text"
+        result = await AutomatedRecordService.generate_transcription(
+            mock_db, "file.wav", mock_job.uuid
+        )
+
+        assert isinstance(result, AIResult)
+        assert result.content == "Transcribed text"
         chain_instance.transcribe.assert_called_once_with("file.wav")
+        mock_usage_service.create_statistic.assert_called_once()
 
     @pytest.mark.asyncio
+    @patch("src.services.automated_record_service.UsageStatisticService")
     @patch(
         "src.services.automated_record_service.TreatmentReportService.get_treatment_reports"
     )
@@ -323,11 +356,12 @@ class TestAutomatedRecordServiceProcessing:
         "src.services.automated_record_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
     )
     @patch("src.services.automated_record_service.RecordGenerationChain")
-    async def test_generate_record(
+    async def test_generate_record(  # noqa: PLR0917
         self,
         MockChain,
         mock_get_patient,
         mock_get_reports,
+        mock_usage_service,
         mock_db,
         mock_job,
     ):
@@ -344,22 +378,29 @@ class TestAutomatedRecordServiceProcessing:
         patient.gender = "Male"
         mock_get_patient.return_value = patient
 
+        # Mock UsageStatisticService
+        mock_usage_service.create_statistic = AsyncMock()
+
         # Mock Chain
         chain_instance = MockChain.return_value
         chain_instance.generate = AsyncMock()
-        chain_instance.generate.return_value = "Generated Record"
+        chain_instance.generate.return_value = AIResult(
+            content="Generated Record", input_tokens=300, output_tokens=400
+        )
 
         result = await AutomatedRecordService.generate_record(
             mock_db, "transcription", mock_job
         )
 
-        assert result == "Generated Record"
+        assert result.content == "Generated Record"
         chain_instance.generate.assert_called_once()
+        mock_usage_service.create_statistic.assert_called_once()
         args, kwargs = chain_instance.generate.call_args
         assert kwargs["gender"] == "Male"
         assert "demand" in kwargs["context"]
 
     @pytest.mark.asyncio
+    @patch("src.services.automated_record_service.UsageStatisticService")
     @patch(
         "src.services.automated_record_service.TreatmentReportService.get_treatment_reports"
     )
@@ -367,11 +408,12 @@ class TestAutomatedRecordServiceProcessing:
         "src.services.automated_record_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
     )
     @patch("src.services.automated_record_service.RecordGenerationChain")
-    async def test_generate_record_no_reports(
+    async def test_generate_record_no_reports(  # noqa: PLR0917
         self,
         MockChain,
         mock_get_patient,
         mock_get_reports,
+        mock_usage_service,
         mock_db,
         mock_job,
     ):
@@ -380,9 +422,13 @@ class TestAutomatedRecordServiceProcessing:
         patient.gender = "Female"
         mock_get_patient.return_value = patient
 
+        mock_usage_service.create_statistic = AsyncMock()
+
         chain_instance = MockChain.return_value
         chain_instance.generate = AsyncMock()
-        chain_instance.generate.return_value = "Generated"
+        chain_instance.generate.return_value = AIResult(
+            content="Generated", input_tokens=10, output_tokens=10
+        )
 
         await AutomatedRecordService.generate_record(
             mock_db, "trans", mock_job
@@ -422,10 +468,11 @@ class TestAutomatedRecordServiceProcessing:
         # Mock TreatmentRecordService failure too to cover nested except
         mock_update_record.side_effect = Exception("Update fail")
 
-        # Function handles exception internally and doesn't re-raise
-        await AutomatedRecordService.upload_audio_file(
-            mock_db, mock_job.uuid, "test.webm"
-        )
+        # Function now re-raises exceptions
+        with pytest.raises(Exception, match="Conv error"):
+            await AutomatedRecordService.upload_audio_file(
+                mock_db, mock_job.uuid, "test.webm"
+            )
 
         mock_update_record.assert_called_once()
         mock_update_status.assert_any_call(
@@ -436,6 +483,7 @@ class TestAutomatedRecordServiceProcessing:
         )
 
     @pytest.mark.asyncio
+    @patch("src.services.automated_record_service.UsageStatisticService")
     @patch(
         "src.services.automated_record_service.TreatmentReportService.get_treatment_reports"
     )
@@ -443,11 +491,12 @@ class TestAutomatedRecordServiceProcessing:
         "src.services.automated_record_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
     )
     @patch("src.services.automated_record_service.RecordGenerationChain")
-    async def test_generate_record_chain_failure(
+    async def test_generate_record_chain_failure(  # noqa: PLR0917
         self,
         MockChain,
         mock_get_patient,
         mock_get_reports,
+        mock_usage_service,
         mock_db,
         mock_job,
     ):

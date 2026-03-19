@@ -3,6 +3,7 @@ import math
 import os
 import subprocess
 import wave
+from dataclasses import dataclass
 
 import webrtcvad
 
@@ -118,15 +119,36 @@ def convert_to_wav(input_path: str, output_path: str) -> str:
     return output_path
 
 
+def get_wav_duration(wav_path: str) -> float:
+    """Gets the duration of a WAV file in seconds using the wave module."""
+    with wave.open(wav_path, "rb") as wf:
+        frames = wf.getnframes()
+        rate = wf.getframerate()
+        if rate == 0:
+            return 0.0
+        return frames / rate
+
+
+@dataclass
+class VADResult:
+    """Result of VAD processing with duration metadata."""
+
+    output_path: str
+    original_duration_seconds: float
+    vad_duration_seconds: float
+
+
 FRAME_MS = 30
 SILENCE_THRESHOLD_FRAMES = 10  # ~300ms
 MAX_CHUNK_BYTES = 20 * 1024 * 1024  # 20 MB
 
 
-def split_by_vad(wav_path: str, output_dir: str) -> str:
+def split_by_vad(wav_path: str, output_dir: str) -> VADResult:
     vad = webrtcvad.Vad(1)
 
     os.makedirs(output_dir, exist_ok=True)
+
+    original_duration = get_wav_duration(wav_path)
 
     input_name = os.path.splitext(os.path.basename(wav_path))[0]
     output_path = os.path.join(output_dir, f"{input_name}_vad.wav")
@@ -176,7 +198,13 @@ def split_by_vad(wav_path: str, output_dir: str) -> str:
         os.remove(output_path)
         raise ValueError("No speech detected in audio.")
 
-    return output_path
+    vad_duration = get_wav_duration(output_path)
+
+    return VADResult(
+        output_path=output_path,
+        original_duration_seconds=original_duration,
+        vad_duration_seconds=vad_duration,
+    )
 
 
 def save_segment(

@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+from src.ai.ai_result import AIResult
 from src.ai.chains.record_generation import RecordGenerationChain
 from src.ai.chains.report_generation import ReportGenerationChain, extract_json
 from src.ai.chains.transcription import TranscriptionChain
@@ -65,7 +66,8 @@ class TestTranscriptionChain:
             chain = TranscriptionChain()
             result = await chain.transcribe("file_id")
 
-            assert result == "transcribed text"
+            assert isinstance(result, AIResult)
+            assert result.content == "transcribed text"
             mock_client_inst.files.get.assert_called_once_with(name="file_id")
 
     @pytest.mark.asyncio
@@ -137,7 +139,8 @@ class TestRecordGenerationChain:
         chain = RecordGenerationChain(provider="openai")
         result = await chain.generate("transcription", "male", "context")
 
-        assert result == "generated record"
+        assert isinstance(result, AIResult)
+        assert result.content == "generated record"
 
     @pytest.mark.asyncio
     @patch("src.ai.chains.record_generation.genai.Client")
@@ -150,7 +153,8 @@ class TestRecordGenerationChain:
         chain = RecordGenerationChain(provider="google")
         result = await chain.generate("transcription", "male", "context")
 
-        assert result == "generated record"
+        assert isinstance(result, AIResult)
+        assert result.content == "generated record"
 
     @pytest.mark.asyncio
     @patch("src.ai.chains.record_generation.AsyncOpenAI")
@@ -217,7 +221,8 @@ class TestReportGenerationChain:
         chain = ReportGenerationChain(provider="openai")
         result = await chain.generate("John", "male", "prev", "recs")
 
-        assert result == report_data
+        assert isinstance(result, AIResult)
+        assert result.content == report_data
 
     @pytest.mark.asyncio
     @patch("src.ai.chains.report_generation.genai.Client")
@@ -237,7 +242,8 @@ class TestReportGenerationChain:
         result = await chain.generate("John", "male", "prev", "recs")
 
         # Google provider uses Pydantic validation and returns a Pydantic model
-        assert result.demand_description == "d"
+        assert isinstance(result, AIResult)
+        assert result.content.demand_description == "d"
 
     @pytest.mark.asyncio
     @patch("src.ai.chains.report_generation.AsyncOpenAI")

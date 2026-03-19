@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from src.utils.audio_processor import (
+    VADResult,
     convert_to_wav,
     get_audio_duration,
     split_audio,
@@ -152,12 +153,15 @@ class TestAudioProcessor:
             data = struct.pack("<" + "h" * len(all_samples), *all_samples)
             wf.writeframes(data)
 
-        output_path = split_by_vad(path, temp_audio_dir)
-        assert os.path.exists(output_path)
-        assert "_vad.wav" in output_path
+        vad_result = split_by_vad(path, temp_audio_dir)
+        assert isinstance(vad_result, VADResult)
+        assert os.path.exists(vad_result.output_path)
+        assert "_vad.wav" in vad_result.output_path
+        assert vad_result.original_duration_seconds > 0
+        assert vad_result.vad_duration_seconds > 0
 
         # Duration should be less than 1.5s because silence was removed
-        duration = get_audio_duration(output_path)
+        duration = get_audio_duration(vad_result.output_path)
         assert duration < 1.5
 
     def test_split_by_vad_no_speech(self, temp_audio_dir):

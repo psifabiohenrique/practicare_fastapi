@@ -39,9 +39,10 @@ async def transcribe_audio_logic(job_uuid: UUID, file_name: str) -> None:
         status=JobStatus.TRANSCRIBING,
     )
 
-    transcription = await AutomatedRecordService.generate_transcription(
+    result = await AutomatedRecordService.generate_transcription(
         db, file_name, job_uuid
     )
+    transcription = result.content
     if not isinstance(transcription, str) or not transcription.strip():
         raise AITransientError()
 
@@ -65,12 +66,18 @@ async def generate_record_logic(job_uuid: UUID):
 
     job = await AutomatedRecordService.get_job(db, job_uuid)
 
-    record_text = await AutomatedRecordService.generate_record(
+    result = await AutomatedRecordService.generate_record(
         db, job.transcription, job
     )
 
-    if not isinstance(record_text, str) or not record_text.strip():
+    if (
+        not result
+        or not isinstance(result.content, str)
+        or not result.content.strip()
+    ):  # noqa: E501
         raise AITransientError("Registro de prontuário em formato indevido.")
+
+    record_text = result.content
 
     await TreatmentRecordService.update_treatment_record(
         db=db,

@@ -9,12 +9,15 @@ from src.core.exceptions import NotFoundError
 from src.models import TreatmentReport
 from src.models.automated_report_job import AutomatedReportJob, ReportJobStatus
 from src.models.treatment_report_model import ReportStatus
+from src.models.usage_statistic import ProcessType
+from src.schemas.dashboard_schema import UsageStatisticCreate
 from src.schemas.treatment_report_schema import InternalTreatmentReportUpdate
 from src.services.patient_with_treatment_service import (
     PatientWithTreatmentService,
 )
 from src.services.treatment_record_service import TreatmentRecordService
 from src.services.treatment_report_service import TreatmentReportService
+from src.services.usage_statistic_service import UsageStatisticService
 
 logger = logging.getLogger(__name__)
 
@@ -180,11 +183,25 @@ class AutomatedReportService:
 
         # 5. Chamar IA
         chain = ReportGenerationChain()
-        report_data = await chain.generate(
+        result = await chain.generate(
             patient_first_name=patient_first_name,
             gender=gender,
             previous_report_context=previous_report_context,
             records_context=records_context,
+        )
+
+        report_data = result.content
+
+        # Save report generation usage statistic
+        await UsageStatisticService.create_statistic(
+            db,
+            UsageStatisticCreate(
+                user_uuid=str(job.user_uuid),
+                job_uuid=str(job.uuid),
+                process_type=ProcessType.REPORT_GENERATION,
+                input_tokens=result.input_tokens,
+                output_tokens=result.output_tokens,
+            ),
         )
 
         # 6. Atualizar o relatório

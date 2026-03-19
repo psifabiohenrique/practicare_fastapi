@@ -9,11 +9,14 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.ai.ai_result import AIResult
 from src.ai.chains.record_generation import RecordGenerationChain
 from src.ai.chains.transcription import TranscriptionChain
 from src.core.exceptions import NotFoundError
 from src.models.automated_record_job import AutomatedRecordJob, JobStatus
 from src.models.treatment_record_model import RecordStatus
+from src.models.usage_statistic import ProcessType
+from src.schemas.dashboard_schema import UsageStatisticCreate
 from src.schemas.treatment_record_schema import (
     InternalTreatmentRecordUpdate,
     TreatmentRecordCreate,
@@ -26,6 +29,7 @@ from src.services.treatment_record_service import (
 )
 from src.services.treatment_report_service import TreatmentReportService
 from src.services.treatment_service import TreatmentService
+from src.services.usage_statistic_service import UsageStatisticService
 from src.utils.audio_processor import convert_to_wav, split_by_vad
 
 logger = logging.getLogger(__name__)
@@ -164,7 +168,7 @@ class AutomatedRecordService:
 
     @staticmethod
     async def upload_audio_file(
-        db: AsyncSession,  # AsyncSession factory or session
+        db: AsyncSession,
         job_uuid: UUID,
         audio_path: str,
     ):
@@ -172,53 +176,41 @@ class AutomatedRecordService:
         Main background task for processing an automated record job.
         """
         job = await AutomatedRecordService.get_job(db, job_uuid)
+        converted_path = audio_path.replace(".webm", ".wav")
+        reduced_path = None
+
         try:
             # 1. Update status to TRANSCRIBING
             await AutomatedRecordService.update_job_status(
                 db, job_uuid, JobStatus.TRANSCRIBING
             )
-            try:
-                converted_path = audio_path.replace(".webm", ".wav")
-                reduced_path = converted_path.replace(".wav", "_reduced.wav")
-                directory = Path(reduced_path).parent
 
-                convert_to_wav(audio_path, converted_path)
-                reduced_path = split_by_vad(converted_path, directory)
-                transcription_chain = TranscriptionChain()
-                audio_file_name = await transcription_chain.upload_audio(
-                    reduced_path
-                )
-                if not audio_file_name.name:
-                    await AutomatedRecordService.update_job_status(
-                        db,
-                        job_uuid,
-                        JobStatus.FAILED,
-                        error_message="Audio file upload failed.",
-                    )
-                    raise NotFoundError(
-                        "Audio file name is missing after upload."
-                    )
-                await AutomatedRecordService.update_job_status(
-                    db,
-                    job_uuid,
-                    JobStatus.TRANSCRIBED,
-                    audio_path=audio_file_name.name,
-                )
-                return audio_file_name
-            except Exception as e:
-                await AutomatedRecordService.update_job_status(
-                    db, job_uuid, JobStatus.FAILED, error_message=str(e)
-                )
-                raise e
+            directory = Path(converted_path).parent
+            convert_to_wav(audio_path, converted_path)
+            vad_result = split_by_vad(converted_path, directory)
+            reduced_path = vad_result.output_path
 
-            finally:
-                # Cleanup temporary audio file
-                if os.path.exists(audio_path):
-                    os.remove(audio_path)
-                if os.path.exists(converted_path):
-                    os.remove(converted_path)
-                if os.path.exists(reduced_path):
-                    os.remove(reduced_path)
+            # Store durations on the job for later use
+            job.audio_duration_seconds = vad_result.original_duration_seconds
+            job.audio_duration_after_vad_seconds = (
+                vad_result.vad_duration_seconds
+            )
+
+            transcription_chain = TranscriptionChain()
+            audio_file_name = await transcription_chain.upload_audio(
+                reduced_path
+            )
+
+            if not audio_file_name or not audio_file_name.name:
+                raise NotFoundError("Audio file name is missing after upload.")
+
+            await AutomatedRecordService.update_job_status(
+                db,
+                job_uuid,
+                JobStatus.TRANSCRIBED,
+                audio_path=audio_file_name.name,
+            )
+            return audio_file_name
 
         except Exception as e:
             logger.error(f"Error processing job {job_uuid}: {e}")
@@ -226,7 +218,6 @@ class AutomatedRecordService:
                 db, job_uuid, JobStatus.FAILED, error_message=str(e)
             )
             # Update treatment record status to failed
-
             try:
                 await TreatmentRecordService.update_treatment_record(
                     db,
@@ -236,20 +227,49 @@ class AutomatedRecordService:
                 )
             except Exception:
                 pass
+            raise e
+
+        finally:
+            # Cleanup temporary audio files
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
+            if os.path.exists(converted_path):
+                os.remove(converted_path)
+            if reduced_path and os.path.exists(reduced_path):
+                os.remove(reduced_path)
 
     @staticmethod
     async def generate_transcription(
         db: AsyncSession, file_name: str, job_uuid: UUID
-    ) -> str:
-        # job = await AutomatedRecordService.get_job(db, job_uuid)
+    ) -> AIResult:
+        job = await AutomatedRecordService.get_job(db, job_uuid)
         transcription_chain = TranscriptionChain()
-        transcription = await transcription_chain.transcribe(file_name)
-        return transcription
+        result = await transcription_chain.transcribe(file_name)
+
+        # Save transcription usage statistic
+        await UsageStatisticService.create_statistic(
+            db,
+            UsageStatisticCreate(
+                user_uuid=str(job.user_uuid),
+                job_uuid=str(job.uuid),
+                process_type=ProcessType.TRANSCRIPTION,
+                input_tokens=result.input_tokens,
+                output_tokens=result.output_tokens,
+                audio_duration_seconds=getattr(
+                    job, "audio_duration_seconds", None
+                ),
+                audio_duration_after_vad_seconds=getattr(
+                    job, "audio_duration_after_vad_seconds", None
+                ),
+            ),
+        )
+
+        return result
 
     @staticmethod
     async def generate_record(
         db: AsyncSession, transcription: str, job: AutomatedRecordJob
-    ) -> str:
+    ) -> AIResult:
         report_list = await TreatmentReportService.get_treatment_reports(
             db=db,
             treatment_uuid=job.treatment_uuid,
@@ -277,11 +297,24 @@ class AutomatedRecordService:
 
         record_chain = RecordGenerationChain()
         try:
-            record_text = await record_chain.generate(
+            result = await record_chain.generate(
                 transcription=transcription,
                 gender=treatment_patient.gender,
                 context=last_report_context,
             )
-            return record_text
+
+            # Save record generation usage statistic
+            await UsageStatisticService.create_statistic(
+                db,
+                UsageStatisticCreate(
+                    user_uuid=str(job.user_uuid),
+                    job_uuid=str(job.uuid),
+                    process_type=ProcessType.RECORD_GENERATION,
+                    input_tokens=result.input_tokens,
+                    output_tokens=result.output_tokens,
+                ),
+            )
+
+            return result
         except Exception as e:
             logger.error(e)

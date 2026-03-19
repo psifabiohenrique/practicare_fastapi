@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import pytest
 
+from src.ai.ai_result import AIResult
 from src.core.exceptions import NotFoundError
 from src.models.automated_report_job import AutomatedReportJob, ReportJobStatus
 from src.services.automated_report_service import AutomatedReportService
@@ -148,6 +149,7 @@ class TestAutomatedReportServiceProcessing:
         mock_update_report.assert_called_once()
 
     @pytest.mark.asyncio
+    @patch("src.services.automated_report_service.UsageStatisticService")
     @patch(
         "src.services.automated_report_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
     )
@@ -168,6 +170,7 @@ class TestAutomatedReportServiceProcessing:
         mock_get_records,
         mock_get_report,
         mock_get_patient,
+        mock_usage_service,
         mock_db,
         mock_job,
     ):
@@ -200,6 +203,8 @@ class TestAutomatedReportServiceProcessing:
         record.content = "Session content"
         mock_get_records.return_value = [record]
 
+        mock_usage_service.create_statistic = AsyncMock()
+
         # Mock AI Chain
         chain_instance = MockChain.return_value
         chain_instance.generate = AsyncMock()
@@ -208,7 +213,9 @@ class TestAutomatedReportServiceProcessing:
         report_data.procedures = "new procs"
         report_data.analysis = "new anal"
         report_data.conclusion = "new conc"
-        chain_instance.generate.return_value = report_data
+        chain_instance.generate.return_value = AIResult(
+            content=report_data, input_tokens=50, output_tokens=50
+        )
 
         result = await AutomatedReportService.generate_report_content(
             mock_db, mock_job
@@ -217,6 +224,7 @@ class TestAutomatedReportServiceProcessing:
         assert result == report_data
         mock_update_report.assert_called_once()
         chain_instance.generate.assert_called_once()
+        mock_usage_service.create_statistic.assert_called_once()
 
     @pytest.mark.asyncio
     @patch(
@@ -257,6 +265,7 @@ class TestAutomatedReportServiceProcessing:
         )
 
     @pytest.mark.asyncio
+    @patch("src.services.automated_report_service.UsageStatisticService")
     @patch(
         "src.services.automated_report_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
     )
@@ -277,6 +286,7 @@ class TestAutomatedReportServiceProcessing:
         mock_get_records,
         mock_get_report,
         mock_get_patient,
+        mock_usage_service,
         mock_db,
         mock_job,
     ):
@@ -298,6 +308,8 @@ class TestAutomatedReportServiceProcessing:
         # Mock records (Empty)
         mock_get_records.return_value = []
 
+        mock_usage_service.create_statistic = AsyncMock()
+
         # Mock AI Chain return value properly with strings
         report_data = MagicMock()
         report_data.demand_description = "demand"
@@ -307,11 +319,14 @@ class TestAutomatedReportServiceProcessing:
 
         chain_instance = MockChain.return_value
         chain_instance.generate = AsyncMock()
-        chain_instance.generate.return_value = report_data
+        chain_instance.generate.return_value = AIResult(
+            content=report_data, input_tokens=1, output_tokens=1
+        )
 
         await AutomatedReportService.generate_report_content(mock_db, mock_job)
 
         chain_instance.generate.assert_called_once()
+        mock_usage_service.create_statistic.assert_called_once()
         # Verify context strings passed to AI
         args, kwargs = chain_instance.generate.call_args
         assert (
