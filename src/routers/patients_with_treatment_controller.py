@@ -142,5 +142,4 @@ async def delete_patient_with_treatment(
     result = await PatientWithTreatmentService.change_treatment_status(
         db=db, user_uuid=current_user.uuid, treatment_uuid=treatment_uuid
     )
-    print(result.__dict__)
     return result

@@ -21,9 +21,10 @@ from tests.factories import (
 
 
 @pytest.fixture(autouse=True)
-def mock_audio_dir(tmp_path):
-    """Redirect audio operations to a temporary directory during tests."""
-    settings.BASE_AUDIO_DIR = tmp_path
+def mock_storage_dirs(tmp_path):
+    """Redirect audio and log operations to temporary directories."""
+    settings.BASE_AUDIO_DIR = tmp_path / "audio"
+    settings.LOG_DIR = tmp_path / "logs"
 
 
 @pytest.fixture(scope="session")

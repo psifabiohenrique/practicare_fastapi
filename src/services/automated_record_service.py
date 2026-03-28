@@ -54,6 +54,14 @@ class AutomatedRecordService:
         db.add(job)
         await db.commit()
         await db.refresh(job)
+        logger.info(
+            "Novo job de prontuário criado",
+            extra={
+                "job_uuid": str(job.uuid),
+                "treatment_uuid": str(treatment_uuid),
+                "user_uuid": user_uuid,
+            },
+        )
         return job
 
     @staticmethod

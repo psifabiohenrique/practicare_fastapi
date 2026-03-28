@@ -44,6 +44,7 @@ networks:
     command: celery -A src.celery_app worker -l info --concurrency=1
     volumes:
       - data:/data
+      - ./logs:/data/logs
     env_file:
       - .env-docker
     depends_on:

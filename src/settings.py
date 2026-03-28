@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str
     OPENAI_API_KEY: str
     BASE_AUDIO_DIR: Path = Path("/data/audio")
+    LOG_DIR: Path = Path("/data/logs")
+    LOG_MAX_BYTES: int = 10 * 1024 * 1024  # 10MB
+    LOG_BACKUP_COUNT: int = 5
+    LOG_LEVEL: str = "INFO"
     ALLOWED_ORIGINS: list[AnyHttpUrl] = "*"
     PRODUCTION: bool = False
 

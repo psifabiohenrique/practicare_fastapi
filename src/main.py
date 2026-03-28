@@ -3,8 +3,6 @@ import sys
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-
-# from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 
 from src.core.bootstrap import init_storage_dirs
@@ -16,6 +14,8 @@ from src.core.exceptions import (
     UnauthorizedError,
     ValidationError,
 )
+from src.core.logging_config import setup_logging
+from src.core.middleware import CorrelationIdMiddleware
 from src.routers import (
     auth_controller,
     dashboard_controller,
@@ -40,7 +40,7 @@ app = FastAPI(
     dependencies=[Depends(csrf_protect)],
 )
 
-# app.add_middleware(HTTPSRedirectMiddleware)
+app.add_middleware(CorrelationIdMiddleware)
 
 origins = [str(url).rstrip("/") for url in settings.ALLOWED_ORIGINS]
 app.add_middleware(
@@ -54,6 +54,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
+    setup_logging()
     init_storage_dirs()
 
 

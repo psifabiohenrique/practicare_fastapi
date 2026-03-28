@@ -80,6 +80,10 @@ class AutomatedReportService:
         job = await AutomatedReportService.get_job(db, job_uuid)
         try:
             # 1. Update status to GENERATING_REPORT
+            logger.info(
+                "Iniciando geração automática de relatório",
+                extra={"job_uuid": str(job_uuid)},
+            )
             await AutomatedReportService.update_job_status(
                 db, job_uuid, ReportJobStatus.GENERATING_REPORT
             )
@@ -93,9 +97,17 @@ class AutomatedReportService:
                 job_uuid,
                 ReportJobStatus.COMPLETED,
             )
+            logger.info(
+                "Geração de relatório concluída com sucesso",
+                extra={"job_uuid": str(job_uuid)},
+            )
 
         except Exception as e:
-            logger.error(f"Error processing report job {job_uuid}: {e}")
+            logger.error(
+                f"Erro ao gerar relatório do job {job_uuid}",
+                exc_info=True,
+                extra={"job_uuid": str(job_uuid), "error": str(e)},
+            )
             await AutomatedReportService.update_job_status(
                 db, job_uuid, ReportJobStatus.FAILED, error_message=str(e)
             )
