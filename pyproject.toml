@@ -40,7 +40,7 @@ dev = [
 
 [tool.ruff]
 line-length = 79
-extend-exclude = ['alembic/versions', 'migrations']
+extend-exclude = ['alembic/versions', 'migrations', 'tests']
 
 [tool.ruff.lint]
 preview = true

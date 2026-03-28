@@ -6,10 +6,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     DATABASE_URL: str
-    # SECRET_KEY: str
-    # ALGORITHM: str
-    # ACCESS_TOKEN_EXPIRE_MINUTES: int
-    # REFRESH_TOKEN_EXPIRE_MINUTES: int
+    SECRET_KEY: str = "change-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 10080
     REDIS_URL: str
     ACCESS_SESSION_EXPIRE_MINUTES: int = 120
     LLM_MODEL: str
