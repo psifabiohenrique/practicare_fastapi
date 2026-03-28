@@ -1,4 +1,12 @@
-from src.security import get_password_hash, verify_password
+import jwt
+
+from src.security import (
+    create_access_token,
+    create_refresh_token,
+    get_password_hash,
+    verify_password,
+)
+from src.settings import settings
 
 
 class TestPasswordHashing:
@@ -30,3 +38,21 @@ class TestPasswordHashing:
         # But both should verify correctly
         assert verify_password("samepassword", hash1)
         assert verify_password("samepassword", hash2)
+
+
+class TestJWTGeneration:
+    def test_create_access_token(self):
+        subject = "test-subject"
+        token = create_access_token(subject)
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        assert payload["sub"] == subject
+        assert payload["type"] == "access"
+        assert "exp" in payload
+
+    def test_create_refresh_token(self):
+        subject = "test-subject"
+        token = create_refresh_token(subject)
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        assert payload["sub"] == subject
+        assert payload["type"] == "refresh"
+        assert "exp" in payload

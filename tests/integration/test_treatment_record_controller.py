@@ -306,3 +306,40 @@ async def test_finalize_audio_upload_missing_chunks_error(
     )
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "Missing chunks" in response.json()["detail"]
+
+
+async def test_finalize_audio_upload_generic_error(session_client, db_session):
+    client, user = session_client
+
+    treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
+
+    # 1. Initialize
+    payload = {"session_date": "2024-01-01"}
+    response = client.post(
+        f"/treatment-records/treatments/{treatment.uuid}/automated-record",
+        json=payload,
+    )
+    job_uuid = response.json()["job_uuid"]
+
+    # 2. Upload 1 chunk
+    client.post(
+        f"/treatment-records/automated-record/{job_uuid}/chunk?chunk_index=0",
+        files={"audio_file": ("chunk.webm", b"chunk-data", "audio/webm")},
+    )
+
+    # 3. Finalize with error
+    with patch(
+        "src.services.automated_record_service.AutomatedRecordService.upload_audio_file",
+        side_effect=Exception("Generic error"),
+    ):
+        finalize_response = client.post(
+            f"/treatment-records/automated-record/{job_uuid}/finalize?total_chunks=1"
+        )
+        assert (
+            finalize_response.status_code
+            == HTTPStatus.INTERNAL_SERVER_ERROR
+        )
+        assert "Erro ao processar áudio" in finalize_response.json()["detail"]

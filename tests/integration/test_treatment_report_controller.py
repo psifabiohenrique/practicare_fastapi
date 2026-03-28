@@ -119,3 +119,29 @@ async def test_get_treatment_report_not_found(session_client):
     response = client.get(f"/treatment-reports/{random_uuid}")
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert "detail" in response.json()
+
+
+async def test_create_automated_report(session_client, db_session):
+    client, user = session_client
+
+    treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)
+    db_session.add(treatment)
+    await db_session.commit()
+    await db_session.refresh(treatment)
+
+    from unittest.mock import patch
+    with patch("src.routers.treatment_report_controller.generate_report_task") as mock_task:
+        payload = {
+            "treatment_uuid": str(treatment.uuid),
+            "issue_date": "2024-01-01",
+            "start_date_period": "2024-01-01",
+            "end_date_period": "2024-01-31",
+        }
+        response = client.post(
+            f"/treatment-reports/treatments/{treatment.uuid}/automated-report",
+            json=payload,
+        )
+        assert response.status_code == HTTPStatus.OK
+        data = response.json()
+        assert data["status"].lower() == "processing"
+        mock_task.delay.assert_called_once()

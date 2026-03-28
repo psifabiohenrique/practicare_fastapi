@@ -3,7 +3,7 @@ import os
 import struct
 import subprocess
 import wave
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -11,6 +11,7 @@ from src.utils.audio_processor import (
     VADResult,
     convert_to_wav,
     get_audio_duration,
+    get_wav_duration,
     split_audio,
     split_by_vad,
 )
@@ -182,3 +183,17 @@ class TestAudioProcessor:
 
         with pytest.raises(ValueError, match="Audio must be 16-bit PCM"):
             split_by_vad(path, temp_audio_dir)
+
+    def test_get_wav_duration_rate_zero(self):
+        with patch("wave.open") as mock_open:
+            mock_wf = MagicMock()
+            mock_wf.getnframes.return_value = 100
+            mock_wf.getframerate.return_value = 0
+            mock_open.return_value.__enter__.return_value = mock_wf
+
+            duration = get_wav_duration("dummy.wav")
+            assert duration == 0.0
+
+            mock_wf.getframerate.return_value = 100
+            duration = get_wav_duration("dummy.wav")
+            assert duration == 1.0
