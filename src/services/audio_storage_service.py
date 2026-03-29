@@ -29,18 +29,19 @@ class AudioStorageService:
 
         try:
             # Upload to OpenAI
-            # 'purpose' can be 'assistants' for long term but 'fine-tune' is not it.  # noqa: E501
-            # Actually, Whisper doesn't use Files API for direct transcription,
-            # but we will use it as a storage bridge since that's what was requested.  # noqa: E501
-            # Note: Files API files are only accessible by certain APIs.
-            # For Whisper, we will need to download it back.
+            logger.info(f"Fazendo upload de arquivo para OpenAI: {filename}")
             response = await client.files.create(
                 file=(filename, content),
                 purpose="assistants",  # Using assistants purpose as it allows retrieval  # noqa: E501
             )
+            logger.info(
+                "Upload concluído com sucesso. File ID: %s", response.id
+            )
             return response.id
         except Exception as e:
-            logger.error(f"Failed to upload to OpenAI: {e}")
+            logger.error(
+                "Falha ao fazer upload para OpenAI: %s", e, exc_info=True
+            )
             raise
 
     @staticmethod
@@ -50,10 +51,13 @@ class AudioStorageService:
         """
         client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         try:
+            logger.info(f"Baixando conteúdo do arquivo OpenAI: {file_id}")
             response = await client.files.content(file_id)
             return await response.read()
         except Exception as e:
-            logger.error(f"Failed to download from OpenAI: {e}")
+            logger.error(
+                "Falha ao baixar arquivo do OpenAI: %s", e, exc_info=True
+            )
             raise
 
     @staticmethod
@@ -63,7 +67,10 @@ class AudioStorageService:
         """
         client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         try:
+            logger.info(f"Excluindo arquivo do OpenAI: {file_id}")
             await client.files.delete(file_id)
         except Exception as e:
-            logger.warning(f"Failed to delete file {file_id} from OpenAI: {e}")
+            logger.warning(
+                "Falha ao excluir arquivo %s do OpenAI: %s", file_id, e
+            )
             pass  # Non-critical

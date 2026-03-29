@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -9,7 +9,9 @@ from src.services.auth_service import AuthService
 
 @pytest.fixture
 def mock_db():
-    return AsyncMock()
+    db = AsyncMock()
+    db.add = MagicMock()
+    return db
 
 
 class TestAuthService:

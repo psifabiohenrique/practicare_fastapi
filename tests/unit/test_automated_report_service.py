@@ -11,7 +11,9 @@ from src.services.automated_report_service import AutomatedReportService
 
 @pytest.fixture
 def mock_db():
-    return AsyncMock()
+    db = AsyncMock()
+    db.add = MagicMock()
+    return db
 
 
 @pytest.fixture

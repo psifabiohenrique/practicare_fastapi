@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from uuid import UUID
 
@@ -13,6 +14,8 @@ from src.schemas.treatment_report_schema import (
 )
 from src.services.treatment_service import TreatmentService
 
+logger = logging.getLogger(__name__)
+
 
 class TreatmentReportService:
     @staticmethod
@@ -27,9 +30,15 @@ class TreatmentReportService:
 
         report = result.scalars().first()
         if not report:
+            logger.warning(
+                f"Relatório não encontrado: {treatment_report_uuid}"
+            )
             raise NotFoundError("Treatment report not found")
 
         if report.treatment.user_uuid != user_uuid:
+            logger.warning(
+                f"Acesso negado ao relatório {treatment_report_uuid} pelo usuário {user_uuid}"  # noqa: E501
+            )
             raise ForbiddenError("Access denied to this treatment report")
 
         return report
@@ -75,10 +84,14 @@ class TreatmentReportService:
             db, schema.treatment_uuid, user_uuid
         )
 
+        logger.info(
+            f"Criando novo relatório para o tratamento: {schema.treatment_uuid}"  # noqa: E501
+        )
         db_treatment_report = TreatmentReport(**schema.model_dump())
         db.add(db_treatment_report)
         await db.commit()
         await db.refresh(db_treatment_report)
+        logger.info(f"Relatório {db_treatment_report.uuid} criado com sucesso")
         return db_treatment_report
 
     @staticmethod
@@ -94,6 +107,7 @@ class TreatmentReportService:
             )
         )
 
+        logger.info(f"Atualizando relatório: {treatment_report_uuid}")
         update_data = schema.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_treatment_report, key, value)

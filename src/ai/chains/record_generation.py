@@ -1,3 +1,5 @@
+import logging
+
 from google import genai
 from openai import AsyncOpenAI
 
@@ -5,6 +7,8 @@ from src.ai.ai_result import AIResult
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.ai.prompts.record_prompts import RECORD_GENERATION_SYSTEM_PROMPT
 from src.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 class RecordGenerationChain:
@@ -25,6 +29,10 @@ class RecordGenerationChain:
         """
         Generates a structured record from a transcription using OpenAI directly.
         """  # noqa: E501
+        logger.info(
+            f"Chamando LLM ({self.provider}) para prontuário. "
+            f"Modelo: {self.model}"
+        )
         try:
             system_prompt = RECORD_GENERATION_SYSTEM_PROMPT.format(
                 gender=gender, context=context
@@ -46,6 +54,11 @@ class RecordGenerationChain:
                 if response.usage:
                     input_tokens = response.usage.prompt_tokens or 0
                     output_tokens = response.usage.completion_tokens or 0
+
+                logger.info(
+                    "Resposta OpenAI (Prontuário). "
+                    f"Tokens: In {input_tokens}, Out {output_tokens}"
+                )
                 return AIResult(
                     content=response.choices[0].message.content or "",
                     input_tokens=input_tokens,
@@ -68,6 +81,11 @@ class RecordGenerationChain:
                     output_tokens = (
                         response.usage_metadata.candidates_token_count or 0
                     )
+
+                logger.info(
+                    "Resposta Google (Prontuário). "
+                    f"Tokens: In {input_tokens}, Out {output_tokens}"
+                )
                 return AIResult(
                     content=response.text,
                     input_tokens=input_tokens,
@@ -75,6 +93,10 @@ class RecordGenerationChain:
                 )
 
         except Exception as e:
+            logger.error(
+                f"Erro na chamada do LLM ({self.provider}): {e}",
+                exc_info=True,
+            )
             err_msg = str(e).lower()
             if any(
                 sub in err_msg

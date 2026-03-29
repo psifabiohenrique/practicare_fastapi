@@ -13,7 +13,9 @@ from src.utils.audio_processor import VADResult
 
 @pytest.fixture
 def mock_db():
-    return AsyncMock()
+    db = AsyncMock()
+    db.add = MagicMock()
+    return db
 
 
 @pytest.fixture

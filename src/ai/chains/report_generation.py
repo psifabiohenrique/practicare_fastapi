@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import socket
 
@@ -12,6 +13,8 @@ from src.ai.ai_result import AIResult
 from src.ai.exceptions import AIFatalError, AITransientError
 from src.ai.prompts.report_prompts import REPORT_GENERATION_SYSTEM_PROMPT
 from src.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 class ReportJSON(BaseModel):
@@ -57,6 +60,10 @@ class ReportGenerationChain:
         """
         Generates a structured report from records and context using OpenAI directly.
         """  # noqa: E501
+        logger.info(
+            f"Chamando LLM ({self.provider}) para geração de relatório. "
+            f"Modelo: {self.model}"
+        )
         try:
             system_prompt = REPORT_GENERATION_SYSTEM_PROMPT.format(
                 patient_first_name=patient_first_name,
@@ -85,6 +92,10 @@ class ReportGenerationChain:
                     output_tokens = response.usage.completion_tokens or 0
 
                 content = response.choices[0].message.content or "{}"
+                logger.info(
+                    "Resposta recebida da OpenAI (Relatório). "
+                    f"Tokens: In {input_tokens}, Out {output_tokens}"
+                )
                 return AIResult(
                     content=json.loads(content),
                     input_tokens=input_tokens,
@@ -113,6 +124,10 @@ class ReportGenerationChain:
                 report = ReportJSON.model_validate_json(
                     extract_json(response.text)
                 )
+                logger.info(
+                    "Resposta recebida do Google (Relatório). "
+                    f"Tokens: In {input_tokens}, Out {output_tokens}"
+                )
                 return AIResult(
                     content=report,
                     input_tokens=input_tokens,
@@ -124,10 +139,18 @@ class ReportGenerationChain:
             httpcore.ConnectError,
             socket.gaierror,
         ) as e:
+            logger.error(
+                f"Erro de rede ao chamar o LLM ({self.provider}) "
+                f"para relatório: {e}"
+            )
             # cobre DNS, timeout, falha de socket, etc.
             raise AITransientError("Erro de rede ao chamar o Gemini") from e
 
         except Exception as e:
+            logger.error(
+                f"Erro inesperado ao gerar relatório com {self.provider}: {e}",
+                exc_info=True,
+            )
             err_msg = str(e).lower()
             if any(
                 sub in err_msg

@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from sqlalchemy import select
@@ -7,6 +8,8 @@ from src.core.exceptions import ValidationError
 from src.core.phone_utils import validate_and_normalize_phone
 from src.models import Patient
 from src.schemas import PatientCreate, PatientUpdate
+
+logger = logging.getLogger(__name__)
 
 
 class PatientService:
@@ -30,10 +33,16 @@ class PatientService:
     async def create_patient(
         db: AsyncSession, patient_in: PatientCreate
     ) -> Patient:
+        logger.info(
+            "Criando novo paciente: %s %s",
+            patient_in.first_name,
+            patient_in.last_name,
+        )
         db_patient = PatientService._create_patient_model(patient_in)
         db.add(db_patient)
         await db.commit()
         await db.refresh(db_patient)
+        logger.info(f"Paciente criado com sucesso: {db_patient.uuid}")
         return db_patient
 
     @staticmethod
@@ -45,6 +54,7 @@ class PatientService:
             try:
                 data["phone"] = validate_and_normalize_phone(data["phone"])
             except ValueError as e:
+                logger.warning(f"Falha na normalização do telefone: {e}")
                 raise ValidationError(str(e)) from e
         return Patient(**data)
 
@@ -52,6 +62,7 @@ class PatientService:
     async def update_patient(
         db: AsyncSession, db_patient: Patient, patient_in: PatientUpdate
     ) -> Patient:
+        logger.info(f"Atualizando paciente: {db_patient.uuid}")
         PatientService._apply_update(db_patient, patient_in)
         db.add(db_patient)
         await db.commit()
@@ -67,6 +78,9 @@ class PatientService:
                     normalized_phone = validate_and_normalize_phone(value)
                     setattr(db_patient, field, normalized_phone)
                 except ValueError as e:
+                    logger.warning(
+                        f"Falha na normalização do telefone durante update: {e}"  # noqa: E501
+                    )
                     raise ValidationError(str(e)) from e
             else:
                 setattr(db_patient, field, value)
@@ -75,6 +89,7 @@ class PatientService:
     async def delete_patient(
         db: AsyncSession, patient_uuid: UUID
     ) -> Patient | None:
+        logger.info(f"Excluindo paciente: {patient_uuid}")
         result = await db.execute(
             select(Patient).filter(Patient.uuid == patient_uuid)
         )
@@ -82,4 +97,9 @@ class PatientService:
         if db_patient:
             await db.delete(db_patient)
             await db.commit()
+            logger.info(f"Paciente {patient_uuid} excluído com sucesso")
+        else:
+            logger.warning(
+                f"Tentativa de excluir paciente inexistente: {patient_uuid}"
+            )
         return db_patient

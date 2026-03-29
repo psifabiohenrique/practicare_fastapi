@@ -111,6 +111,15 @@ class DashboardService:
         if start_date is None:
             start_date = end_date - timedelta(days=30)
 
+        logger.info(
+            f"Buscando dados do dashboard para o usuário: {user_uuid}",
+            extra={
+                "user_uuid": str(user_uuid),
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+            },
+        )
+
         (
             stats_row,
             process_counts,

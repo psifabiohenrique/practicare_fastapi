@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Query, status
@@ -12,6 +13,8 @@ from src.schemas.patient_with_treatment_schema import (
 from src.services.patient_with_treatment_service import (
     PatientWithTreatmentService,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/patients-with-treatment", tags=["Patients with Treatment"]
@@ -32,6 +35,13 @@ async def create_patient_with_treatment(
     """
     Create a new patient and their associated treatment.
     """
+    logger.info(
+        f"Criando novo paciente e tratamento. Usuário: {current_user.uuid}",
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "patient_name": schema.patient_schema.first_name,
+        },
+    )
     (
         _,
         db_treatment,
@@ -118,6 +128,13 @@ async def update_patient_with_treatment(
     Update both patient and treatment data.
     Only allows update if the treatment belongs to the current user.
     """
+    logger.info(
+        f"Atualizando paciente e tratamento: {treatment_uuid}",
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "treatment_uuid": str(treatment_uuid),
+        },
+    )
     updated_treatment = (
         await PatientWithTreatmentService.update_patient_with_treatment(
             db=db,
@@ -139,6 +156,13 @@ async def delete_patient_with_treatment(
     """
     Delete a specific treatment for the current user.
     """
+    logger.info(
+        f"Alterando status/excluindo tratamento: {treatment_uuid}",
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "treatment_uuid": treatment_uuid,
+        },
+    )
     result = await PatientWithTreatmentService.change_treatment_status(
         db=db, user_uuid=current_user.uuid, treatment_uuid=treatment_uuid
     )

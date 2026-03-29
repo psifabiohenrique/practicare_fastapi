@@ -129,9 +129,13 @@ class TestDeps:
 
         mock_db.execute.side_effect = [res_session, res_user]
 
-        result = await get_current_user_session(request, mock_db)
-        assert result == user
+        with pytest.raises(HTTPException) as exc_info:
+            await get_current_user_session(request, mock_db)
+
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "Session expired"
         mock_db.delete.assert_called_once_with(session)
+        mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_current_user_session_user_deleted(self, mock_db):

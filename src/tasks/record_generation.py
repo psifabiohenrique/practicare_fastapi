@@ -31,6 +31,10 @@ async def comunicate_record_fail(job_uuid: UUID, message: str):
 
 
 async def transcribe_audio_logic(job_uuid: UUID, file_name: str) -> None:
+    logger.info(
+        f"Iniciando transcribe_audio_logic para o job: {job_uuid}",
+        extra={"job_uuid": str(job_uuid)},
+    )
     db = await get_async_session()
 
     await AutomatedRecordService.update_job_status(
@@ -44,6 +48,10 @@ async def transcribe_audio_logic(job_uuid: UUID, file_name: str) -> None:
     )
     transcription = result.content
     if not isinstance(transcription, str) or not transcription.strip():
+        logger.error(
+            f"Transcrição vazia ou inválida para o job: {job_uuid}",
+            extra={"job_uuid": str(job_uuid)},
+        )
         raise AITransientError()
 
     await AutomatedRecordService.update_job_status(
@@ -53,10 +61,18 @@ async def transcribe_audio_logic(job_uuid: UUID, file_name: str) -> None:
         transcription=transcription,
     )
     await db.close()
+    logger.info(
+        f"transcribe_audio_logic concluído para o job: {job_uuid}. Disparando geração de prontuário.",  # noqa: E501
+        extra={"job_uuid": str(job_uuid)},
+    )
     generate_record.delay(job_uuid=job_uuid)
 
 
 async def generate_record_logic(job_uuid: UUID):
+    logger.info(
+        f"Iniciando generate_record_logic para o job: {job_uuid}",
+        extra={"job_uuid": str(job_uuid)},
+    )
     db = await get_async_session()
     await AutomatedRecordService.update_job_status(
         db=db,
@@ -75,6 +91,10 @@ async def generate_record_logic(job_uuid: UUID):
         or not isinstance(result.content, str)
         or not result.content.strip()
     ):  # noqa: E501
+        logger.error(
+            f"Geração de prontuário resultou em conteúdo inválido para o job: {job_uuid}",  # noqa: E501
+            extra={"job_uuid": str(job_uuid)},
+        )
         raise AITransientError("Registro de prontuário em formato indevido.")
 
     record_text = result.content
@@ -93,6 +113,10 @@ async def generate_record_logic(job_uuid: UUID):
         status=JobStatus.COMPLETED,
     )
     await db.close()
+    logger.info(
+        f"generate_record_logic concluído com sucesso para o job: {job_uuid}",
+        extra={"job_uuid": str(job_uuid)},
+    )
 
 
 def do_transcribe_audio(job_uuid: UUID, file_name: str):

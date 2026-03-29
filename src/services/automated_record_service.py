@@ -183,6 +183,11 @@ class AutomatedRecordService:
         """
         Main background task for processing an automated record job.
         """
+        logger.info(
+            "Iniciando processamento de arquivo de áudio para o job: %s",
+            job_uuid,
+            extra={"job_uuid": str(job_uuid), "audio_path": audio_path},
+        )
         job = await AutomatedRecordService.get_job(db, job_uuid)
         converted_path = audio_path.replace(".webm", ".wav")
         reduced_path = None
@@ -194,7 +199,10 @@ class AutomatedRecordService:
             )
 
             directory = Path(converted_path).parent
+            logger.info(f"Convertendo {audio_path} para WAV")
             convert_to_wav(audio_path, converted_path)
+
+            logger.info(f"Aplicando VAD em {converted_path}")
             vad_result = split_by_vad(converted_path, directory)
             reduced_path = vad_result.output_path
 
@@ -204,6 +212,15 @@ class AutomatedRecordService:
                 vad_result.vad_duration_seconds
             )
 
+            logger.info(
+                "Fazendo upload do áudio processado para a IA. Job: %s",
+                job_uuid,
+                extra={
+                    "job_uuid": str(job_uuid),
+                    "original_duration": vad_result.original_duration_seconds,
+                    "vad_duration": vad_result.vad_duration_seconds,
+                },
+            )
             transcription_chain = TranscriptionChain()
             audio_file_name = await transcription_chain.upload_audio(
                 reduced_path
@@ -218,10 +235,20 @@ class AutomatedRecordService:
                 JobStatus.TRANSCRIBED,
                 audio_path=audio_file_name.name,
             )
+            logger.info(
+                "Upload para IA concluído. File name: %s",
+                audio_file_name.name,
+            )
             return audio_file_name
 
         except Exception as e:
-            logger.error(f"Error processing job {job_uuid}: {e}")
+            logger.error(
+                "Erro ao processar arquivo de áudio para o job %s: %s",
+                job_uuid,
+                e,
+                exc_info=True,
+                extra={"job_uuid": str(job_uuid)},
+            )
             await AutomatedRecordService.update_job_status(
                 db, job_uuid, JobStatus.FAILED, error_message=str(e)
             )
@@ -239,17 +266,26 @@ class AutomatedRecordService:
 
         finally:
             # Cleanup temporary audio files
-            if os.path.exists(audio_path):
-                os.remove(audio_path)
-            if os.path.exists(converted_path):
-                os.remove(converted_path)
-            if reduced_path and os.path.exists(reduced_path):
-                os.remove(reduced_path)
+            try:
+                if os.path.exists(audio_path):
+                    os.remove(audio_path)
+                if os.path.exists(converted_path):
+                    os.remove(converted_path)
+                if reduced_path and os.path.exists(reduced_path):
+                    os.remove(reduced_path)
+            except Exception as e:
+                logger.warning(
+                    "Falha ao limpar arquivos temporários de áudio: %s", e
+                )
 
     @staticmethod
     async def generate_transcription(
         db: AsyncSession, file_name: str, job_uuid: UUID
     ) -> AIResult:
+        logger.info(
+            f"Iniciando transcrição para o job: {job_uuid}",
+            extra={"job_uuid": str(job_uuid), "file_name": file_name},
+        )
         job = await AutomatedRecordService.get_job(db, job_uuid)
         transcription_chain = TranscriptionChain()
         result = await transcription_chain.transcribe(file_name)
@@ -271,13 +307,25 @@ class AutomatedRecordService:
                 ),
             ),
         )
+        logger.info(
+            f"Transcrição concluída para o job: {job_uuid}",
+            extra={
+                "job_uuid": str(job_uuid),
+                "input_tokens": result.input_tokens,
+                "output_tokens": result.output_tokens,
+            },
+        )
 
         return result
 
     @staticmethod
     async def generate_record(
         db: AsyncSession, transcription: str, job: AutomatedRecordJob
-    ) -> AIResult:
+    ) -> AIResult | None:
+        logger.info(
+            f"Iniciando geração de prontuário para o job: {job.uuid}",
+            extra={"job_uuid": str(job.uuid)},
+        )
         report_list = await TreatmentReportService.get_treatment_reports(
             db=db,
             treatment_uuid=job.treatment_uuid,
@@ -323,6 +371,19 @@ class AutomatedRecordService:
                 ),
             )
 
+            logger.info(
+                f"Geração de prontuário concluída para o job: {job.uuid}",
+                extra={
+                    "job_uuid": str(job.uuid),
+                    "input_tokens": result.input_tokens,
+                    "output_tokens": result.output_tokens,
+                },
+            )
             return result
         except Exception as e:
-            logger.error(e)
+            logger.error(
+                f"Erro ao gerar prontuário para o job {job.uuid}: {e}",
+                exc_info=True,
+                extra={"job_uuid": str(job.uuid)},
+            )
+            return None

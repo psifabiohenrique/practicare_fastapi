@@ -35,6 +35,10 @@ async def comunicate_report_fail(job_uuid: UUID, message: str):
 
 
 async def generate_report_logic(job_uuid: UUID):
+    logger.info(
+        f"Iniciando generate_report_logic para o job: {job_uuid}",
+        extra={"job_uuid": str(job_uuid)},
+    )
     db = await get_async_session()
     await AutomatedReportService.update_job_status(
         db=db,
@@ -46,6 +50,10 @@ async def generate_report_logic(job_uuid: UUID):
 
     await AutomatedReportService.generate_report_content(db, job)
     await db.close()
+    logger.info(
+        f"generate_report_logic concluído com sucesso para o job: {job_uuid}",
+        extra={"job_uuid": str(job_uuid)},
+    )
 
 
 def do_generate_report(job_uuid: UUID):

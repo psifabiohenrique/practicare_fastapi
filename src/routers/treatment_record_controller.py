@@ -63,6 +63,13 @@ async def create_treatment_record(
     db: SessionDB,
     current_user: CurrentUser,
 ) -> any:
+    logger.info(
+        f"Criando prontuário para o tratamento: {schema.treatment_uuid}",
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "treatment_uuid": str(schema.treatment_uuid),
+        },
+    )
     return await TreatmentRecordService.create_treatment_record(
         db, schema, current_user.uuid
     )
@@ -78,6 +85,14 @@ async def upload_audio(
     current_user: CurrentUser,
     session_date: Annotated[date, Body(embed=True)],
 ):
+    logger.info(
+        f"Iniciando gravação automatizada para o tratamento: {treatment_uuid}",
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "treatment_uuid": str(treatment_uuid),
+            "session_date": session_date.isoformat(),
+        },
+    )
     record, job = await AutomatedRecordService.initialize_job(
         db=db,
         user_uuid=current_user.uuid,
@@ -96,6 +111,13 @@ async def reload_audio(
     db: SessionDB,
     current_user: CurrentUser,
 ):
+    logger.info(
+        f"Recarregando áudio para o prontuário: {treatment_record_uuid}",
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "treatment_record_uuid": str(treatment_record_uuid),
+        },
+    )
     record, job = await AutomatedRecordService.initialize_job(
         db=db,
         user_uuid=current_user.uuid,
@@ -123,6 +145,10 @@ async def upload_audio_chunk(
 ):
     job = await AutomatedRecordService.get_job(db, job_uuid)
     if str(job.user_uuid) != str(current_user.uuid):
+        logger.warning(
+            f"Acesso negado ao chunk {chunk_index} do job {job_uuid} "
+            f"para o usuário {current_user.uuid}"
+        )
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     chunk_data = await audio_file.read()
@@ -139,8 +165,16 @@ async def finalize_audio_upload(
     db: SessionDB,
     current_user: CurrentUser,
 ):
+    logger.info(
+        f"Finalizando upload de áudio para o job: {job_uuid}",
+        extra={"job_uuid": str(job_uuid), "total_chunks": total_chunks},
+    )
     job = await AutomatedRecordService.get_job(db, job_uuid)
     if str(job.user_uuid) != str(current_user.uuid):
+        logger.warning(
+            f"Acesso negado ao finalizar job {job_uuid} "
+            f"para o usuário {current_user.uuid}"
+        )
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     try:
@@ -159,9 +193,13 @@ async def finalize_audio_upload(
 
         return {"status": "processing"}
     except ValueError as e:
+        logger.warning(f"Erro de validação ao finalizar upload: {e}")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        logger.error(f"Error finalizing audio upload: {e}")
+        logger.error(
+            f"Erro ao finalizar upload de áudio para o job {job_uuid}: {e}",
+            exc_info=True,
+        )
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao processar áudio: {str(e)}",
@@ -175,6 +213,13 @@ async def update_treatment_record(
     db: SessionDB,
     current_user: CurrentUser,
 ) -> any:
+    logger.info(
+        f"Atualizando prontuário: {treatment_record_uuid}",
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "treatment_record_uuid": str(treatment_record_uuid),
+        },
+    )
     return await TreatmentRecordService.update_treatment_record(
         db, treatment_record_uuid, current_user.uuid, schema
     )

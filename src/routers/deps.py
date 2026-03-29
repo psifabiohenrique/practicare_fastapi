@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from http import HTTPMethod
 from typing import Annotated
@@ -15,6 +16,8 @@ from src.models.user_model import User
 from src.schemas.token_schema import TokenPayload
 from src.settings import settings
 
+logger = logging.getLogger(__name__)
+
 reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/login")
 SessionDB = Annotated[AsyncSession, Depends(get_db)]
 
@@ -31,12 +34,14 @@ async def get_current_user_jwt(
         token_data = TokenPayload(**payload)
 
         if token_data.type != "access":
+            logger.warning(f"Tipo de token JWT inválido: {token_data.type}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token type",
             )
 
-    except (jwt.PyJWTError, ValidationError):
+    except (jwt.PyJWTError, ValidationError) as e:
+        logger.warning(f"Falha na validação do token JWT: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -47,6 +52,9 @@ async def get_current_user_jwt(
     )
     user = result.scalars().first()
     if not user:
+        logger.warning(
+            f"Usuário não encontrado para o token JWT: {token_data.sub}"
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
@@ -56,6 +64,7 @@ async def get_current_user_jwt(
 async def get_current_user_session(request: Request, db: SessionDB) -> User:
     session_uuid = request.cookies.get("session_uuid")
     if not session_uuid:
+        logger.warning("Tentativa de acesso sem session_uuid nos cookies")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
@@ -66,6 +75,7 @@ async def get_current_user_session(request: Request, db: SessionDB) -> User:
     session = result.scalars().one_or_none()
 
     if session is None:
+        logger.warning(f"Sessão inválida ou não encontrada: {session_uuid}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session"
         )
@@ -73,8 +83,12 @@ async def get_current_user_session(request: Request, db: SessionDB) -> User:
     now = datetime.now(timezone.utc)
 
     if session.expires_at <= now:
+        logger.info(f"Sessão expirada: {session_uuid}")
         await db.delete(session)
         await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired"
+        )
 
     session.last_accessed_at = now
     await db.commit()
@@ -85,6 +99,10 @@ async def get_current_user_session(request: Request, db: SessionDB) -> User:
     user = user_result.scalars().one_or_none()
 
     if user is None:
+        logger.warning(
+            f"Usuário {session.user_uuid} não encontrado para a sessão "
+            f"{session_uuid}"
+        )
         await db.delete(session)
         await db.commit()
 
@@ -118,12 +136,21 @@ async def csrf_protect(
         return
 
     if not csrf_header or not csrf_cookie:
+        logger.warning(
+            "CSRF token ausente. "
+            f"Header: {bool(csrf_header)}, Cookie: {bool(csrf_cookie)}",
+            extra={"path": request.url.path, "method": request.method}
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="CSRF token missing",
         )
 
     if csrf_header != csrf_cookie:
+        logger.warning(
+            "CSRF token não corresponde ao cookie",
+            extra={"path": request.url.path, "method": request.method}
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid CSRF token",

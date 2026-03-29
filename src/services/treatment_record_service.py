@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from uuid import UUID
 
@@ -13,6 +14,8 @@ from src.schemas.treatment_record_schema import (
 )
 from src.services.treatment_service import TreatmentService
 
+logger = logging.getLogger(__name__)
+
 
 class TreatmentRecordService:
     @staticmethod
@@ -27,9 +30,15 @@ class TreatmentRecordService:
 
         record = result.scalars().first()
         if not record:
+            logger.warning(
+                f"Prontuário não encontrado: {treatment_record_uuid}"
+            )
             raise NotFoundError("Treatment record not found")
 
         if record.treatment.user_uuid != user_uuid:
+            logger.warning(
+                f"Acesso negado ao prontuário {treatment_record_uuid} pelo usuário {user_uuid}"  # noqa: E501
+            )
             raise ForbiddenError("Access denied to this treatment record")
 
         return record
@@ -74,6 +83,10 @@ class TreatmentRecordService:
             db, schema.treatment_uuid, user_uuid
         )
 
+        logger.info(
+            f"Criando novo prontuário para o tratamento: {schema.treatment_uuid}"  # noqa: E501
+        )
+
         # Generate record_number: max(record_number) + 1 for this treatment
         max_number_result = await db.execute(
             select(func.max(TreatmentRecord.record_number)).filter(
@@ -89,6 +102,9 @@ class TreatmentRecordService:
         db.add(db_treatment_record)
         await db.commit()
         await db.refresh(db_treatment_record)
+        logger.info(
+            f"Prontuário {db_treatment_record.uuid} (Nº {next_number}) criado com sucesso"  # noqa: E501
+        )
         return db_treatment_record
 
     @staticmethod
@@ -104,6 +120,7 @@ class TreatmentRecordService:
             )
         )
 
+        logger.info(f"Atualizando prontuário: {treatment_record_uuid}")
         update_data = schema.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_treatment_record, key, value)

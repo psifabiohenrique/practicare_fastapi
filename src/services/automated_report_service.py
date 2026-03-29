@@ -30,6 +30,15 @@ class AutomatedReportService:
         treatment_report_uuid: UUID,
         user_uuid: str,
     ):
+        logger.info(
+            "Criando novo job de relatório para o tratamento: %s",
+            treatment_uuid,
+            extra={
+                "user_uuid": str(user_uuid),
+                "treatment_uuid": str(treatment_uuid),
+                "treatment_report_uuid": str(treatment_report_uuid),
+            },
+        )
         job = AutomatedReportJob(
             user_uuid=user_uuid,
             treatment_uuid=str(treatment_uuid),
@@ -76,14 +85,13 @@ class AutomatedReportService:
         """
         Main background task for processing an automated report job.
         """
-
+        logger.info(
+            f"Iniciando processamento do job de relatório: {job_uuid}",
+            extra={"job_uuid": str(job_uuid)},
+        )
         job = await AutomatedReportService.get_job(db, job_uuid)
         try:
             # 1. Update status to GENERATING_REPORT
-            logger.info(
-                "Iniciando geração automática de relatório",
-                extra={"job_uuid": str(job_uuid)},
-            )
             await AutomatedReportService.update_job_status(
                 db, job_uuid, ReportJobStatus.GENERATING_REPORT
             )
@@ -98,15 +106,16 @@ class AutomatedReportService:
                 ReportJobStatus.COMPLETED,
             )
             logger.info(
-                "Geração de relatório concluída com sucesso",
+                "Geração de relatório concluída com sucesso para o job: %s",
+                job_uuid,
                 extra={"job_uuid": str(job_uuid)},
             )
 
         except Exception as e:
             logger.error(
-                f"Erro ao gerar relatório do job {job_uuid}",
+                f"Erro ao gerar relatório do job {job_uuid}: {e}",
                 exc_info=True,
-                extra={"job_uuid": str(job_uuid), "error": str(e)},
+                extra={"job_uuid": str(job_uuid)},
             )
             await AutomatedReportService.update_job_status(
                 db, job_uuid, ReportJobStatus.FAILED, error_message=str(e)
@@ -132,6 +141,10 @@ class AutomatedReportService:
     async def generate_report_content(
         db: AsyncSession, job: AutomatedReportJob
     ) -> dict:
+        logger.info(
+            f"Coletando contexto para o relatório do job: {job.uuid}",
+            extra={"job_uuid": str(job.uuid)},
+        )
         # 1. Buscar informações do paciente
         treatment_patient = (
             await PatientWithTreatmentService.get_patient_with_treatment_uuid(
@@ -191,9 +204,18 @@ class AutomatedReportService:
             )
 
         if not records_context:
+            logger.warning(
+                "Nenhum prontuário encontrado para o período no job: %s",
+                job.uuid,
+                extra={"job_uuid": str(job.uuid)},
+            )
             records_context = "Nenhum prontuário encontrado para este período."
 
         # 5. Chamar IA
+        logger.info(
+            f"Chamando IA para geração de relatório do job: {job.uuid}",
+            extra={"job_uuid": str(job.uuid)},
+        )
         chain = ReportGenerationChain()
         result = await chain.generate(
             patient_first_name=patient_first_name,
@@ -230,4 +252,12 @@ class AutomatedReportService:
             ),
         )
 
+        logger.info(
+            "Relatório gerado e salvo para o job: %s. "
+            "Tokens: In %s, Out %s",
+            job.uuid,
+            result.input_tokens,
+            result.output_tokens,
+            extra={"job_uuid": str(job.uuid)},
+        )
         return report_data

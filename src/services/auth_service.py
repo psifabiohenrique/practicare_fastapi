@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -15,6 +16,8 @@ from src.security import (
 )
 from src.services.user_service import UserService
 from src.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -39,6 +42,10 @@ class AuthService:
 
     @staticmethod
     async def create_session(db: AsyncSession, user_uuid) -> AuthSession:
+        logger.info(
+            f"Criando nova sessão para o usuário: {user_uuid}",
+            extra={"user_uuid": str(user_uuid)},
+        )
         now = datetime.now(timezone.utc)
 
         session = AuthSession(
@@ -57,6 +64,10 @@ class AuthService:
 
     @staticmethod
     async def delete_session(db: AsyncSession, session_uuid) -> None:
+        logger.info(
+            f"Deletando sessão: {session_uuid}",
+            extra={"session_uuid": str(session_uuid)},
+        )
         await db.execute(
             delete(AuthSession).where(AuthSession.uuid == session_uuid)
         )

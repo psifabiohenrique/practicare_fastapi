@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, status
@@ -6,11 +7,14 @@ from src.routers.deps import CurrentUser, SessionDB
 from src.schemas.user_schema import UserCreate, UserRead, UserUpdate
 from src.services.user_service import UserService
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 async def create_user(*, db: SessionDB, user_in: UserCreate) -> any:
+    logger.info(f"Criando novo usuário: {user_in.email}")
     return await UserService.create_user(db, user_in=user_in)
 
 
@@ -48,6 +52,13 @@ async def update_user(
     user_in: UserUpdate,
     current_user: CurrentUser,
 ) -> any:
+    logger.info(
+        f"Atualizando usuário: {user_uuid}",
+        extra={
+            "user_uuid": str(user_uuid),
+            "updated_by": str(current_user.uuid),
+        },
+    )
     return await UserService.update_user(
         db, user_uuid=str(user_uuid), user_in=user_in
     )
@@ -60,4 +71,11 @@ async def delete_user(
     user_uuid: UUID,
     current_user: CurrentUser,
 ) -> any:
+    logger.info(
+        f"Excluindo usuário: {user_uuid}",
+        extra={
+            "user_uuid": str(user_uuid),
+            "deleted_by": str(current_user.uuid),
+        },
+    )
     return await UserService.delete_user(db, user_uuid=str(user_uuid))

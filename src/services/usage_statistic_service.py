@@ -25,4 +25,11 @@ class UsageStatisticService:
         db.add(statistic)
         await db.commit()
         await db.refresh(statistic)
+        logger.info(
+            f"Estatística de uso registrada para o job: {schema.job_uuid}",
+            extra={
+                "job_uuid": str(schema.job_uuid),
+                "process_type": schema.process_type,
+            },
+        )
         return statistic

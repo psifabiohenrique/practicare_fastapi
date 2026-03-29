@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 import jwt
@@ -21,6 +22,8 @@ from src.schemas.token_schema import Token, TokenCSRF, TokenPayload
 from src.services.auth_service import AuthService
 from src.settings import settings
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 SessionDB = Annotated[AsyncSession, Depends(get_db)]
 
@@ -31,11 +34,15 @@ async def login_session(
     response: Response,
     form_data: LoginRequest,
 ):
+    logger.info(f"Tentativa de login para o email: {form_data.email}")
     user = await AuthService.authenticate_user(
         db=db, email=form_data.email, password=form_data.password
     )
 
     if not user:
+        logger.warning(
+            f"Falha de autenticação para o email: {form_data.email}"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
@@ -60,6 +67,10 @@ async def login_session(
         samesite="none",
     )
 
+    logger.info(
+        f"Login bem-sucedido para o usuário: {user.uuid}",
+        extra={"user_uuid": str(user.uuid)},
+    )
     return TokenCSRF(csrf_token=csrf_token)
 
 
@@ -67,7 +78,13 @@ async def login_session(
 async def logout_session(db: SessionDB, request: Request, response: Response):
     session_uuid = request.cookies.get("session_uuid")
     if session_uuid:
+        logger.info(
+            f"Logout solicitado para a sessão: {session_uuid}",
+            extra={"session_uuid": session_uuid},
+        )
         await AuthService.delete_session(db, session_uuid)
+    else:
+        logger.warning("Logout solicitado sem session_uuid nos cookies")
 
     response.delete_cookie("session_uuid")
     response.delete_cookie("csrf_token")

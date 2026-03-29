@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -5,6 +7,8 @@ from src.core.exceptions import ConflictError, NotFoundError, ValidationError
 from src.models import User
 from src.schemas.user_schema import UserCreate, UserUpdate
 from src.security import get_password_hash
+
+logger = logging.getLogger(__name__)
 
 
 class UserService:
@@ -15,6 +19,7 @@ class UserService:
         )
         user = result.scalars().first()
         if not user:
+            logger.warning(f"Usuário não encontrado: {user_uuid}")
             raise NotFoundError("User not found")
         return user
 
@@ -35,11 +40,18 @@ class UserService:
         # Check if email exists
         existing_user = await UserService.get_user_by_email(db, user_in.email)
         if existing_user:
+            logger.warning(
+                f"Tentativa de criar usuário com email já existente: {user_in.email}"  # noqa: E501
+            )
             raise ConflictError("User with this email already exists")
 
         if user_in.password != user_in.password_confirmation:
+            logger.warning(
+                f"Senhas não conferem para o usuário: {user_in.email}"
+            )
             raise ValidationError("Passwords do not match")
 
+        logger.info(f"Criando novo usuário: {user_in.email}")
         db_user = User(
             email=user_in.email,
             name=user_in.name,
@@ -48,6 +60,7 @@ class UserService:
         db.add(db_user)
         await db.commit()
         await db.refresh(db_user)
+        logger.info(f"Usuário criado com sucesso: {db_user.uuid}")
         return db_user
 
     @staticmethod
@@ -56,12 +69,16 @@ class UserService:
     ) -> User:
         db_user = await UserService.get_user_by_uuid(db, user_uuid)
 
+        logger.info(f"Atualizando usuário: {user_uuid}")
         update_data = user_in.model_dump(exclude_unset=True)
         if (
             "password" in update_data
             and "password_confirmation" in update_data
         ):
             if update_data["password"] != update_data["password_confirmation"]:
+                logger.warning(
+                    f"Senhas não conferem na atualização do usuário: {user_uuid}"  # noqa: E501
+                )
                 raise ValidationError("Passwords do not match")
             update_data["hashed_password"] = get_password_hash(
                 update_data.pop("password")
@@ -77,7 +94,9 @@ class UserService:
 
     @staticmethod
     async def delete_user(db: AsyncSession, user_uuid: str) -> User:
+        logger.info(f"Excluindo usuário: {user_uuid}")
         db_user = await UserService.get_user_by_uuid(db, user_uuid)
         await db.delete(db_user)
         await db.commit()
+        logger.info(f"Usuário {user_uuid} excluído com sucesso")
         return db_user

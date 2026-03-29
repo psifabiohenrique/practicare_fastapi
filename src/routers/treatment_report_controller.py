@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, status
@@ -13,6 +14,8 @@ from src.schemas.treatment_report_schema import (
 from src.services.automated_report_service import AutomatedReportService
 from src.services.treatment_report_service import TreatmentReportService
 from src.tasks.report_generation import generate_report_task
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/treatment-reports", tags=["Treatment reports"])
 
@@ -53,6 +56,15 @@ async def create_treatment_report(
     db: SessionDB,
     current_user: CurrentUser,
 ) -> any:
+    logger.info(
+        "Criando relatório de tratamento. Usuário: %s, Tratamento: %s",
+        current_user.uuid,
+        schema.treatment_uuid,
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "treatment_uuid": str(schema.treatment_uuid),
+        },
+    )
     return await TreatmentReportService.create_treatment_report(
         db, schema, current_user.uuid
     )
@@ -65,6 +77,13 @@ async def update_treatment_report(
     db: SessionDB,
     current_user: CurrentUser,
 ) -> any:
+    logger.info(
+        f"Atualizando relatório de tratamento: {treatment_report_uuid}",
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "treatment_report_uuid": str(treatment_report_uuid),
+        },
+    )
     return await TreatmentReportService.update_treatment_report(
         db, treatment_report_uuid, current_user.uuid, schema
     )
@@ -82,6 +101,16 @@ async def create_automated_report(
     background_tasks: BackgroundTasks,
 ) -> any:
     user_uuid = current_user.uuid
+    logger.info(
+        "Solicitação de relatório automatizado recebida. Tratamento: %s",
+        treatment_uuid,
+        extra={
+            "user_uuid": str(user_uuid),
+            "treatment_uuid": str(treatment_uuid),
+            "start_date": schema.start_date_period.isoformat(),
+            "end_date": schema.end_date_period.isoformat(),
+        },
+    )
 
     # 1. Inicializar o relatório com status PROCESSING e conteúdo temporário
     report = await TreatmentReportService.create_treatment_report(
@@ -108,6 +137,10 @@ async def create_automated_report(
         user_uuid=user_uuid,
     )
 
+    logger.info(
+        f"Job de relatório automatizado criado: {job.uuid}. Disparando task.",
+        extra={"job_uuid": str(job.uuid), "report_uuid": str(report.uuid)},
+    )
     generate_report_task.delay(job_uuid=job.uuid)
 
     return report
