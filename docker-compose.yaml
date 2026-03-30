@@ -5,7 +5,7 @@ services:
       - "8000:8000"
     volumes:
       - .:/app 
-      - data:/data
+      - ./logs:/data/logs
     working_dir: /app
     env_file:
       - .env-docker
