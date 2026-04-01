@@ -122,3 +122,17 @@ class TestPatientServiceCRUD:
 
         mock_db.delete.assert_called_once_with(mock_patient)
         mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_patient_not_found(self, mock_db):
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.first.return_value = None
+        mock_db.execute.return_value = result_mock
+
+        patient_uuid = uuid4()
+        result = await PatientService.delete_patient(mock_db, patient_uuid)
+
+        assert result is None
+        mock_db.delete.assert_not_called()
+        mock_db.commit.assert_not_called()
+        # Verify logger if possible, but the main goal is coverage

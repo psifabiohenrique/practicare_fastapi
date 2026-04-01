@@ -80,6 +80,19 @@ class TestAuthController:
             assert mock_response.delete_cookie.call_count == 2
 
     @pytest.mark.asyncio
+    async def test_logout_session_no_cookie(self, mock_db, mock_response):
+        request = MagicMock(spec=Request)
+        request.cookies = {}
+
+        with patch(
+            "src.services.auth_service.AuthService.delete_session"
+        ) as mock_delete:
+            response = await logout_session(mock_db, request, mock_response)
+            assert response.message == "logged_out"
+            mock_delete.assert_not_called()
+            assert mock_response.delete_cookie.call_count == 2
+
+    @pytest.mark.asyncio
     async def test_login_jwt_success(self, mock_db, mock_response):
         form_data = MagicMock()
         form_data.username = "test@example.com"

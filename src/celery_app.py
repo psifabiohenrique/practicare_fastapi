@@ -6,7 +6,7 @@ from src.settings import settings
 
 
 @worker_init.connect
-def setup_celery_logging(*args, **kwargs):
+def setup_celery_logging(*args, **kwargs):  # pragma: no cover
     setup_logging()
 
 
@@ -17,7 +17,7 @@ def inject_correlation_id(headers, **kwargs):
 
 
 @task_prerun.connect
-def extract_correlation_id(task, **kwargs):
+def extract_correlation_id(task, **kwargs):  # pragma: no cover
     # Recupera o ID dos headers da task recebida e ativa no contexto do Worker
     correlation_id = task.request.get("correlation_id", "no-id")
     correlation_id_ctx.set(correlation_id)

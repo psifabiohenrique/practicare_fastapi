@@ -123,3 +123,16 @@ class TestTreatmentServiceCRUD:
 
         mock_db.delete.assert_called_once_with(mock_treatment)
         mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_treatment_not_found(self, mock_db):
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.first.return_value = None
+        mock_db.execute.return_value = result_mock
+
+        treatment_uuid = uuid4()
+        result = await TreatmentService.delete_treatment(mock_db, treatment_uuid)
+
+        assert result is None
+        mock_db.delete.assert_not_called()
+        mock_db.commit.assert_not_called()
