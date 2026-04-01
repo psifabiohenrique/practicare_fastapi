@@ -512,3 +512,60 @@ class TestAutomatedRecordServiceProcessing:
         )
 
         assert result is None
+
+    @pytest.mark.asyncio
+    @patch("src.services.automated_record_service.logger")
+    @patch("src.services.automated_record_service.UsageStatisticService")
+    @patch(
+        "src.services.automated_record_service.AutomatedRecordService.get_job"
+    )
+    @patch(
+        "src.services.automated_record_service.AutomatedRecordService.update_job_status"
+    )
+    @patch("src.services.automated_record_service.convert_to_wav")
+    @patch("src.services.automated_record_service.split_by_vad")
+    @patch("src.services.automated_record_service.TranscriptionChain")
+    @patch("os.path.exists")
+    @patch("os.remove")
+    async def test_upload_audio_file_cleanup_failure(  # noqa: PLR0917
+        self,
+        mock_remove,
+        mock_exists,
+        MockChain,
+        mock_split,
+        mock_convert,
+        mock_update_status,
+        mock_get_job,
+        mock_usage_service,
+        mock_logger,
+        mock_db,
+        mock_job,
+    ):
+        mock_get_job.return_value = mock_job
+        mock_exists.return_value = True
+        mock_split.return_value = VADResult(
+            output_path="path_vad.wav",
+            original_duration_seconds=10.0,
+            vad_duration_seconds=8.0,
+        )
+
+        chain_instance = MockChain.return_value
+        chain_instance.upload_audio = AsyncMock()
+        audio_file = MagicMock()
+        audio_file.name = "remote_path.wav"
+        chain_instance.upload_audio.return_value = audio_file
+
+        # Trigger exception in cleanup
+        mock_remove.side_effect = Exception("Cleanup error")
+
+        # The function should still complete (or re-raise if it failed before finally,
+        # but here it succeeds before finally)
+        result = await AutomatedRecordService.upload_audio_file(
+            mock_db, mock_job.uuid, "test.webm"
+        )
+
+        assert result == audio_file
+        mock_logger.warning.assert_called_with(
+            "Falha ao limpar arquivos temporários de áudio: %s",
+            mock_remove.side_effect,
+        )
