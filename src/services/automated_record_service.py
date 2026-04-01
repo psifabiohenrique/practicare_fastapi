@@ -267,8 +267,7 @@ class AutomatedRecordService:
         finally:
             # Cleanup temporary audio files
             try:
-                if os.path.exists(audio_path):
-                    os.remove(audio_path)
+                # audio_path is now managed by the caller to allow retries
                 if os.path.exists(converted_path):
                     os.remove(converted_path)
                 if reduced_path and os.path.exists(reduced_path):

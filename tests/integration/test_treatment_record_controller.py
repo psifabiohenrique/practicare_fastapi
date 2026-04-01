@@ -332,7 +332,7 @@ async def test_finalize_audio_upload_generic_error(session_client, db_session):
 
     # 3. Finalize with error
     with patch(
-        "src.services.automated_record_service.AutomatedRecordService.upload_audio_file",
+        "src.services.automated_record_service.AutomatedRecordService.finalize_chunked_upload",
         side_effect=Exception("Generic error"),
     ):
         finalize_response = client.post(

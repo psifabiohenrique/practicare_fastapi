@@ -230,7 +230,7 @@ class TestAutomatedRecordServiceProcessing:
     @patch("src.services.automated_record_service.TranscriptionChain")
     @patch("os.path.exists")
     @patch("os.remove")
-    async def test_upload_audio_file_success(  # noqa: PLR0917
+    async def test_upload_audio_file_success(
         self,
         mock_remove,
         mock_exists,
@@ -266,7 +266,7 @@ class TestAutomatedRecordServiceProcessing:
         mock_convert.assert_called_once()
         mock_split.assert_called_once()
         assert mock_update_status.call_count == 2
-        assert mock_remove.call_count == 3
+        assert mock_remove.call_count == 2
         assert mock_job.audio_duration_seconds == 10.0
         assert mock_job.audio_duration_after_vad_seconds == 8.0
 
