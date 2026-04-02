@@ -1,5 +1,6 @@
 import logging
 
+import httpx
 from google import genai
 
 from src.ai.ai_result import AIResult
@@ -21,6 +22,14 @@ class TranscriptionChain:
                 f"Upload para Google GenAI concluído. File name: {response}"
             )
             return response
+        except httpx.ConnectError as e:
+            logger.warning(
+                f"Falha de conexão com Google GenAI (DNS/Rede): {e}. "
+                "Verifique a conectividade com a internet."
+            )
+            raise AITransientError(
+                f"Erro de conexão ao enviar áudio: {str(e)}"
+            ) from e
         except Exception as e:
             logger.error(
                 f"Erro no upload para Google GenAI: {e}", exc_info=True
