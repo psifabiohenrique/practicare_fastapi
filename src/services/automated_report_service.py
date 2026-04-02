@@ -253,8 +253,7 @@ class AutomatedReportService:
         )
 
         logger.info(
-            "Relatório gerado e salvo para o job: %s. "
-            "Tokens: In %s, Out %s",
+            "Relatório gerado e salvo para o job: %s. Tokens: In %s, Out %s",
             job.uuid,
             result.input_tokens,
             result.output_tokens,

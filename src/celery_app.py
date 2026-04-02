@@ -32,6 +32,7 @@ celery_app = Celery(
 celery_app.conf.imports = (
     "src.tasks.record_generation",
     "src.tasks.report_generation",
+    "src.tasks.context_update",
 )
 
 

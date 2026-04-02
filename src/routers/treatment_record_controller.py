@@ -236,7 +236,9 @@ async def process_audio_upload_background(
         if os.path.exists(audio_path):
             os.remove(audio_path)
     except Exception as e:
-        logger.warning(f"Falha ao deletar arquivo temporário {audio_path}: {e}")  # noqa: E501
+        logger.warning(
+            f"Falha ao deletar arquivo temporário {audio_path}: {e}"
+        )  # noqa: E501
 
 
 @router.post("/automated-record/{job_uuid}/finalize")

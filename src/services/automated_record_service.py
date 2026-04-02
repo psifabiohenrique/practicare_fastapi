@@ -14,6 +14,7 @@ from src.ai.chains.record_generation import RecordGenerationChain
 from src.ai.chains.transcription import TranscriptionChain
 from src.core.exceptions import NotFoundError
 from src.models.automated_record_job import AutomatedRecordJob, JobStatus
+from src.models.treatment_context_model import TreatmentContext
 from src.models.treatment_record_model import RecordStatus
 from src.models.usage_statistic import ProcessType
 from src.schemas.dashboard_schema import UsageStatisticCreate
@@ -330,9 +331,9 @@ class AutomatedRecordService:
             treatment_uuid=job.treatment_uuid,
             user_uuid=job.user_uuid,
         )
-        last_report_context = "Nenhum relatório produzido ainda. Está é a sessão inicial ou uma das sessões iniciais."  # noqa: E501
+        last_report_context = "Nenhum relatório produzido ainda. Esta é a sessão inicial ou uma das sessões iniciais."  # noqa: E501
         if report_list:
-            report = report_list[0]  # Use analysis or a summary
+            report = report_list[0]
             last_report_context = (
                 report.demand_description
                 + "\n"
@@ -342,6 +343,38 @@ class AutomatedRecordService:
                 + "\n"
                 + report.conclusion
             )
+
+        # Prefer TreatmentContext over last report
+        ctx_result = await db.execute(
+            select(TreatmentContext).filter(
+                TreatmentContext.treatment_uuid == str(job.treatment_uuid)
+            )
+        )
+        treatment_context = ctx_result.scalars().first()
+        if treatment_context:
+            ctx_parts = []
+            if treatment_context.life_dynamics:
+                ctx_parts.append(
+                    f"Dinâmicas de Vida: {treatment_context.life_dynamics}"
+                )
+            if treatment_context.clinical_history:
+                ctx_parts.append(
+                    f"Histórico Clínico: {treatment_context.clinical_history}"
+                )
+            if treatment_context.psychological_patterns:
+                ctx_parts.append(
+                    f"Padrões Psicológicos: {treatment_context.psychological_patterns}"  # noqa: E501
+                )
+            if treatment_context.therapeutic_goals:
+                ctx_parts.append(
+                    f"Objetivos Terapêuticos: {treatment_context.therapeutic_goals}"  # noqa: E501
+                )
+            if treatment_context.medication_notes:
+                ctx_parts.append(
+                    f"Medicações: {treatment_context.medication_notes}"
+                )
+            if ctx_parts:
+                last_report_context = "\n".join(ctx_parts)
         treatment_patient = (
             await PatientWithTreatmentService.get_patient_with_treatment_uuid(
                 db=db,

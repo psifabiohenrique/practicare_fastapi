@@ -55,3 +55,8 @@ class Treatment(Base):
     treatment_reports = relationship(
         "TreatmentReport", back_populates="treatment"
     )
+    treatment_context = relationship(
+        "TreatmentContext",
+        back_populates="treatment",
+        uselist=False,
+    )

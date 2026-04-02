@@ -139,7 +139,7 @@ async def csrf_protect(
         logger.warning(
             "CSRF token ausente. "
             f"Header: {bool(csrf_header)}, Cookie: {bool(csrf_cookie)}",
-            extra={"path": request.url.path, "method": request.method}
+            extra={"path": request.url.path, "method": request.method},
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -149,7 +149,7 @@ async def csrf_protect(
     if csrf_header != csrf_cookie:
         logger.warning(
             "CSRF token não corresponde ao cookie",
-            extra={"path": request.url.path, "method": request.method}
+            extra={"path": request.url.path, "method": request.method},
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

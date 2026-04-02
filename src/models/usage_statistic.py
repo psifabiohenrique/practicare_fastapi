@@ -13,6 +13,7 @@ class ProcessType(str, Enum):
     TRANSCRIPTION = "transcription"
     RECORD_GENERATION = "record_generation"
     REPORT_GENERATION = "report_generation"
+    CONTEXT_UPDATE = "context_update"
 
 
 class UsageStatistic(Base):
