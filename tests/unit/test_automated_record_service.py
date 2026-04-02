@@ -352,9 +352,6 @@ class TestAutomatedRecordServiceProcessing:
     @pytest.mark.asyncio
     @patch("src.services.automated_record_service.UsageStatisticService")
     @patch(
-        "src.services.automated_record_service.TreatmentReportService.get_treatment_reports"
-    )
-    @patch(
         "src.services.automated_record_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
     )
     @patch("src.services.automated_record_service.RecordGenerationChain")
@@ -362,18 +359,21 @@ class TestAutomatedRecordServiceProcessing:
         self,
         MockChain,
         mock_get_patient,
-        mock_get_reports,
         mock_usage_service,
         mock_db,
         mock_job,
     ):
-        # Mock reports
-        report = MagicMock()
-        report.demand_description = "demand"
-        report.procedures = "procs"
-        report.analysis = "anal"
-        report.conclusion = "conc"
-        mock_get_reports.return_value = [report]
+        # Mock TreatmentContext query
+        ctx_mock = MagicMock()
+        ctx_mock.life_dynamics = "Life info"
+        ctx_mock.clinical_history = None
+        ctx_mock.psychological_patterns = None
+        ctx_mock.therapeutic_goals = None
+        ctx_mock.medication_notes = None
+
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.first.return_value = ctx_mock
+        mock_db.execute.return_value = result_mock
 
         # Mock patient
         patient = MagicMock()
@@ -399,27 +399,27 @@ class TestAutomatedRecordServiceProcessing:
         mock_usage_service.create_statistic.assert_called_once()
         args, kwargs = chain_instance.generate.call_args
         assert kwargs["gender"] == "Male"
-        assert "demand" in kwargs["context"]
+        assert "Life info" in kwargs["context"]
 
     @pytest.mark.asyncio
     @patch("src.services.automated_record_service.UsageStatisticService")
     @patch(
-        "src.services.automated_record_service.TreatmentReportService.get_treatment_reports"
-    )
-    @patch(
         "src.services.automated_record_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
     )
     @patch("src.services.automated_record_service.RecordGenerationChain")
-    async def test_generate_record_no_reports(  # noqa: PLR0917
+    async def test_generate_record_no_context(  # noqa: PLR0917
         self,
         MockChain,
         mock_get_patient,
-        mock_get_reports,
         mock_usage_service,
         mock_db,
         mock_job,
     ):
-        mock_get_reports.return_value = []
+        # Mock TreatmentContext missing
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.first.return_value = None
+        mock_db.execute.return_value = result_mock
+
         patient = MagicMock()
         patient.gender = "Female"
         mock_get_patient.return_value = patient
@@ -437,7 +437,7 @@ class TestAutomatedRecordServiceProcessing:
         )
 
         args, kwargs = chain_instance.generate.call_args
-        assert "Nenhum relatório" in kwargs["context"]
+        assert kwargs["context"] == ""
 
     @pytest.mark.asyncio
     @patch(
@@ -487,9 +487,6 @@ class TestAutomatedRecordServiceProcessing:
     @pytest.mark.asyncio
     @patch("src.services.automated_record_service.UsageStatisticService")
     @patch(
-        "src.services.automated_record_service.TreatmentReportService.get_treatment_reports"
-    )
-    @patch(
         "src.services.automated_record_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
     )
     @patch("src.services.automated_record_service.RecordGenerationChain")
@@ -497,12 +494,15 @@ class TestAutomatedRecordServiceProcessing:
         self,
         MockChain,
         mock_get_patient,
-        mock_get_reports,
         mock_usage_service,
         mock_db,
         mock_job,
     ):
-        mock_get_reports.return_value = []
+        # Mock TreatmentContext missing
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.first.return_value = None
+        mock_db.execute.return_value = result_mock
+
         mock_get_patient.return_value = MagicMock(gender="Other")
         chain_instance = MockChain.return_value
         chain_instance.generate = AsyncMock(side_effect=Exception("AI error"))

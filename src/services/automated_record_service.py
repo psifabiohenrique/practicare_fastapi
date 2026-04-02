@@ -28,7 +28,6 @@ from src.services.patient_with_treatment_service import (
 from src.services.treatment_record_service import (
     TreatmentRecordService,
 )
-from src.services.treatment_report_service import TreatmentReportService
 from src.services.treatment_service import TreatmentService
 from src.services.usage_statistic_service import UsageStatisticService
 from src.utils.audio_processor import convert_to_wav, split_by_vad
@@ -326,31 +325,16 @@ class AutomatedRecordService:
             f"Iniciando geração de prontuário para o job: {job.uuid}",
             extra={"job_uuid": str(job.uuid)},
         )
-        report_list = await TreatmentReportService.get_treatment_reports(
-            db=db,
-            treatment_uuid=job.treatment_uuid,
-            user_uuid=job.user_uuid,
-        )
-        last_report_context = "Nenhum relatório produzido ainda. Esta é a sessão inicial ou uma das sessões iniciais."  # noqa: E501
-        if report_list:
-            report = report_list[0]
-            last_report_context = (
-                report.demand_description
-                + "\n"
-                + report.procedures
-                + "\n"
-                + report.analysis
-                + "\n"
-                + report.conclusion
-            )
 
-        # Prefer TreatmentContext over last report
+        # Use only TreatmentContext as context source
         ctx_result = await db.execute(
             select(TreatmentContext).filter(
                 TreatmentContext.treatment_uuid == str(job.treatment_uuid)
             )
         )
         treatment_context = ctx_result.scalars().first()
+
+        clinical_context = ""
         if treatment_context:
             ctx_parts = []
             if treatment_context.life_dynamics:
@@ -374,7 +358,8 @@ class AutomatedRecordService:
                     f"Medicações: {treatment_context.medication_notes}"
                 )
             if ctx_parts:
-                last_report_context = "\n".join(ctx_parts)
+                clinical_context = "\n".join(ctx_parts)
+
         treatment_patient = (
             await PatientWithTreatmentService.get_patient_with_treatment_uuid(
                 db=db,
@@ -388,7 +373,7 @@ class AutomatedRecordService:
             result = await record_chain.generate(
                 transcription=transcription,
                 gender=treatment_patient.gender,
-                context=last_report_context,
+                context=clinical_context,
             )
 
             # Save record generation usage statistic
