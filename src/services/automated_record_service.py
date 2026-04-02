@@ -257,8 +257,8 @@ class AutomatedRecordService:
             try:
                 await TreatmentRecordService.update_treatment_record(
                     db,
-                    UUID(job.treatment_record_uuid),
-                    job.user_uuid,
+                    UUID(str(job.treatment_record_uuid)),
+                    str(job.user_uuid),
                     InternalTreatmentRecordUpdate(status=RecordStatus.FAILED),
                 )
             except Exception:

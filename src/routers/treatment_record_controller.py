@@ -220,8 +220,8 @@ async def process_audio_upload_background(
                     try:
                         await TreatmentRecordService.update_treatment_record(
                             db,
-                            UUID(job.treatment_record_uuid),
-                            job.user_uuid,
+                            UUID(str(job.treatment_record_uuid)),
+                            str(job.user_uuid),
                             InternalTreatmentRecordUpdate(
                                 content=error_msg, status=RecordStatus.FAILED
                             ),
