@@ -40,7 +40,7 @@ class PatientWithTreatmentService:
             (t for t in patient.treatments if t.uuid == treatment_uuid),
             None,
         )
-        if treatment and treatment.user_uuid != user_uuid:
+        if treatment and str(treatment.user_uuid) != str(user_uuid):
             raise ForbiddenError("Access denied")
 
         return patient
@@ -83,7 +83,7 @@ class PatientWithTreatmentService:
         treatment = result.scalars().first()
         if not treatment:
             raise NotFoundError("Treatment not found")
-        if treatment.user_uuid != user_uuid:  # type: ignore
+        if str(treatment.user_uuid) != str(user_uuid):  # type: ignore
             raise ForbiddenError("Access denied")
         return treatment
 

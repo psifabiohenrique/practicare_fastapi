@@ -27,7 +27,7 @@ class TreatmentService:
         if not treatment:
             logger.warning(f"Tratamento não encontrado: {treatment_uuid}")
             raise NotFoundError("Treatment not found")
-        if treatment.user_uuid != user_uuid:
+        if str(treatment.user_uuid) != str(user_uuid):
             logger.warning(
                 f"Tentativa de acesso negado ao tratamento {treatment_uuid} pelo usuário {user_uuid}"  # noqa: E501
             )

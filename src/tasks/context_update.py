@@ -70,8 +70,7 @@ def do_generate_context_draft(
 
     except Exception:
         logger.exception("Erro inesperado na task de context draft")
-        # Don't retry unknown errors
-        return
+        raise
 
 
 @celery_app.task(

@@ -35,7 +35,7 @@ class TreatmentReportService:
             )
             raise NotFoundError("Treatment report not found")
 
-        if report.treatment.user_uuid != user_uuid:
+        if str(report.treatment.user_uuid) != str(user_uuid):
             logger.warning(
                 f"Acesso negado ao relatório {treatment_report_uuid} pelo usuário {user_uuid}"  # noqa: E501
             )

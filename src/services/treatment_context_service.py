@@ -49,16 +49,9 @@ class TreatmentContextService:
         Returns the TreatmentContext and the most recent
         pending (is_applied=False) draft for a treatment.
         """
-        await TreatmentService.get_treatment_by_uuid(
+        context = await TreatmentContextService.get_or_create_context(
             db, treatment_uuid, user_uuid
         )
-
-        result = await db.execute(
-            select(TreatmentContext).filter(
-                TreatmentContext.treatment_uuid == str(treatment_uuid)
-            )
-        )
-        context = result.scalars().first()
 
         pending_draft = None
         if context:

@@ -16,6 +16,11 @@ from src.services.treatment_service import TreatmentService
 
 logger = logging.getLogger(__name__)
 
+SYSTEM_PLACEHOLDERS = [
+    "Processando áudio e gerando prontuário...",
+    "Reprocessando o áudio, aguarde...",
+]
+
 
 class TreatmentRecordService:
     @staticmethod
@@ -35,7 +40,7 @@ class TreatmentRecordService:
             )
             raise NotFoundError("Treatment record not found")
 
-        if record.treatment.user_uuid != user_uuid:
+        if str(record.treatment.user_uuid) != str(user_uuid):
             logger.warning(
                 f"Acesso negado ao prontuário {treatment_record_uuid} pelo usuário {user_uuid}"  # noqa: E501
             )
@@ -76,7 +81,10 @@ class TreatmentRecordService:
 
     @staticmethod
     async def create_treatment_record(
-        db: AsyncSession, schema: TreatmentRecordCreate, user_uuid: str
+        db: AsyncSession,
+        schema: TreatmentRecordCreate,
+        user_uuid: str,
+        trigger_context_update: bool = True,
     ) -> TreatmentRecord:
         # Check if treatment exists and belongs to user
         await TreatmentService.get_treatment_by_uuid(
@@ -105,14 +113,21 @@ class TreatmentRecordService:
         logger.info(
             f"Prontuário {db_treatment_record.uuid} (Nº {next_number}) criado com sucesso"  # noqa: E501
         )
+
+        if trigger_context_update and db_treatment_record.content:
+            await TreatmentRecordService._trigger_context_update_if_needed(
+                db_treatment_record, user_uuid
+            )
+
         return db_treatment_record
 
     @staticmethod
-    async def update_treatment_record(
+    async def update_treatment_record(  # noqa: PLR0913
         db: AsyncSession,
         treatment_record_uuid: UUID,
         user_uuid: str,
         schema: TreatmentRecordUpdate,
+        trigger_context_update: bool = True,
     ) -> TreatmentRecord:
         db_treatment_record = (
             await TreatmentRecordService.get_treatment_record(
@@ -122,10 +137,41 @@ class TreatmentRecordService:
 
         logger.info(f"Atualizando prontuário: {treatment_record_uuid}")
         update_data = schema.model_dump(exclude_unset=True)
+
         for key, value in update_data.items():
             setattr(db_treatment_record, key, value)
 
         db.add(db_treatment_record)
         await db.commit()
         await db.refresh(db_treatment_record)
+
+        if trigger_context_update:
+            await TreatmentRecordService._trigger_context_update_if_needed(
+                db_treatment_record, user_uuid
+            )
+
         return db_treatment_record
+
+    @staticmethod
+    async def _trigger_context_update_if_needed(
+        record: TreatmentRecord, user_uuid: str
+    ):
+        from src.models.treatment_record_model import RecordStatus  # noqa: PLC0415, I001
+
+        if (
+            record.status == RecordStatus.READY
+            and record.content
+            and record.content not in SYSTEM_PLACEHOLDERS
+        ):
+            from src.tasks.context_update import (  # noqa: PLC0415
+                generate_context_draft_task,
+            )
+
+            logger.info(
+                f"Disparando atualização de contexto para o prontuário {record.uuid}"  # noqa: E501
+            )
+            generate_context_draft_task.delay(
+                treatment_uuid=str(record.treatment_uuid),
+                treatment_record_uuid=str(record.uuid),
+                user_uuid=str(user_uuid),
+            )

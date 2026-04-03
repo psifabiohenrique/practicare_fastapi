@@ -14,7 +14,8 @@ from src.schemas.treatment_record_schema import (
 )
 from src.services.automated_record_service import AutomatedRecordService
 from src.services.treatment_record_service import TreatmentRecordService
-from src.tasks.context_update import generate_context_draft_task
+
+# from src.tasks.context_update import generate_context_draft_task
 
 logger = logging.getLogger(__name__)
 
@@ -117,13 +118,6 @@ async def generate_record_logic(job_uuid: UUID):
     logger.info(
         f"generate_record_logic concluído com sucesso para o job: {job_uuid}",
         extra={"job_uuid": str(job_uuid)},
-    )
-
-    # Dispatch context draft generation
-    generate_context_draft_task.delay(
-        treatment_uuid=str(job.treatment_uuid),
-        treatment_record_uuid=str(job.treatment_record_uuid),
-        user_uuid=str(job.user_uuid),
     )
 
 

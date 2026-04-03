@@ -92,6 +92,7 @@ class AutomatedRecordService:
                     content="Processando áudio e gerando prontuário...",
                 ),
                 user_uuid=user_uuid,
+                trigger_context_update=False,
             )
 
         job = await AutomatedRecordService.create_job(

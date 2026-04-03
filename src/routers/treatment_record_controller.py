@@ -302,5 +302,9 @@ async def update_treatment_record(
         },
     )
     return await TreatmentRecordService.update_treatment_record(
-        db, treatment_record_uuid, current_user.uuid, schema
+        db,
+        treatment_record_uuid,
+        current_user.uuid,
+        schema,
+        trigger_context_update=False,
     )

@@ -10,10 +10,10 @@ from src.database import Base
 
 
 class ProcessType(str, Enum):
-    TRANSCRIPTION = "transcription"
-    RECORD_GENERATION = "record_generation"
-    REPORT_GENERATION = "report_generation"
-    CONTEXT_UPDATE = "context_update"
+    TRANSCRIPTION = "TRANSCRIPTION"
+    RECORD_GENERATION = "RECORD_GENERATION"
+    REPORT_GENERATION = "REPORT_GENERATION"
+    CONTEXT_UPDATE = "CONTEXT_UPDATE"
 
 
 class UsageStatistic(Base):
