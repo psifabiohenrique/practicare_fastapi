@@ -305,7 +305,7 @@ class TreatmentContextService:
             old_val = getattr(pending_draft, field) or ""
             new_val = new_draft_data.get(field) or ""
             if old_val and new_val and old_val != new_val:
-                merged[field] = new_val
+                merged[field] = f"{old_val}\n\nNova sugestão: {new_val}"
             elif new_val:
                 merged[field] = new_val
             elif old_val:
