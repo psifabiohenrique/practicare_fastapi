@@ -49,8 +49,16 @@ do paciente em caso de vazamento de dados. Resuma em termos de papéis \
 (ex: 'esposa', 'chefe', 'conflito familiar em local público' \
 em vez do nome do restaurante ou nome do chefe).
 - Mantenha linguagem técnica, formal e objetiva.
-- Formate a sugestão de modificação de forma descritiva \
-(ex: "Adicionar: [descrição]" e/ou "Remover: [descrição]").
+- FORMATO DE TÓPICOS CURTOS: As sugestões devem ser enviadas sempre em TÓPICOS CURTOS e CONCISOS (bullet points).
+- INDEPENDÊNCIA DE FORMATO: Mesmo que o [Contexto Atual do Tratamento] esteja em parágrafos, suas sugestões de "Adicionar" ou "Remover" devem manter o formato de tópicos curtos. NUNCA gere explicações longas ou parágrafos.
+- Formate a sugestão de modificação seguindo o exemplo:
+  Exemplo:
+  "Adicionar:
+  - Desentendimento com figura materna.
+  - Relato de ansiedade em locais públicos.
+
+  Remover:
+  - Meta de redução de café (alcançada)."
 - Se o campo não tiver mudanças relevantes, não force informações, \
 apenas retorne null.
 
