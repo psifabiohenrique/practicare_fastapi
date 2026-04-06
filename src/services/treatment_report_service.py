@@ -116,3 +116,27 @@ class TreatmentReportService:
         await db.commit()
         await db.refresh(db_treatment_report)
         return db_treatment_report
+
+    @staticmethod
+    async def delete_treatment_report(
+        db: AsyncSession,
+        treatment_report_uuid: UUID,
+        user_uuid: str,
+    ) -> None:
+        db_treatment_report = (
+            await TreatmentReportService.get_treatment_report(
+                db, treatment_report_uuid, user_uuid
+            )
+        )
+        logger.info(
+            f"Deletando relatório: {treatment_report_uuid}",
+            extra={
+                "user_uuid": str(user_uuid),
+                "treatment_report_uuid": str(treatment_report_uuid),
+            },
+        )
+        await db.delete(db_treatment_report)
+        await db.commit()
+        logger.info(
+            f"Relatório {treatment_report_uuid} deletado com sucesso"
+        )

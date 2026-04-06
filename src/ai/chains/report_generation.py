@@ -43,7 +43,7 @@ class ReportGenerationChain:
         self.provider = provider
         if provider == "openai":
             self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-            self.model = settings.LLM_MODEL  # User requested gpt-5-mini
+            self.model = settings.LLM_MODEL
         elif provider == "google":
             self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
             self.model = settings.LLM_MODEL
@@ -54,23 +54,42 @@ class ReportGenerationChain:
         self,
         patient_first_name: str,
         gender: str,
-        previous_report_context: str,
         records_context: str,
+        treatment_context: str | None = None,
+        custom_system_prompt: str | None = None,
     ) -> AIResult:
         """
-        Generates a structured report from records and context using OpenAI directly.
+        Generates a structured report from records and context using an LLM.
+        - treatment_context: accumulated clinical context for the treatment.
+        - custom_system_prompt: extra instruction for focused reports,
+          appended to the default system prompt.
         """  # noqa: E501
         logger.info(
             f"Chamando LLM ({self.provider}) para geração de relatório. "
             f"Modelo: {self.model}"
         )
         try:
+            context_text = (
+                treatment_context
+                if treatment_context
+                else "Sem contexto clínico disponível."
+            )
+
             system_prompt = REPORT_GENERATION_SYSTEM_PROMPT.format(
                 patient_first_name=patient_first_name,
                 gender=gender,
-                previous_report_context=previous_report_context,
+                treatment_context=context_text,
                 records_context=records_context,
             )
+
+            # Append custom instruction for focused reports
+            if custom_system_prompt:
+                system_prompt += (
+                    f"\n\n[Instrução Específica do Usuário]\n"
+                    f"{custom_system_prompt}\n"
+                    f"Atenção: mesmo com a instrução acima, "
+                    f"mantenha o formato de saída JSON obrigatório."
+                )
 
             if self.provider == "openai":
                 response = await self.client.chat.completions.create(
@@ -82,7 +101,6 @@ class ReportGenerationChain:
                             "content": f"Gere o relatório para o paciente {patient_first_name}.",  # noqa: E501
                         },
                     ],
-                    # temperature=0,
                     response_format={"type": "json_object"},
                 )
                 input_tokens = 0
@@ -143,7 +161,6 @@ class ReportGenerationChain:
                 f"Erro de rede ao chamar o LLM ({self.provider}) "
                 f"para relatório: {e}"
             )
-            # cobre DNS, timeout, falha de socket, etc.
             raise AITransientError("Erro de rede ao chamar o Gemini") from e
 
         except Exception as e:

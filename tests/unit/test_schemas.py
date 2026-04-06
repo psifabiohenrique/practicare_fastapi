@@ -23,6 +23,7 @@ from src.schemas.treatment_record_schema import (
 )
 from src.schemas.treatment_report_schema import (
     AutomatedReportCreate,
+    ReportType,
     TreatmentReportCreate,
     TreatmentReportUpdate,
 )
@@ -184,14 +185,12 @@ class TestTreatmentReportSchemas:
         assert r.treatment_uuid == uid
 
     def test_automated_report_create(self):
-        uid = uuid4()
         r = AutomatedReportCreate(
-            treatment_uuid=uid,
-            issue_date=date(2024, 1, 1),
+            report_type=ReportType.PERIODICO,
             start_date_period=date(2024, 1, 1),
             end_date_period=date(2024, 1, 31),
         )
-        assert r.treatment_uuid == uid
+        assert r.report_type == ReportType.PERIODICO
 
     def test_treatment_report_update_partial(self):
         update = TreatmentReportUpdate(analysis="new analysis")

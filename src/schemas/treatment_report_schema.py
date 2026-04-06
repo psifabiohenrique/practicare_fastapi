@@ -12,6 +12,12 @@ class ReportStatus(str, Enum):
     FAILED = "failed"
 
 
+class ReportType(str, Enum):
+    COMPLETO = "COMPLETO"
+    PERIODICO = "PERIODICO"
+    FOCADO = "FOCADO"
+
+
 class TreatmentReportBase(BaseModel):
     treatment_uuid: UUID
     demand_description: str
@@ -22,6 +28,8 @@ class TreatmentReportBase(BaseModel):
     start_date_period: date
     end_date_period: date
     status: ReportStatus = ReportStatus.READY
+    report_type: ReportType = ReportType.PERIODICO
+    system_prompt: str | None = None
 
 
 class TreatmentReportCreate(TreatmentReportBase):
@@ -29,10 +37,10 @@ class TreatmentReportCreate(TreatmentReportBase):
 
 
 class AutomatedReportCreate(BaseModel):
-    treatment_uuid: UUID
-    issue_date: date
-    start_date_period: date
-    end_date_period: date
+    report_type: ReportType = ReportType.PERIODICO
+    start_date_period: date | None = None
+    end_date_period: date | None = None
+    system_prompt: str | None = None
 
 
 class TreatmentReportUpdate(BaseModel):
@@ -43,6 +51,8 @@ class TreatmentReportUpdate(BaseModel):
     issue_date: date | None = None
     start_date_period: date | None = None
     end_date_period: date | None = None
+    report_type: ReportType | None = None
+    system_prompt: str | None = None
 
 
 class InternalTreatmentReportUpdate(TreatmentReportUpdate):

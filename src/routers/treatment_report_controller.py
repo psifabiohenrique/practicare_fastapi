@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, status
@@ -89,6 +90,27 @@ async def update_treatment_report(
     )
 
 
+@router.delete(
+    "/{treatment_report_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_treatment_report(
+    treatment_report_uuid: UUID,
+    db: SessionDB,
+    current_user: CurrentUser,
+) -> None:
+    logger.info(
+        f"Deletando relatório de tratamento: {treatment_report_uuid}",
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "treatment_report_uuid": str(treatment_report_uuid),
+        },
+    )
+    await TreatmentReportService.delete_treatment_report(
+        db, treatment_report_uuid, current_user.uuid
+    )
+
+
 @router.post(
     "/treatments/{treatment_uuid}/automated-report",
     response_model=TreatmentReportRead,
@@ -101,18 +123,28 @@ async def create_automated_report(
     background_tasks: BackgroundTasks,
 ) -> any:
     user_uuid = current_user.uuid
+    today = date.today()
+
     logger.info(
-        "Solicitação de relatório automatizado recebida. Tratamento: %s",
+        "Solicitação de relatório automatizado recebida. "
+        "Tratamento: %s, Tipo: %s",
         treatment_uuid,
+        schema.report_type,
         extra={
             "user_uuid": str(user_uuid),
             "treatment_uuid": str(treatment_uuid),
-            "start_date": schema.start_date_period.isoformat(),
-            "end_date": schema.end_date_period.isoformat(),
+            "report_type": schema.report_type,
         },
     )
 
-    # 1. Inicializar o relatório com status PROCESSING e conteúdo temporário
+    # Determine placeholder dates — the service will overwrite them
+    # with the real calculated values after generation.
+    # For PERIODICO and FOCADO, if the user provided dates, we use them;
+    # otherwise we use today as a placeholder so NOT NULL is satisfied.
+    start_placeholder = schema.start_date_period or today
+    end_placeholder = schema.end_date_period or today
+
+    # 1. Create report with PROCESSING status and placeholder dates
     report = await TreatmentReportService.create_treatment_report(
         db=db,
         schema=TreatmentReportCreate(
@@ -121,15 +153,17 @@ async def create_automated_report(
             procedures="Processando em background...",
             analysis="Processando em background...",
             conclusion="Processando em background...",
-            issue_date=schema.issue_date,
-            start_date_period=schema.start_date_period,
-            end_date_period=schema.end_date_period,
+            issue_date=today,
+            start_date_period=start_placeholder,
+            end_date_period=end_placeholder,
             status=ReportStatus.PROCESSING,
+            report_type=schema.report_type,
+            system_prompt=schema.system_prompt,
         ),
         user_uuid=user_uuid,
     )
 
-    # 2. Criar o job
+    # 2. Create the background job
     job = await AutomatedReportService.create_job(
         db=db,
         treatment_uuid=treatment_uuid,

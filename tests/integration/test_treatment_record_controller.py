@@ -49,7 +49,10 @@ async def test_list_treatment_records(session_client, db_session):
     assert len(data) == batch_size
 
 
-async def test_create_treatment_record_sequential(session_client, db_session):
+@patch("src.tasks.context_update.generate_context_draft_task.delay")
+async def test_create_treatment_record_sequential(
+    mock_update_context, session_client, db_session
+):
     client, user = session_client
 
     treatment = TreatmentFactory.build(user=user, user_uuid=user.uuid)

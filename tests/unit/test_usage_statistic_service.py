@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+import uuid
 from src.schemas.dashboard_schema import ProcessType, UsageStatisticCreate
 from src.services.usage_statistic_service import UsageStatisticService
 
@@ -15,8 +16,8 @@ class TestUsageStatisticService:
     @pytest.mark.asyncio
     async def test_create_statistic(self, mock_db):
         schema = UsageStatisticCreate(
-            user_uuid="user-uuid",
-            job_uuid="job-uuid",
+            user_uuid=str(uuid.uuid4()),
+            job_uuid=str(uuid.uuid4()),
             process_type=ProcessType.TRANSCRIPTION,
             input_tokens=100,
             output_tokens=200,
@@ -32,7 +33,7 @@ class TestUsageStatisticService:
 
         result = await UsageStatisticService.create_statistic(mock_db, schema)
 
-        assert result.user_uuid == schema.user_uuid
+        assert str(result.user_uuid) == schema.user_uuid
         assert result.input_tokens == schema.input_tokens
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()

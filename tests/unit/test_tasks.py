@@ -102,9 +102,8 @@ class TestRecordGenerationTasks:
     @patch("src.tasks.record_generation.get_async_session")
     @patch("src.tasks.record_generation.AutomatedRecordService")
     @patch("src.tasks.record_generation.TreatmentRecordService")
-    @patch("src.tasks.record_generation.generate_context_draft_task")
     async def test_generate_record_logic_success(
-        self, mock_gcd_task, mock_trs, mock_ars, mock_gas, mock_db, job_uuid
+        self, mock_trs, mock_ars, mock_gas, mock_db, job_uuid
     ):
         mock_gas.return_value = mock_db
         mock_job = MagicMock()

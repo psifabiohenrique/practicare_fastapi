@@ -25,6 +25,12 @@ class ReportStatus(str, Enum):
     FAILED = "failed"
 
 
+class ReportType(str, Enum):
+    COMPLETO = "COMPLETO"
+    PERIODICO = "PERIODICO"
+    FOCADO = "FOCADO"
+
+
 class TreatmentReport(Base):
     __tablename__ = "treatment_reports"
 
@@ -42,15 +48,21 @@ class TreatmentReport(Base):
     status = Column(
         SQLEnum(ReportStatus), default=ReportStatus.READY, nullable=False
     )
+    report_type = Column(
+        SQLEnum(ReportType),
+        default=ReportType.PERIODICO,
+        nullable=False,
+    )
 
     demand_description = Column(String, nullable=True)
     procedures = Column(String, nullable=True)
     analysis = Column(String, nullable=True)
     conclusion = Column(String, nullable=True)
+    system_prompt = Column(String, nullable=True)
 
     issue_date = Column(Date)
-    start_date_period = Column(Date)
-    end_date_period = Column(Date)
+    start_date_period = Column(Date, nullable=False)
+    end_date_period = Column(Date, nullable=False)
 
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(

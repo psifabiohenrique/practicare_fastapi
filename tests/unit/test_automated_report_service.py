@@ -6,7 +6,9 @@ import pytest
 from src.ai.ai_result import AIResult
 from src.core.exceptions import NotFoundError
 from src.models.automated_report_job import AutomatedReportJob, ReportJobStatus
+from src.models.treatment_report_model import ReportType
 from src.services.automated_report_service import AutomatedReportService
+from datetime import date
 
 
 @pytest.fixture
@@ -184,19 +186,22 @@ class TestAutomatedReportServiceProcessing:
 
         # Mock current report
         current_report = MagicMock()
-        current_report.start_date_period = "2023-01-01"
-        current_report.end_date_period = "2023-01-31"
+        current_report.report_type = ReportType.PERIODICO
+        current_report.start_date_period = date(2023, 1, 1)
+        current_report.end_date_period = date(2023, 1, 31)
+        current_report.system_prompt = None
         mock_get_report.return_value = current_report
 
-        # Mock previous report query
-        prev_report = MagicMock()
-        prev_report.demand_description = "demand"
-        prev_report.procedures = "procs"
-        prev_report.analysis = "anal"
-        prev_report.conclusion = "conc"
+        # Mock TreatmentContext query
+        treatment_context = MagicMock()
+        treatment_context.clinical_history = "clinical history"
+        treatment_context.psychological_patterns = ""
+        treatment_context.therapeutic_goals = ""
+        treatment_context.life_dynamics = ""
+        treatment_context.medication_notes = ""
 
         result_mock = MagicMock()
-        result_mock.scalar_one_or_none.side_effect = [prev_report]
+        result_mock.scalar_one_or_none.side_effect = [treatment_context]
         mock_db.execute.return_value = result_mock
 
         # Mock records
@@ -300,6 +305,10 @@ class TestAutomatedReportServiceProcessing:
 
         # Mock current report
         current_report = MagicMock()
+        current_report.report_type = ReportType.PERIODICO
+        current_report.start_date_period = date(2023, 1, 1)
+        current_report.end_date_period = date(2023, 1, 31)
+        current_report.system_prompt = None
         mock_get_report.return_value = current_report
 
         # Mock previous report query (None)
@@ -331,10 +340,7 @@ class TestAutomatedReportServiceProcessing:
         mock_usage_service.create_statistic.assert_called_once()
         # Verify context strings passed to AI
         args, kwargs = chain_instance.generate.call_args
-        assert (
-            kwargs["previous_report_context"]
-            == "Nenhum relatório anterior encontrado."
-        )
+        assert kwargs["treatment_context"] is None
         assert (
             kwargs["records_context"]
             == "Nenhum prontuário encontrado para este período."
