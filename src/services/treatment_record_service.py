@@ -2,7 +2,7 @@ import logging
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -57,6 +57,7 @@ class TreatmentRecordService:
         limit: int = 100,
         start_date: date | None = None,
         end_date: date | None = None,
+        include_archived: bool = False,
     ) -> list[TreatmentRecord]:
         # Check if treatment exists and belongs to user
         await TreatmentService.get_treatment_by_uuid(
@@ -65,17 +66,30 @@ class TreatmentRecordService:
         query = select(TreatmentRecord).filter(
             TreatmentRecord.treatment_uuid == str(treatment_uuid)
         )
+
+        if not include_archived:
+            query = query.filter(TreatmentRecord.is_active)
+
         if start_date:
             query = query.filter(TreatmentRecord.date >= start_date)
         if end_date:
             query = query.filter(TreatmentRecord.date <= end_date)
 
-        query = (
-            query
-            .order_by(TreatmentRecord.record_number.desc())
-            .offset(skip)
-            .limit(limit)
-        )
+        if include_archived:
+            query = (
+                query
+                .order_by(TreatmentRecord.date.desc())
+                .offset(skip)
+                .limit(limit)
+            )
+        else:
+            query = (
+                query
+                .order_by(TreatmentRecord.record_number.desc())
+                .offset(skip)
+                .limit(limit)
+            )
+
         result = await db.execute(query)
         return list(result.scalars().all())
 
@@ -151,6 +165,46 @@ class TreatmentRecordService:
             )
 
         return db_treatment_record
+
+    @staticmethod
+    async def delete_treatment_record(
+        db: AsyncSession,
+        treatment_record_uuid: UUID,
+        user_uuid: str,
+    ) -> None:
+        record = await TreatmentRecordService.get_treatment_record(
+            db, treatment_record_uuid, user_uuid
+        )
+
+        if not record.is_active:
+            return
+
+        logger.info(
+            f"Arquivando prontuário: {treatment_record_uuid}",
+            extra={
+                "user_uuid": str(user_uuid),
+                "treatment_record_uuid": str(treatment_record_uuid),
+            },
+        )
+
+        old_number = record.record_number
+        record.is_active = False
+        record.record_number = None
+        db.add(record)
+
+        if old_number is not None:
+            stmt = (
+                update(TreatmentRecord)
+                .where(
+                    TreatmentRecord.treatment_uuid == record.treatment_uuid,
+                    TreatmentRecord.is_active,
+                    TreatmentRecord.record_number > old_number
+                )
+                .values(record_number=TreatmentRecord.record_number - 1)
+            )
+            await db.execute(stmt)
+
+        await db.commit()
 
     @staticmethod
     async def _trigger_context_update_if_needed(

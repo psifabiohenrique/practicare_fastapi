@@ -35,7 +35,8 @@ class TreatmentRecordRead(TreatmentRecordBase):
     status: RecordStatus
     created_at: datetime
     updated_at: datetime
-    record_number: int
+    record_number: int | None
+    is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
 

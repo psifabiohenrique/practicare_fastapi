@@ -52,6 +52,7 @@ class TreatmentReportService:
         limit: int = 100,
         start_date: date | None = None,
         end_date: date | None = None,
+        include_archived: bool = False,
     ) -> list[TreatmentReport]:
         # Check if treatment exists and belongs to user
         await TreatmentService.get_treatment_by_uuid(
@@ -61,6 +62,10 @@ class TreatmentReportService:
         query = select(TreatmentReport).filter(
             TreatmentReport.treatment_uuid == str(treatment_uuid)
         )
+
+        if not include_archived:
+            query = query.filter(TreatmentReport.is_active)
+
         if start_date:
             query = query.filter(TreatmentReport.issue_date >= start_date)
         if end_date:
@@ -128,15 +133,20 @@ class TreatmentReportService:
                 db, treatment_report_uuid, user_uuid
             )
         )
+
+        if not db_treatment_report.is_active:
+            return
+
         logger.info(
-            f"Deletando relatório: {treatment_report_uuid}",
+            f"Arquivando relatório: {treatment_report_uuid}",
             extra={
                 "user_uuid": str(user_uuid),
                 "treatment_report_uuid": str(treatment_report_uuid),
             },
         )
-        await db.delete(db_treatment_report)
+        db_treatment_report.is_active = False
+        db.add(db_treatment_report)
         await db.commit()
         logger.info(
-            f"Relatório {treatment_report_uuid} deletado com sucesso"
+            f"Relatório {treatment_report_uuid} arquivado com sucesso"
         )

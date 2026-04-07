@@ -24,15 +24,21 @@ router = APIRouter(prefix="/treatment-reports", tags=["Treatment reports"])
 @router.get(
     "/treatment/{treatment_uuid}", response_model=list[TreatmentReportRead]
 )
-async def list_treatment_reports(
+async def list_treatment_reports(  # noqa: PLR0913, PLR0917
     treatment_uuid: UUID,
     db: SessionDB,
     current_user: CurrentUser,
     skip: int = 0,
     limit: int = 100,
+    include_archived: bool = False,
 ) -> any:
     return await TreatmentReportService.get_treatment_reports(
-        db, treatment_uuid, current_user.uuid, skip, limit
+        db,
+        treatment_uuid,
+        current_user.uuid,
+        skip,
+        limit,
+        include_archived=include_archived,
     )
 
 

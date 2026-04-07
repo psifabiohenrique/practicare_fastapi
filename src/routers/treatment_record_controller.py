@@ -36,15 +36,21 @@ logger = logging.getLogger(__name__)
 @router.get(
     "/treatment/{treatment_uuid}", response_model=list[TreatmentRecordRead]
 )
-async def list_treatment_records(
+async def list_treatment_records(  # noqa: PLR0913, PLR0917
     treatment_uuid: UUID,
     db: SessionDB,
     current_user: CurrentUser,
     skip: int = 0,
     limit: int = 100,
+    include_archived: bool = False,
 ) -> any:
     return await TreatmentRecordService.get_treatment_records(
-        db, treatment_uuid, current_user.uuid, skip, limit
+        db,
+        treatment_uuid,
+        current_user.uuid,
+        skip,
+        limit,
+        include_archived=include_archived,
     )
 
 
@@ -307,4 +313,25 @@ async def update_treatment_record(
         current_user.uuid,
         schema,
         trigger_context_update=False,
+    )
+
+
+@router.delete(
+    "/{treatment_record_uuid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_treatment_record(
+    treatment_record_uuid: UUID,
+    db: SessionDB,
+    current_user: CurrentUser,
+) -> None:
+    logger.info(
+        f"Deletando (arquivando) prontuário: {treatment_record_uuid}",
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "treatment_record_uuid": str(treatment_record_uuid),
+        },
+    )
+    await TreatmentRecordService.delete_treatment_record(
+        db, treatment_record_uuid, current_user.uuid
     )

@@ -4,6 +4,7 @@ from enum import Enum
 
 from sqlalchemy import UUID as SQLUUID
 from sqlalchemy import (
+    Boolean,
     Column,
     Date,
     DateTime,
@@ -45,6 +46,7 @@ class TreatmentRecord(Base):
     status = Column(
         SQLEnum(RecordStatus), default=RecordStatus.READY, nullable=False
     )
+    is_active = Column(Boolean, default=True, nullable=False)
     date = Column(Date)
     start_time = Column(Time)
     end_time = Column(Time)
