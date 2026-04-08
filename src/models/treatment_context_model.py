@@ -36,6 +36,7 @@ class TreatmentContext(Base):
         default=datetime.now,
         onupdate=datetime.now,
     )
+    is_update_scheduled = Column(Boolean, default=False, nullable=False)
 
     treatment = relationship("Treatment", back_populates="treatment_context")
     drafts = relationship(

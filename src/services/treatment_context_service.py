@@ -397,3 +397,181 @@ class TreatmentContextService:
         )
 
         return draft
+
+    @staticmethod
+    async def schedule_context_generation(
+        db: AsyncSession,
+        treatment_uuid: UUID,
+        user_uuid: str,
+        historical_notes: str | None,
+        include_existing_records: bool,
+    ) -> TreatmentContext:
+        """
+        Sets is_update_scheduled = True and schedules the celery task.
+        """
+        context = await TreatmentContextService.get_or_create_context(
+            db, treatment_uuid, user_uuid
+        )
+
+        if context.is_update_scheduled:
+            raise ForbiddenError(
+                "An update is already scheduled for this context"
+            )
+
+        context.is_update_scheduled = True
+        db.add(context)
+        await db.commit()
+        await db.refresh(context)
+
+        # Import task here to avoid circular imports
+        from src.tasks.context_generation import (  # noqa: E402
+            generate_context_from_history_task,
+        )
+        generate_context_from_history_task.delay(
+            str(treatment_uuid),
+            user_uuid,
+            historical_notes,
+            include_existing_records,
+        )
+
+        return context
+
+    @staticmethod
+    async def generate_context_from_history(  # noqa: PLR0913
+        db: AsyncSession,
+        treatment_uuid: UUID,
+        user_uuid: str,
+        historical_notes: str | None,
+        include_existing_records: bool,
+    ):
+        """
+        Orchestrates the AI call to generate the full context.
+        Finally resets is_update_scheduled = False.
+        """
+        from src.ai.chains.context_generation import (  # noqa: E402
+            ContextGenerationChain,
+        )
+        from src.models.treatment_record_model import (  # noqa: E402
+            TreatmentRecord,
+        )
+
+        context = await TreatmentContextService.get_or_create_context(
+            db, treatment_uuid, user_uuid
+        )
+
+        try:
+            # Get patient gender
+            treatment_patient = (
+                await (
+                    PatientWithTreatmentService.get_patient_with_treatment_uuid(
+                        db=db,
+                        treatment_uuid=treatment_uuid,
+                        user_uuid=user_uuid,
+                    )
+                )
+            )
+
+            # Assemble base material
+            base_material = ""
+            if historical_notes:
+                base_material += (
+                    "=== HISTÓRICO DE ANOTAÇÕES PRÉVIAS ===\n"
+                    f"{historical_notes}\n\n"
+                )
+
+            if include_existing_records:
+                records_result = await db.execute(
+                    select(TreatmentRecord)
+                    .filter(
+                        TreatmentRecord.treatment_uuid == str(treatment_uuid)
+                    )
+                    .order_by(TreatmentRecord.date.asc())
+                )
+                records = records_result.scalars().all()
+                if records:
+                    base_material += "=== PRONTUÁRIOS DO SISTEMA ===\n"
+                    for r in records:
+                        base_material += (
+                            f"Data: {r.date.isoformat()}\n"
+                            f"Tipo: {r.type}\n"
+                            f"Conteúdo: {r.content}\n\n"
+                        )
+
+            if not base_material.strip():
+                # Nothing to process. Just clear lock
+                return
+
+            chain = ContextGenerationChain()
+            result = await chain.generate(
+                base_material=base_material,
+                gender=treatment_patient.gender,
+            )
+
+            # Save usage statistic
+            await UsageStatisticService.create_statistic(
+                db,
+                UsageStatisticCreate(
+                    user_uuid=str(user_uuid),
+                    process_type=ProcessType.CONTEXT_UPDATE,
+                    input_tokens=result.input_tokens,
+                    output_tokens=result.output_tokens,
+                ),
+            )
+
+            draft_data = result.content
+            if not isinstance(draft_data, dict):
+                draft_data = {}
+
+            # Clear ALL pending drafts before creating the new one
+            draft_result = await db.execute(
+                select(TreatmentContextDraft)
+                .filter(
+                    TreatmentContextDraft.treatment_context_uuid
+                    == str(context.uuid),
+                    TreatmentContextDraft.is_applied.is_(False),
+                )
+            )
+            pending_drafts = draft_result.scalars().all()
+            for pd in pending_drafts:
+                pd.is_applied = True
+                db.add(pd)
+            await db.flush()
+
+            # Draft FK requires a treatment_record_uuid. Let's just use the
+            # very first/last record, or if None exist, save directly to
+            # context instead.
+
+            latest_record_result = await db.execute(
+                select(TreatmentRecord)
+                .filter(
+                    TreatmentRecord.treatment_uuid == str(treatment_uuid)
+                )
+                .order_by(TreatmentRecord.date.desc())
+                .limit(1)
+            )
+            latest_record = latest_record_result.scalars().first()
+            if not latest_record:
+                # We cannot create a draft without a record!
+                # We must save directly to context
+                update_schema = TreatmentContextUpdate(
+                    **{
+                        k: v
+                        for k, v in draft_data.items()
+                        if k in CONTEXT_FIELDS
+                    }
+                )
+                update_data = update_schema.model_dump(exclude_unset=True)
+                for key, value in update_data.items():
+                    setattr(context, key, value)
+            else:
+                await TreatmentContextService.create_draft(
+                    db=db,
+                    treatment_context_uuid=context.uuid,
+                    treatment_record_uuid=latest_record.uuid,
+                    draft_data=draft_data,
+                )
+
+        finally:
+            context.is_update_scheduled = False
+            db.add(context)
+            await db.commit()

@@ -6,6 +6,7 @@ from fastapi import APIRouter, status
 from src.routers.deps import CurrentUser, SessionDB
 from src.schemas.treatment_context_schema import (
     TreatmentContextApplyDraft,
+    TreatmentContextGenerate,
     TreatmentContextRead,
     TreatmentContextUpdate,
     TreatmentContextWithDraftRead,
@@ -115,4 +116,32 @@ async def reject_draft(
     )
     await TreatmentContextService.reject_draft(
         db, draft_uuid, current_user.uuid
+    )
+
+
+@router.post(
+    "/treatment/{treatment_uuid}/generate",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=TreatmentContextRead,
+)
+async def generate_context(
+    treatment_uuid: UUID,
+    schema: TreatmentContextGenerate,
+    db: SessionDB,
+    current_user: CurrentUser,
+) -> any:
+    logger.info(
+        "Agendando geração de contexto para tratamento %s",
+        treatment_uuid,
+        extra={
+            "user_uuid": str(current_user.uuid),
+            "treatment_uuid": str(treatment_uuid),
+        },
+    )
+    return await TreatmentContextService.schedule_context_generation(
+        db,
+        treatment_uuid,
+        current_user.uuid,
+        schema.historical_notes,
+        schema.include_existing_records,
     )

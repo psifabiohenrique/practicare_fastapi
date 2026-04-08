@@ -12,6 +12,7 @@ class TreatmentContextRead(BaseModel):
     psychological_patterns: str | None = None
     therapeutic_goals: str | None = None
     medication_notes: str | None = None
+    is_update_scheduled: bool
     created_at: datetime
     updated_at: datetime
 
@@ -52,3 +53,8 @@ class TreatmentContextApplyDraft(BaseModel):
     psychological_patterns: str | None = None
     therapeutic_goals: str | None = None
     medication_notes: str | None = None
+
+
+class TreatmentContextGenerate(BaseModel):
+    historical_notes: str | None = None
+    include_existing_records: bool = False
