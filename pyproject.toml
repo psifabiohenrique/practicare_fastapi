@@ -47,7 +47,8 @@ preview = true
 select = ['I', 'F', 'E', 'W', 'PL', 'PT']
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["PLR6301", "PLR2004", "PLR0913"]
+"tests/**/*.py" = ["PLR6301", "PLR2004", "PLR0913", "PLC0415"]
+"src/**/*.py" = ["PLC0415"]
 
 [tool.ruff.format]
 preview = true
