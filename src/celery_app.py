@@ -33,6 +33,7 @@ celery_app.conf.imports = (
     "src.tasks.record_generation",
     "src.tasks.report_generation",
     "src.tasks.context_update",
+    "src.tasks.context_generation",
 )
 
 
