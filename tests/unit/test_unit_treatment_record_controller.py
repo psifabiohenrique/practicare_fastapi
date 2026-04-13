@@ -12,12 +12,6 @@ from src.schemas.treatment_record_schema import InternalTreatmentRecordUpdate
 
 
 @pytest.fixture
-def mock_db():
-    db = AsyncMock()
-    return db
-
-
-@pytest.fixture
 def mock_session_local(mock_db):
     with patch(
         "src.routers.treatment_record_controller.SessionLocal"
@@ -254,3 +248,11 @@ async def test_process_audio_upload_background_cleanup_error(
     # Find the cleanup failure message
     warning_calls = [c[0][0] for c in mock_logger.warning.call_args_list]
     assert any("Falha ao deletar arquivo temporário" in msg for msg in warning_calls)
+
+from src.routers.treatment_record_controller import delete_treatment_record
+
+@pytest.mark.asyncio
+async def test_delete_treatment_record_endpoint(mock_db, mock_user):
+    with patch("src.routers.treatment_record_controller.TreatmentRecordService.delete_treatment_record", new_callable=AsyncMock) as mock_service:
+        await delete_treatment_record(uuid4(), mock_db, mock_user)
+        mock_service.assert_called_once()

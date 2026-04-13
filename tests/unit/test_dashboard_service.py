@@ -7,11 +7,6 @@ from src.models.usage_statistic import ProcessType
 from src.services.dashboard_service import DashboardService
 
 
-@pytest.fixture
-def mock_db():
-    return AsyncMock()
-
-
 class TestDashboardService:
     @pytest.mark.asyncio
     async def test_get_usage_aggregates(self, mock_db):

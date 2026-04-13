@@ -44,6 +44,18 @@ class TestTranscriptionChain:
 
     @pytest.mark.asyncio
     @patch("src.ai.chains.transcription.genai.Client")
+    async def test_upload_audio_connection_error(self, mock_genai_client):
+        mock_client_inst = mock_genai_client.return_value
+        mock_client_inst.aio.files.upload = AsyncMock(
+            side_effect=httpx.ConnectError("Connection failed")
+        )
+
+        chain = TranscriptionChain()
+        with pytest.raises(AITransientError, match="Erro de conexão ao enviar áudio"):
+            await chain.upload_audio("test.wav")
+
+    @pytest.mark.asyncio
+    @patch("src.ai.chains.transcription.genai.Client")
     async def test_transcribe_success(self, mock_genai_client):
         mock_client_inst = mock_genai_client.return_value
 
@@ -219,10 +231,14 @@ class TestReportGenerationChain:
         mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
 
         chain = ReportGenerationChain(provider="openai")
-        result = await chain.generate("John", "male", "prev", "recs")
+        result = await chain.generate("John", "male", "prev", "recs", custom_system_prompt="My custom instruction")
 
         assert isinstance(result, AIResult)
         assert result.content == report_data
+        # Verify custom_system_prompt was passed to OpenAI
+        _, kwargs = mock_client.chat.completions.create.call_args
+        assert "[Instrução Específica do Usuário]" in kwargs["messages"][0]["content"]
+        assert "My custom instruction" in kwargs["messages"][0]["content"]
 
     @pytest.mark.asyncio
     @patch("src.ai.chains.report_generation.genai.Client")

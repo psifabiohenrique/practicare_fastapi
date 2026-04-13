@@ -13,30 +13,7 @@ from src.schemas.treatment_report_schema import (
 from src.services.treatment_report_service import TreatmentReportService
 
 
-@pytest.fixture
-def mock_db():
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_treatment():
-    treatment = MagicMock(spec=Treatment)
-    treatment.uuid = uuid4()
-    treatment.user_uuid = "user-123"
-    return treatment
-
-
-@pytest.fixture
-def mock_report(mock_treatment):
-    report = MagicMock(spec=TreatmentReport)
-    report.uuid = uuid4()
-    report.treatment_uuid = mock_treatment.uuid
-    report.issue_date = date(2023, 1, 1)
-    report.treatment = mock_treatment
-    return report
-
-
-class TestTreatmentReportServiceCRUD:
+class TestTreatmentReportService:
     @pytest.mark.asyncio
     async def test_get_treatment_report_success(self, mock_db, mock_report):
         result_mock = MagicMock()
@@ -134,3 +111,34 @@ class TestTreatmentReportServiceCRUD:
 
         assert updated.demand_description == "Updated demand"
         mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_treatment_report_success(self, mock_db, mock_report):
+        # Mock get_treatment_report internally
+        res_get = MagicMock()
+        res_get.scalars.return_value.first.return_value = mock_report
+        mock_db.execute.return_value = res_get
+        
+        mock_report.is_active = True
+        
+        await TreatmentReportService.delete_treatment_report(
+            mock_db, mock_report.uuid, "user-123"
+        )
+        
+        assert mock_report.is_active is False
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_treatment_report_already_inactive(self, mock_db, mock_report):
+        # Mock get_treatment_report internally
+        res_get = MagicMock()
+        res_get.scalars.return_value.first.return_value = mock_report
+        mock_db.execute.return_value = res_get
+        
+        mock_report.is_active = False
+        
+        await TreatmentReportService.delete_treatment_report(
+            mock_db, mock_report.uuid, "user-123"
+        )
+        
+        mock_db.commit.assert_not_called()

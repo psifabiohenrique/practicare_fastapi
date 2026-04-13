@@ -7,13 +7,6 @@ from src.models.auth_session_model import AuthSession
 from src.services.auth_service import AuthService
 
 
-@pytest.fixture
-def mock_db():
-    db = AsyncMock()
-    db.add = MagicMock()
-    return db
-
-
 class TestAuthService:
     @pytest.mark.asyncio
     @patch("src.services.auth_service.UserService.get_user_by_email")

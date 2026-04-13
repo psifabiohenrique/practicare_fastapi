@@ -8,21 +8,6 @@ from src.schemas.user_schema import UserCreate, UserUpdate
 from src.services.user_service import UserService
 
 
-@pytest.fixture
-def mock_db():
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_user():
-    user = MagicMock(spec=User)
-    user.uuid = "user-uuid"
-    user.email = "test@example.com"
-    user.name = "Test User"
-    user.hashed_password = "hashed_password"
-    return user
-
-
 class TestUserServiceCRUD:
     @pytest.mark.asyncio
     async def test_get_user_by_uuid_success(self, mock_db, mock_user):

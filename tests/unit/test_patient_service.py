@@ -9,23 +9,6 @@ from src.schemas import PatientCreate, PatientUpdate
 from src.services.patient_service import PatientService
 
 
-@pytest.fixture
-def mock_db():
-    db = AsyncMock()
-    db.add = MagicMock()
-    return db
-
-
-@pytest.fixture
-def mock_patient():
-    patient = MagicMock(spec=Patient)
-    patient.uuid = uuid4()
-    patient.first_name = "John"
-    patient.last_name = "Doe"
-    patient.phone = "+5511999999999"
-    return patient
-
-
 class TestPatientServiceCRUD:
     @pytest.mark.asyncio
     async def test_get_patient_success(self, mock_db, mock_patient):

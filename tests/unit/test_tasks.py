@@ -25,15 +25,6 @@ from src.tasks.report_generation import (
 
 
 @pytest.fixture
-def mock_db():
-    db = AsyncMock()
-    db.commit = AsyncMock()
-    db.refresh = AsyncMock()
-    db.close = AsyncMock()
-    return db
-
-
-@pytest.fixture
 def job_uuid():
     return uuid4()
 

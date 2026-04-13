@@ -12,17 +12,10 @@ from src.utils.audio_processor import VADResult
 
 
 @pytest.fixture
-def mock_db():
-    db = AsyncMock()
-    db.add = MagicMock()
-    return db
-
-
-@pytest.fixture
 def mock_job():
     job = MagicMock(spec=AutomatedRecordJob)
     job.uuid = uuid4()
-    job.user_uuid = "user-123"
+    job.user_uuid = uuid4()
     job.treatment_uuid = str(uuid4())
     job.treatment_record_uuid = str(uuid4())
     job.status = JobStatus.PENDING
@@ -37,7 +30,7 @@ class TestAutomatedRecordServiceLifecycle:
     async def test_create_job(self, mock_db):
         treatment_uuid = uuid4()
         record_uuid = uuid4()
-        user_uuid = "user-123"
+        user_uuid = uuid4()
 
         job = await AutomatedRecordService.create_job(
             mock_db, treatment_uuid, record_uuid, user_uuid, "path/to/audio"
@@ -113,7 +106,7 @@ class TestAutomatedRecordServiceLifecycle:
 
         record, job = await AutomatedRecordService.initialize_job(
             mock_db,
-            "user-123",
+            uuid4(),
             treatment_uuid=uuid4(),
             session_date="2024-01-01",
         )
@@ -138,7 +131,7 @@ class TestAutomatedRecordServiceLifecycle:
         mock_create_job.return_value = MagicMock(uuid=uuid4())
 
         record, job = await AutomatedRecordService.initialize_job(
-            mock_db, "user-123", treatment_record_uuid=uuid4()
+            mock_db, uuid4(), treatment_record_uuid=uuid4()
         )
 
         assert record is not None
@@ -438,6 +431,45 @@ class TestAutomatedRecordServiceProcessing:
 
         args, kwargs = chain_instance.generate.call_args
         assert kwargs["context"] == ""
+
+    @pytest.mark.asyncio
+    @patch("src.services.automated_record_service.UsageStatisticService")
+    @patch(
+        "src.services.automated_record_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
+    )
+    @patch("src.services.automated_record_service.RecordGenerationChain")
+    async def test_generate_record_full_context(  # noqa: PLR0917
+        self,
+        MockChain,
+        mock_get_patient,
+        mock_usage_service,
+        mock_db,
+        mock_job,
+    ):
+        ctx_mock = MagicMock()
+        ctx_mock.life_dynamics = "D"
+        ctx_mock.clinical_history = "H"
+        ctx_mock.psychological_patterns = "P"
+        ctx_mock.therapeutic_goals = "G"
+        ctx_mock.medication_notes = "M"
+
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.first.return_value = ctx_mock
+        mock_db.execute.return_value = result_mock
+
+        mock_get_patient.return_value = MagicMock(gender="Male")
+        mock_usage_service.create_statistic = AsyncMock()
+        chain_instance = MockChain.return_value
+        chain_instance.generate = AsyncMock(return_value=AIResult(content="R", input_tokens=1, output_tokens=1))
+
+        await AutomatedRecordService.generate_record(mock_db, "T", mock_job)
+        
+        _, kwargs = chain_instance.generate.call_args
+        assert "Dinâmicas de Vida: D" in kwargs["context"]
+        assert "Histórico Clínico: H" in kwargs["context"]
+        assert "Padrões Psicológicos: P" in kwargs["context"]
+        assert "Objetivos Terapêuticos: G" in kwargs["context"]
+        assert "Medicações: M" in kwargs["context"]
 
     @pytest.mark.asyncio
     @patch(

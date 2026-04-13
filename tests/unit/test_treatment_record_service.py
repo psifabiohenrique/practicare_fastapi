@@ -13,31 +13,6 @@ from src.schemas.treatment_record_schema import (
 from src.services.treatment_record_service import TreatmentRecordService
 
 
-@pytest.fixture
-def mock_db():
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_treatment():
-    treatment = MagicMock(spec=Treatment)
-    treatment.uuid = uuid4()
-    treatment.user_uuid = "user-123"
-    return treatment
-
-
-@pytest.fixture
-def mock_record(mock_treatment):
-    record = MagicMock(spec=TreatmentRecord)
-    record.uuid = uuid4()
-    record.treatment_uuid = mock_treatment.uuid
-    record.record_number = 1
-    record.content = "Record content"
-    record.date = date(2023, 1, 1)
-    record.treatment = mock_treatment
-    return record
-
-
 class TestTreatmentRecordServiceCRUD:
     @pytest.mark.asyncio
     async def test_get_treatment_record_success(self, mock_db, mock_record):
@@ -99,6 +74,26 @@ class TestTreatmentRecordServiceCRUD:
     @patch(
         "src.services.treatment_record_service.TreatmentService.get_treatment_by_uuid"
     )
+    async def test_get_treatment_records_include_archived(
+        self, mock_get_treatment, mock_db, mock_record, mock_treatment
+    ):
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = [mock_record]
+        mock_db.execute.return_value = result_mock
+
+        records = await TreatmentRecordService.get_treatment_records(
+            mock_db,
+            mock_treatment.uuid,
+            "user-123",
+            include_archived=True
+        )
+
+        assert records == [mock_record]
+
+    @pytest.mark.asyncio
+    @patch(
+        "src.services.treatment_record_service.TreatmentService.get_treatment_by_uuid"
+    )
     async def test_create_treatment_record(
         self, mock_get_treatment, mock_db, mock_treatment
     ):
@@ -139,3 +134,36 @@ class TestTreatmentRecordServiceCRUD:
 
         assert updated.content == "Updated content"
         mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_treatment_record_success(self, mock_db, mock_record):
+        # Mock get_treatment_record internally
+        res_get = MagicMock()
+        res_get.scalars.return_value.first.return_value = mock_record
+        mock_db.execute.return_value = res_get
+        
+        mock_record.is_active = True
+        mock_record.record_number = 5
+        
+        await TreatmentRecordService.delete_treatment_record(
+            mock_db, mock_record.uuid, "user-123"
+        )
+        
+        assert mock_record.is_active is False
+        assert mock_record.record_number is None
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_treatment_record_already_inactive(self, mock_db, mock_record):
+        # Mock get_treatment_record internally
+        res_get = MagicMock()
+        res_get.scalars.return_value.first.return_value = mock_record
+        mock_db.execute.return_value = res_get
+        
+        mock_record.is_active = False
+        
+        await TreatmentRecordService.delete_treatment_record(
+            mock_db, mock_record.uuid, "user-123"
+        )
+        
+        mock_db.commit.assert_not_called()

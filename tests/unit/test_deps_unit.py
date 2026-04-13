@@ -13,11 +13,6 @@ from src.routers.deps import (
 )
 
 
-@pytest.fixture
-def mock_db():
-    return AsyncMock()
-
-
 class TestDeps:
     @pytest.mark.asyncio
     async def test_get_current_user_jwt_success(self, mock_db):

@@ -17,11 +17,6 @@ from src.schemas.token_schema import Internal_Tokens
 
 
 @pytest.fixture
-def mock_db():
-    return AsyncMock()
-
-
-@pytest.fixture
 def mock_response():
     res = MagicMock(spec=Response)
     return res

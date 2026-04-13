@@ -12,17 +12,10 @@ from datetime import date
 
 
 @pytest.fixture
-def mock_db():
-    db = AsyncMock()
-    db.add = MagicMock()
-    return db
-
-
-@pytest.fixture
 def mock_job():
     job = MagicMock(spec=AutomatedReportJob)
     job.uuid = uuid4()
-    job.user_uuid = "user-123"
+    job.user_uuid = uuid4()
     job.treatment_uuid = uuid4()
     job.treatment_report_uuid = uuid4()
     job.status = ReportJobStatus.PENDING
@@ -35,7 +28,7 @@ class TestAutomatedReportServiceLifecycle:
     async def test_create_job(self, mock_db):
         treatment_uuid = uuid4()
         report_uuid = uuid4()
-        user_uuid = "user-123"
+        user_uuid = uuid4()
 
         job = await AutomatedReportService.create_job(
             mock_db, treatment_uuid, report_uuid, user_uuid
@@ -345,3 +338,55 @@ class TestAutomatedReportServiceProcessing:
             kwargs["records_context"]
             == "Nenhum prontuário encontrado para este período."
         )
+
+    @pytest.mark.asyncio
+    @patch("src.services.automated_report_service.UsageStatisticService")
+    @patch(
+        "src.services.automated_report_service.PatientWithTreatmentService.get_patient_with_treatment_uuid"
+    )
+    @patch(
+        "src.services.automated_report_service.TreatmentReportService.get_treatment_report"
+    )
+    @patch(
+        "src.services.automated_report_service.TreatmentRecordService.get_treatment_records"
+    )
+    @patch("src.services.automated_report_service.ReportGenerationChain")
+    @patch(
+        "src.services.automated_report_service.TreatmentReportService.update_treatment_report"
+    )
+    @patch("src.services.automated_report_service.AutomatedReportService._get_first_record_date")
+    @patch("src.services.automated_report_service.AutomatedReportService._get_treatment_context")
+    async def test_generate_report_content_completo(  # noqa: PLR0917
+        self,
+        mock_get_ctx,
+        mock_get_first_date,
+        mock_update_report,
+        MockChain,
+        mock_get_records,
+        mock_get_report,
+        mock_get_patient,
+        mock_usage_service,
+        mock_db,
+        mock_job,
+    ):
+        mock_get_patient.return_value = MagicMock(first_name="John", gender="Male")
+        mock_get_report.return_value = MagicMock(report_type=ReportType.COMPLETO, system_prompt=None)
+        mock_get_first_date.return_value = date(2023, 1, 1)
+        mock_get_records.return_value = []
+        mock_get_ctx.return_value = MagicMock(clinical_history="History")
+        
+        mock_usage_service.create_statistic = AsyncMock()
+        chain_instance = MockChain.return_value
+        report_data = MagicMock()
+        report_data.demand_description = "demand"
+        report_data.procedures = "procedures"
+        report_data.analysis = "analysis"
+        report_data.conclusion = "conclusion"
+        chain_instance.generate = AsyncMock(return_value=AIResult(content=report_data, input_tokens=1, output_tokens=1))
+        
+        await AutomatedReportService.generate_report_content(mock_db, mock_job)
+        
+        mock_get_ctx.assert_called_once()
+        chain_instance.generate.assert_called_once()
+        _, kwargs = chain_instance.generate.call_args
+        assert "Histórico Clínico:\nHistory" in kwargs["treatment_context"]

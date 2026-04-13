@@ -14,20 +14,6 @@ from src.schemas import (
 from src.services.treatment_service import TreatmentService
 
 
-@pytest.fixture
-def mock_db():
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_treatment():
-    treatment = MagicMock(spec=Treatment)
-    treatment.uuid = uuid4()
-    treatment.user_uuid = "user-123"
-    treatment.patient_uuid = uuid4()
-    return treatment
-
-
 class TestTreatmentServiceCRUD:
     @pytest.mark.asyncio
     async def test_get_treatment_by_uuid_success(

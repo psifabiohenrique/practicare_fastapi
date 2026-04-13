@@ -16,33 +16,6 @@ from src.services.patient_with_treatment_service import (
 )
 
 
-@pytest.fixture
-def mock_db():
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_patient():
-    patient = MagicMock(spec=Patient)
-    patient.uuid = uuid4()  # Keep as UUID object
-    patient.first_name = "John"
-    patient.last_name = "Doe"
-    patient.gender = Gender.MALE
-    patient.treatments = []
-    return patient
-
-
-@pytest.fixture
-def mock_treatment():
-    treatment = MagicMock(spec=Treatment)
-    treatment.uuid = uuid4()  # Keep as UUID object
-    treatment.user_uuid = str(uuid4())
-    treatment.patient_uuid = uuid4()  # Keep as UUID object
-    treatment.status = TreatmentStatus.ACTIVE
-    treatment.weekday = Weekdays.MONDAY
-    return treatment
-
-
 class TestPatientWithTreatmentServiceRetrieval:
     @pytest.mark.asyncio
     async def test_get_patient_with_treatment_uuid_success(
