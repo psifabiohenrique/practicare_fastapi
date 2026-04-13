@@ -200,17 +200,11 @@ class AutomatedReportService:
                 f"Padrões Psicológicos:\n{ctx.psychological_patterns}"
             )
         if ctx.therapeutic_goals:
-            parts.append(
-                f"Objetivos Terapêuticos:\n{ctx.therapeutic_goals}"
-            )
+            parts.append(f"Objetivos Terapêuticos:\n{ctx.therapeutic_goals}")
         if ctx.life_dynamics:
-            parts.append(
-                f"Dinâmicas de Vida:\n{ctx.life_dynamics}"
-            )
+            parts.append(f"Dinâmicas de Vida:\n{ctx.life_dynamics}")
         if ctx.medication_notes:
-            parts.append(
-                f"Notas de Medicação:\n{ctx.medication_notes}"
-            )
+            parts.append(f"Notas de Medicação:\n{ctx.medication_notes}")
         return "\n\n".join(parts) if parts else None
 
     # ------------------------------------------------------------------
@@ -246,12 +240,10 @@ class AutomatedReportService:
 
         if report_type == ReportType.PERIODICO:
             if dates_are_placeholder:
-                start = (
-                    await AutomatedReportService._get_last_report_date(
-                        db,
-                        str(job.treatment_uuid),
-                        str(job.treatment_report_uuid),
-                    )
+                start = await AutomatedReportService._get_last_report_date(
+                    db,
+                    str(job.treatment_uuid),
+                    str(job.treatment_report_uuid),
                 )
                 end = today
             else:
@@ -296,10 +288,12 @@ class AutomatedReportService:
         today = date.today()
 
         # 3. Resolve date range and context inclusion flag
-        start_date, end_date, include_context = (
-            await AutomatedReportService._resolve_date_range(
-                db, job, current_report.report_type, today
-            )
+        (
+            start_date,
+            end_date,
+            include_context,
+        ) = await AutomatedReportService._resolve_date_range(
+            db, job, current_report.report_type, today
         )
 
         # 4. Fetch records for the resolved period
@@ -324,9 +318,7 @@ class AutomatedReportService:
                 job.uuid,
                 extra={"job_uuid": str(job.uuid)},
             )
-            records_context = (
-                "Nenhum prontuário encontrado para este período."
-            )
+            records_context = "Nenhum prontuário encontrado para este período."
 
         # 5. Fetch TreatmentContext if applicable
         treatment_context_str: str | None = None
@@ -383,8 +375,7 @@ class AutomatedReportService:
         )
 
         logger.info(
-            "Relatório gerado e salvo para o job: %s. "
-            "Tokens: In %s, Out %s",
+            "Relatório gerado e salvo para o job: %s. Tokens: In %s, Out %s",
             job.uuid,
             result.input_tokens,
             result.output_tokens,

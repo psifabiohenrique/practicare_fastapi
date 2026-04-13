@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,16 +13,9 @@ class UsageStatisticService:
     async def create_statistic(
         db: AsyncSession, schema: UsageStatisticCreate
     ) -> UsageStatistic:
-        def _to_uuid(val: str | None) -> uuid.UUID | None:
-            if not val:
-                return None
-            if isinstance(val, uuid.UUID):
-                return val
-            return uuid.UUID(val)
-
         statistic = UsageStatistic(
-            user_uuid=_to_uuid(schema.user_uuid),
-            job_uuid=_to_uuid(schema.job_uuid),
+            user_uuid=schema.user_uuid,
+            job_uuid=schema.job_uuid,
             process_type=schema.process_type,
             input_tokens=schema.input_tokens,
             output_tokens=schema.output_tokens,

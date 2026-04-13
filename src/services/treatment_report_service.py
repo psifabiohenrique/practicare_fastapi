@@ -147,6 +147,4 @@ class TreatmentReportService:
         db_treatment_report.is_active = False
         db.add(db_treatment_report)
         await db.commit()
-        logger.info(
-            f"Relatório {treatment_report_uuid} arquivado com sucesso"
-        )
+        logger.info(f"Relatório {treatment_report_uuid} arquivado com sucesso")

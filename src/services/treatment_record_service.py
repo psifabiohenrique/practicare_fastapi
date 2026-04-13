@@ -198,7 +198,7 @@ class TreatmentRecordService:
                 .where(
                     TreatmentRecord.treatment_uuid == record.treatment_uuid,
                     TreatmentRecord.is_active,
-                    TreatmentRecord.record_number > old_number
+                    TreatmentRecord.record_number > old_number,
                 )
                 .values(record_number=TreatmentRecord.record_number - 1)
             )

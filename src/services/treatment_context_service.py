@@ -427,6 +427,7 @@ class TreatmentContextService:
         from src.tasks.context_generation import (  # noqa: E402
             generate_context_from_history_task,
         )
+
         generate_context_from_history_task.delay(
             str(treatment_uuid),
             user_uuid,
@@ -461,13 +462,11 @@ class TreatmentContextService:
 
         try:
             # Get patient gender
-            treatment_patient = (
-                await (
-                    PatientWithTreatmentService.get_patient_with_treatment_uuid(
-                        db=db,
-                        treatment_uuid=treatment_uuid,
-                        user_uuid=user_uuid,
-                    )
+            treatment_patient = await (
+                PatientWithTreatmentService.get_patient_with_treatment_uuid(
+                    db=db,
+                    treatment_uuid=treatment_uuid,
+                    user_uuid=user_uuid,
                 )
             )
 
@@ -524,8 +523,7 @@ class TreatmentContextService:
 
             # Clear ALL pending drafts before creating the new one
             draft_result = await db.execute(
-                select(TreatmentContextDraft)
-                .filter(
+                select(TreatmentContextDraft).filter(
                     TreatmentContextDraft.treatment_context_uuid
                     == str(context.uuid),
                     TreatmentContextDraft.is_applied.is_(False),
@@ -543,9 +541,7 @@ class TreatmentContextService:
 
             latest_record_result = await db.execute(
                 select(TreatmentRecord)
-                .filter(
-                    TreatmentRecord.treatment_uuid == str(treatment_uuid)
-                )
+                .filter(TreatmentRecord.treatment_uuid == str(treatment_uuid))
                 .order_by(TreatmentRecord.date.desc())
                 .limit(1)
             )
@@ -553,13 +549,9 @@ class TreatmentContextService:
             if not latest_record:
                 # We cannot create a draft without a record!
                 # We must save directly to context
-                update_schema = TreatmentContextUpdate(
-                    **{
-                        k: v
-                        for k, v in draft_data.items()
-                        if k in CONTEXT_FIELDS
-                    }
-                )
+                update_schema = TreatmentContextUpdate(**{
+                    k: v for k, v in draft_data.items() if k in CONTEXT_FIELDS
+                })
                 update_data = update_schema.model_dump(exclude_unset=True)
                 for key, value in update_data.items():
                     setattr(context, key, value)

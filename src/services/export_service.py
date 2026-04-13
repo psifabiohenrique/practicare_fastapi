@@ -103,9 +103,7 @@ class ExportService:
                                 f"### Procedimentos\n{r.procedures}\n\n"
                             )
                         if r.analysis:
-                            reports_text += (
-                                f"### Análise\n{r.analysis}\n\n"
-                            )
+                            reports_text += f"### Análise\n{r.analysis}\n\n"
                         if r.conclusion:
                             reports_text += (
                                 f"### Conclusão\n{r.conclusion}\n\n"

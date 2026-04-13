@@ -17,8 +17,7 @@ async def generate_context_from_history_logic(
     include_existing_records: bool,
 ):
     logger.info(
-        "Iniciando generate_context_from_history_logic para "
-        "tratamento %s",
+        "Iniciando generate_context_from_history_logic para tratamento %s",
         treatment_uuid,
     )
     db = await get_async_session()

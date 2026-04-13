@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, datetime
 
 from pydantic import BaseModel
@@ -6,8 +7,8 @@ from src.models.usage_statistic import ProcessType
 
 
 class UsageStatisticCreate(BaseModel):
-    user_uuid: str
-    job_uuid: str | None = None
+    user_uuid: uuid.UUID
+    job_uuid: uuid.UUID | None = None
     process_type: ProcessType
     input_tokens: int = 0
     output_tokens: int = 0
@@ -16,9 +17,9 @@ class UsageStatisticCreate(BaseModel):
 
 
 class UsageStatisticRead(BaseModel):
-    uuid: str
-    user_uuid: str
-    job_uuid: str | None = None
+    uuid: uuid.UUID
+    user_uuid: uuid.UUID
+    job_uuid: uuid.UUID | None = None
     process_type: ProcessType
     input_tokens: int
     output_tokens: int
