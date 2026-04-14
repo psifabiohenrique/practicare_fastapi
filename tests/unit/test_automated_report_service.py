@@ -373,7 +373,7 @@ class TestAutomatedReportServiceProcessing:
         mock_get_report.return_value = MagicMock(report_type=ReportType.COMPLETO, system_prompt=None)
         mock_get_first_date.return_value = date(2023, 1, 1)
         mock_get_records.return_value = []
-        mock_get_ctx.return_value = MagicMock(clinical_history="History")
+        mock_get_ctx.return_value = MagicMock(clinical_history=["History"])
         
         mock_usage_service.create_statistic = AsyncMock()
         chain_instance = MockChain.return_value
@@ -389,4 +389,4 @@ class TestAutomatedReportServiceProcessing:
         mock_get_ctx.assert_called_once()
         chain_instance.generate.assert_called_once()
         _, kwargs = chain_instance.generate.call_args
-        assert "Histórico Clínico:\nHistory" in kwargs["treatment_context"]
+        assert "Histórico Clínico:\n- History" in kwargs["treatment_context"]

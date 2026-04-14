@@ -27,21 +27,21 @@ class TestContextGenerationChain:
         mock_resp.usage.prompt_tokens = 10
         mock_resp.usage.completion_tokens = 20
         mock_resp.choices = [MagicMock()]
-        mock_resp.choices[0].message.content = json.dumps({"life_dynamics": "test"})
+        mock_resp.choices[0].message.content = json.dumps({"life_dynamics": ["test"]})
         mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
         
         chain = ContextGenerationChain(provider="openai")
         result = await chain.generate("material", "male")
         
         assert isinstance(result, AIResult)
-        assert result.content["life_dynamics"] == "test"
+        assert result.content["life_dynamics"] == ["test"]
 
     @pytest.mark.asyncio
     @patch("src.ai.chains.context_generation.genai.Client")
     async def test_generate_google_success(self, mock_genai):
         mock_client = mock_genai.return_value
         mock_resp = MagicMock()
-        mock_resp.text = json.dumps({"life_dynamics": "test"})
+        mock_resp.text = json.dumps({"life_dynamics": ["test"]})
         mock_client.models.generate_content.return_value = mock_resp
         
         chain = ContextGenerationChain(provider="google")
@@ -101,20 +101,20 @@ class TestContextUpdateChain:
         mock_resp.usage.prompt_tokens = 5
         mock_resp.usage.completion_tokens = 5
         mock_resp.choices = [MagicMock()]
-        mock_resp.choices[0].message.content = json.dumps({"clinical_history": "updated"})
+        mock_resp.choices[0].message.content = json.dumps({"clinical_history": {"add": ["updated"], "remove": []}})
         mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
         
         chain = ContextUpdateChain(provider="openai")
         result = await chain.generate({"old": "context"}, "new record", "male")
         
-        assert result.content["clinical_history"] == "updated"
+        assert result.content["clinical_history"] == {"add": ["updated"], "remove": []}
 
     @pytest.mark.asyncio
     @patch("src.ai.chains.context_update.genai.Client")
     async def test_generate_google_success(self, mock_genai):
         mock_client = mock_genai.return_value
         mock_resp = MagicMock()
-        mock_resp.text = json.dumps({"clinical_history": "updated"})
+        mock_resp.text = json.dumps({"clinical_history": {"add": ["updated"], "remove": []}})
         mock_client.models.generate_content.return_value = mock_resp
         
         chain = ContextUpdateChain(provider="google")

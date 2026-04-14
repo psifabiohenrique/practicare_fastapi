@@ -73,13 +73,13 @@ class TestTreatmentContextService:
         self, mock_get_or_create, mock_db, mock_context
     ):
         mock_get_or_create.return_value = mock_context
-        schema = TreatmentContextUpdate(life_dynamics="New Life Dynamics")
+        schema = TreatmentContextUpdate(life_dynamics=["New Life Dynamics"])
 
         updated = await TreatmentContextService.update_context(
             mock_db, mock_context.treatment_uuid, uuid4(), schema
         )
 
-        assert updated.life_dynamics == "New Life Dynamics"
+        assert updated.life_dynamics == ["New Life Dynamics"]
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
@@ -119,12 +119,12 @@ class TestTreatmentContextService:
         res_context.scalars.return_value.first.return_value = mock_context
         mock_db.execute.side_effect = [res_draft, res_context, res_context]
 
-        final_data = TreatmentContextApplyDraft(life_dynamics="Finalized dynamics")
+        final_data = TreatmentContextApplyDraft(life_dynamics=["Finalized dynamics"])
         result = await TreatmentContextService.apply_draft(
             mock_db, mock_draft.uuid, uuid4(), final_data
         )
 
-        assert result.life_dynamics == "Finalized dynamics"
+        assert result.life_dynamics == ["Finalized dynamics"]
         assert mock_draft.is_applied is True
         mock_db.commit.assert_called_once()
 
@@ -200,25 +200,25 @@ class TestTreatmentContextService:
         res_mock.scalars.return_value.first.return_value = mock_draft
         mock_db.execute.return_value = res_mock
         
-        mock_draft.life_dynamics = "Old"
+        mock_draft.life_dynamics = {"add": ["Old"], "remove": []}
         mock_draft.clinical_history = None
-        mock_draft.psychological_patterns = "Same"
+        mock_draft.psychological_patterns = {"add": ["Same"], "remove": ["Old"]}
         mock_draft.therapeutic_goals = None
         mock_draft.medication_notes = None
         
         new_data = {
-            "life_dynamics": "New",
-            "clinical_history": "History",
-            "psychological_patterns": "Same",
-            "therapeutic_goals": "Goals"
+            "life_dynamics": {"add": ["New"], "remove": []},
+            "clinical_history": {"add": ["History"], "remove": []},
+            "psychological_patterns": {"add": ["Same"], "remove": ["Old"]},
+            "therapeutic_goals": {"add": ["Goals"], "remove": []}
         }
         
         merged = await TreatmentContextService._merge_pending_draft_into(mock_db, mock_context, new_data)
         
-        assert "Old\n\nNova sugestão: New" in merged["life_dynamics"]
-        assert merged["clinical_history"] == "History"
-        assert merged["psychological_patterns"] == "Same"
-        assert merged["therapeutic_goals"] == "Goals"
+        assert merged["life_dynamics"] == {"add": ["Old", "New"], "remove": []}
+        assert merged["clinical_history"] == {"add": ["History"], "remove": []}
+        assert merged["psychological_patterns"] == {"add": ["Same"], "remove": ["Old"]}
+        assert merged["therapeutic_goals"] == {"add": ["Goals"], "remove": []}
         assert mock_draft.is_applied is True
 
     @pytest.mark.asyncio
@@ -227,7 +227,7 @@ class TestTreatmentContextService:
         res_mock.scalars.return_value.first.return_value = mock_draft
         mock_db.execute.return_value = res_mock
         
-        mock_draft.life_dynamics = "Old"
+        mock_draft.life_dynamics = {"add": ["Old"], "remove": []}
         mock_draft.clinical_history = None
         mock_draft.psychological_patterns = None
         mock_draft.therapeutic_goals = None
@@ -235,7 +235,7 @@ class TestTreatmentContextService:
         
         new_data = {}
         merged = await TreatmentContextService._merge_pending_draft_into(mock_db, mock_context, new_data)
-        assert merged["life_dynamics"] == "Old"
+        assert merged["life_dynamics"] == {"add": ["Old"], "remove": []}
 
     @pytest.mark.asyncio
     @patch("src.services.treatment_context_service.TreatmentContextService.get_or_create_context")
@@ -348,4 +348,11 @@ class TestTreatmentContextService:
             with patch("src.services.treatment_context_service.TreatmentContextService.create_draft") as mock_create_draft:
                 await TreatmentContextService.generate_context_from_history(mock_db, mock_context.treatment_uuid, uuid4(), "Old notes", True)
                 assert pending_mock.is_applied is True
-                mock_create_draft.assert_called_with(db=mock_db, treatment_context_uuid=mock_context.uuid, treatment_record_uuid=mock_record.uuid, draft_data={})
+                expected_draft_data = {
+                    "life_dynamics": None,
+                    "clinical_history": None,
+                    "psychological_patterns": None,
+                    "therapeutic_goals": None,
+                    "medication_notes": None,
+                }
+                mock_create_draft.assert_called_with(db=mock_db, treatment_context_uuid=mock_context.uuid, treatment_record_uuid=mock_record.uuid, draft_data=expected_draft_data)

@@ -27,7 +27,7 @@ async def test_get_context_with_draft(mock_service, mock_db, mock_user):
 @patch("src.routers.treatment_context_controller.TreatmentContextService.update_context")
 async def test_update_context(mock_service, mock_db, mock_user):
     mock_service.return_value = MagicMock()
-    schema = TreatmentContextUpdate(life_dynamics="new")
+    schema = TreatmentContextUpdate(life_dynamics=["new"])
     res = await update_context(uuid4(), schema, mock_db, mock_user)
     assert res is not None
 
@@ -35,7 +35,7 @@ async def test_update_context(mock_service, mock_db, mock_user):
 @patch("src.routers.treatment_context_controller.TreatmentContextService.apply_draft")
 async def test_apply_draft(mock_service, mock_db, mock_user):
     mock_service.return_value = MagicMock()
-    schema = TreatmentContextApplyDraft(life_dynamics="final")
+    schema = TreatmentContextApplyDraft(life_dynamics=["final"])
     res = await apply_draft(uuid4(), schema, mock_db, mock_user)
     assert res is not None
 
