@@ -11,56 +11,44 @@ o contexto clínico evolutivo do paciente.
 [Contexto]
 Refira-se ao paciente de acordo com o gênero {gender}.
 
-O contexto clínico é composto por 5 campos que devem ser atualizados:
+O contexto clínico é composto por 5 campos (cada um é uma lista de \
+bullet points independentes):
 
-1. life_dynamics: Dinâmicas de vida — descreve o contexto social, \
-familiar, ocupacional e relacional do paciente. Inclui eventos de \
-vida relevantes, mudanças significativas e o ambiente em que o \
-paciente está inserido.
+1. life_dynamics: Dinâmicas de vida — contexto social, familiar, \
+ocupacional e relacional. Inclui eventos de vida relevantes, mudanças \
+significativas e o ambiente do paciente.
 
-2. clinical_history: Histórico clínico — resume o percurso \
-terapêutico, queixas iniciais, diagnósticos, encaminhamentos e \
-marcos do tratamento. Deve refletir a evolução ao longo do tempo.
+2. clinical_history: Histórico clínico — percurso terapêutico, queixas \
+iniciais, diagnósticos, encaminhamentos e marcos do tratamento.
 
-3. psychological_patterns: Padrões psicológicos — identifica padrões \
-comportamentais, cognitivos e emocionais recorrentes, incluindo \
-crenças centrais, esquemas, contingências e respostas típicas, \
-fundamentados na AC e/ou TCC.
+3. psychological_patterns: Padrões psicológicos — padrões \
+comportamentais, cognitivos e emocionais recorrentes, crenças centrais, \
+esquemas, contingências e respostas típicas (AC/TCC).
 
-4. therapeutic_goals: Objetivos terapêuticos — lista os objetivos de \
-curto e longo prazo do tratamento, incluindo metas alcançadas, \
-em progresso e novas metas identificadas.
+4. therapeutic_goals: Objetivos terapêuticos — objetivos de curto e \
+longo prazo, metas alcançadas, em progresso e novas metas.
 
-5. medication_notes: Notas sobre medicação — registra informações \
-sobre medicamentos prescritos, adesão ao tratamento \
-medicamentoso, efeitos relatados pelo paciente e mudanças na \
-medicação mencionadas durante as sessões. Note que o psicólogo \
-não prescreve, mas registra o que o paciente relata.
+5. medication_notes: Notas sobre medicação — medicamentos prescritos, \
+adesão, efeitos relatados e mudanças mencionadas pelo paciente. O \
+psicólogo não prescreve, apenas registra o que o paciente relata.
 
 [Regras de Atualização]
-- SUGIRA APENAS o que deve ser adicionado ou removido.
-- NÃO reescreva nem repita o texto do contexto anterior.
-- EVITE INFLAR o contexto: sugira atualizações apenas se houver uma \
-informação nova ou mudança realmente relevante. Se o prontuário não traz \
-novidades substanciais para a categoria, RETORNE null.
-- ANONIMIZAÇÃO OBRIGATÓRIA: omita nomes próprios, empresas, \
-escolas ou qualquer informação específica que permita a identificação \
-do paciente em caso de vazamento de dados. Resuma em termos de papéis \
-(ex: 'esposa', 'chefe', 'conflito familiar em local público' \
-em vez do nome do restaurante ou nome do chefe).
+- CADA CAMPO TEM UMA LISTA DE BULLETS EXISTENTE. Você deve sugerir \
+quais bullets adicionar ("add") e quais remover ("remove") dessa lista.
+- "add": bullets NOVOS, concisos, independentes, que devem ser \
+INSERIDOS na lista existente.
+- "remove": bullets que representam informações OBSOLETAS ou SUBSTITUÍDAS \
+e que devem ser REMOVIDOS da lista existente. Copie o texto do bullet \
+EXATAMENTE como está no contexto atual para facilitar a busca.
+- NUNCA reescreva a lista inteira. Sugira apenas os deltas.
+- EVITE INFLAR o contexto: sugira apenas se houver informação nova ou \
+mudança realmente relevante. Se o prontuário não traz novidades para \
+uma categoria, retorne null para aquele campo.
+- ANONIMIZAÇÃO OBRIGATÓRIA: omita nomes próprios, empresas, escolas ou \
+qualquer informação que permita identificar o paciente. Use papéis \
+(ex: 'esposa', 'chefe', 'conflito familiar').
 - Mantenha linguagem técnica, formal e objetiva.
-- FORMATO DE TÓPICOS CURTOS: As sugestões devem ser enviadas sempre em TÓPICOS CURTOS e CONCISOS (bullet points).
-- INDEPENDÊNCIA DE FORMATO: Mesmo que o [Contexto Atual do Tratamento] esteja em parágrafos, suas sugestões de "Adicionar" ou "Remover" devem manter o formato de tópicos curtos. NUNCA gere explicações longas ou parágrafos.
-- Formate a sugestão de modificação seguindo o exemplo:
-  Exemplo:
-  "Adicionar:
-  - Desentendimento com figura materna.
-  - Relato de ansiedade em locais públicos.
-
-  Remover:
-  - Meta de redução de café (alcançada)."
-- Se o campo não tiver mudanças relevantes, não force informações, \
-apenas retorne null.
+- Cada bullet deve ser uma frase curta e autocontida (máximo 2 linhas).
 
 [Contexto Atual do Tratamento]
 {current_context}
@@ -69,14 +57,16 @@ apenas retorne null.
 {record_content}
 
 [Formato de Saída]
-Responda APENAS com um objeto JSON válido contendo as chaves \
-(os valores das chaves devem ser a sugestão de modificação ou null):
+Responda APENAS com um objeto JSON válido. Cada chave é um campo do \
+contexto. O valor é um objeto com "add" (lista de strings) e "remove" \
+(lista de strings), ou null se não houver mudanças relevantes.
+
 {{
-  "life_dynamics": "Adicionar: ... / Remover: ... (ou null)",
-  "clinical_history": "Adicionar: ... / Remover: ... (ou null)",
-  "psychological_patterns": "Adicionar: ... / Remover: ... (ou null)",
-  "therapeutic_goals": "Adicionar: ... / Remover: ... (ou null)",
-  "medication_notes": "Adicionar: ... / Remover: ... (ou null)"
+  "life_dynamics": {{"add": ["novo bullet 1"], "remove": ["bullet obsoleto"]}},
+  "clinical_history": null,
+  "psychological_patterns": {{"add": ["padrão identificado"], "remove": []}},
+  "therapeutic_goals": null,
+  "medication_notes": null
 }}
 """  # noqa: E501
 
@@ -96,38 +86,39 @@ Refira-se ao paciente de acordo com o gênero {gender}.
 
 O contexto clínico é composto por 5 categorias:
 
-1. life_dynamics: Dinâmicas de vida — descreve o contexto social, \
-familiar, ocupacional e relacional do paciente.
+1. life_dynamics: Dinâmicas de vida — contexto social, familiar, \
+ocupacional e relacional.
 2. clinical_history: Histórico clínico — percurso terapêutico, queixas, \
 diagnósticos, evolução.
 3. psychological_patterns: Padrões psicológicos — padrões \
 comportamentais, cognitivos, emocionais recorrentes.
 4. therapeutic_goals: Objetivos terapêuticos — curto e longo prazo.
-5. medication_notes: Notas sobre medicação — registro sobre prescrições, \
-adesão ou alterações.
+5. medication_notes: Notas sobre medicação — prescrições, adesão ou \
+alterações relatadas.
 
 [Regras de Geração]
-- GERE O CONTEXTO COMPLETO com base APENAS nas informações fornecidas no [Material Base].
-- NÃO invente ou adicione informações que não estão no texto. Se faltar \
-informação para uma categoria, retorne uma string vazia ("") para aquela chave.
+- GERE O CONTEXTO COMPLETO com base APENAS nas informações do [Material Base].
+- CADA CAMPO É UMA LISTA DE BULLETS independentes e concisos.
+- NÃO invente informações ausentes. Se faltar informação para uma \
+categoria, retorne null.
 - ANONIMIZAÇÃO OBRIGATÓRIA: omita nomes próprios, empresas, ou qualquer \
-informação específica que permita a identificação do paciente (ex: use \
-'chefe', 'conflito familiar').
-- FORMATO DE TÓPICOS CURTOS: A geração deve ser feita EXCLUSIVAMENTE \
-em TÓPICOS CURTOS e CONCISOS (bullet points, usando o caractere '-'). \
-Não utilize parágrafos longos em momento algum.
+informação que permita identificar o paciente (use 'chefe', 'esposa', etc).
+- Cada bullet deve ser uma frase curta e autocontida (máximo 2 linhas).
+- Linguagem técnica, formal e objetiva.
 
 [Material Base]
 {base_material}
 
 [Formato de Saída]
-Responda APENAS com um objeto JSON válido contendo as chaves \
-(os valores das chaves devem ser a geração em bullet points, ou null caso o campo não se aplique):
+Responda APENAS com um objeto JSON válido. Cada chave é um campo do \
+contexto, e o valor é uma LISTA DE STRINGS (cada string = um bullet), \
+ou null se não houver informações suficientes para aquela categoria.
+
 {{
-  "life_dynamics": "- ...\\n- ...",
-  "clinical_history": "- ...\\n- ...",
-  "psychological_patterns": "- ...\\n- ...",
-  "therapeutic_goals": "- ...\\n- ...",
-  "medication_notes": "- ...\\n- ..."
+  "life_dynamics": ["bullet 1", "bullet 2"],
+  "clinical_history": ["bullet 1"],
+  "psychological_patterns": ["bullet 1", "bullet 2"],
+  "therapeutic_goals": ["bullet 1"],
+  "medication_notes": null
 }}
 """  # noqa: E501

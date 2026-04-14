@@ -189,22 +189,37 @@ class AutomatedReportService:
 
     @staticmethod
     def _format_treatment_context(ctx: TreatmentContext | None) -> str | None:
-        """Formats TreatmentContext fields into a readable string."""
+        """Formats TreatmentContext fields (list[str]) into a string."""
         if not ctx:
             return None
+
+        def _bullets(items: list | None) -> str:
+            if not items:
+                return ""
+            return "\n".join(f"- {b}" for b in items)
+
         parts = []
         if ctx.clinical_history:
-            parts.append(f"Histórico Clínico:\n{ctx.clinical_history}")
+            parts.append(
+                f"Histórico Clínico:\n{_bullets(ctx.clinical_history)}"
+            )
         if ctx.psychological_patterns:
             parts.append(
-                f"Padrões Psicológicos:\n{ctx.psychological_patterns}"
+                f"Padrões Psicológicos:\n"
+                f"{_bullets(ctx.psychological_patterns)}"
             )
         if ctx.therapeutic_goals:
-            parts.append(f"Objetivos Terapêuticos:\n{ctx.therapeutic_goals}")
+            parts.append(
+                f"Objetivos Terapêuticos:\n{_bullets(ctx.therapeutic_goals)}"
+            )
         if ctx.life_dynamics:
-            parts.append(f"Dinâmicas de Vida:\n{ctx.life_dynamics}")
+            parts.append(
+                f"Dinâmicas de Vida:\n{_bullets(ctx.life_dynamics)}"
+            )
         if ctx.medication_notes:
-            parts.append(f"Notas de Medicação:\n{ctx.medication_notes}")
+            parts.append(
+                f"Notas de Medicação:\n{_bullets(ctx.medication_notes)}"
+            )
         return "\n\n".join(parts) if parts else None
 
     # ------------------------------------------------------------------

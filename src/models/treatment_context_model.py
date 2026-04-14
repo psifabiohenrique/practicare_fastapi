@@ -2,8 +2,13 @@ import uuid as uuid_pkg
 from datetime import datetime
 
 from sqlalchemy import UUID as SQLUUID
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
+
+try:
+    from sqlalchemy import JSON
+except ImportError:
+    from sqlalchemy import Text as JSON
 
 from src.database import Base
 
@@ -24,11 +29,12 @@ class TreatmentContext(Base):
         nullable=False,
     )
 
-    life_dynamics = Column(Text, nullable=True)
-    clinical_history = Column(Text, nullable=True)
-    psychological_patterns = Column(Text, nullable=True)
-    therapeutic_goals = Column(Text, nullable=True)
-    medication_notes = Column(Text, nullable=True)
+    # Each field stores a JSON list of bullet-point strings
+    life_dynamics = Column(JSON, nullable=True)
+    clinical_history = Column(JSON, nullable=True)
+    psychological_patterns = Column(JSON, nullable=True)
+    therapeutic_goals = Column(JSON, nullable=True)
+    medication_notes = Column(JSON, nullable=True)
 
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(
@@ -65,11 +71,12 @@ class TreatmentContextDraft(Base):
         nullable=False,
     )
 
-    life_dynamics = Column(Text, nullable=True)
-    clinical_history = Column(Text, nullable=True)
-    psychological_patterns = Column(Text, nullable=True)
-    therapeutic_goals = Column(Text, nullable=True)
-    medication_notes = Column(Text, nullable=True)
+    # Each field stores a JSON dict: {"add": [...], "remove": [...]}
+    life_dynamics = Column(JSON, nullable=True)
+    clinical_history = Column(JSON, nullable=True)
+    psychological_patterns = Column(JSON, nullable=True)
+    therapeutic_goals = Column(JSON, nullable=True)
+    medication_notes = Column(JSON, nullable=True)
 
     is_applied = Column(Boolean, default=False, nullable=False)
 

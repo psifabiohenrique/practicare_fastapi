@@ -38,6 +38,30 @@ CONTEXT_FIELDS = [
 ]
 
 
+def _merge_diffs(old_diff: dict | None, new_diff: dict | None) -> dict | None:
+    """
+    Merges two ContextFieldDiff dicts by combining their add/remove lists,
+    deduplicating items.
+    Returns None if both are None.
+    """
+    if old_diff is None and new_diff is None:
+        return None
+
+    old_add = (old_diff or {}).get("add", [])
+    old_remove = (old_diff or {}).get("remove", [])
+    new_add = (new_diff or {}).get("add", [])
+    new_remove = (new_diff or {}).get("remove", [])
+
+    # Merge and deduplicate preserving order
+    merged_add = list(dict.fromkeys(old_add + new_add))
+    merged_remove = list(dict.fromkeys(old_remove + new_remove))
+
+    if not merged_add and not merged_remove:
+        return None
+
+    return {"add": merged_add, "remove": merged_remove}
+
+
 class TreatmentContextService:
     @staticmethod
     async def get_context_with_pending_draft(
@@ -116,8 +140,8 @@ class TreatmentContextService:
         schema: TreatmentContextUpdate,
     ) -> TreatmentContext:
         """
-        Directly patches the TreatmentContext. Creates it
-        if it doesn't exist yet.
+        Directly patches the TreatmentContext with list[str] per field.
+        Creates it if it doesn't exist yet.
         """
         context = await TreatmentContextService.get_or_create_context(
             db, treatment_uuid, user_uuid
@@ -145,6 +169,8 @@ class TreatmentContextService:
     ) -> TreatmentContextDraft:
         """
         Creates a new TreatmentContextDraft.
+        draft_data is a dict where each key in CONTEXT_FIELDS maps to
+        either None or {"add": [...], "remove": [...]}.
         """
         logger.info(
             "Criando TreatmentContextDraft para o contexto %s (prontuário %s)",
@@ -207,9 +233,10 @@ class TreatmentContextService:
         final_data: TreatmentContextApplyDraft,
     ) -> TreatmentContext:
         """
-        Applies a draft: updates the TreatmentContext with
-        the user-edited final data and marks the draft as
-        applied.
+        Applies a draft: updates the TreatmentContext with the
+        user-reviewed final list[str] per field and marks draft as applied.
+        The frontend is responsible for computing the final lists after
+        accepting/rejecting individual bullet suggestions.
         """
         draft = await TreatmentContextService._get_draft_with_auth(
             db, draft_uuid, user_uuid
@@ -232,7 +259,7 @@ class TreatmentContextService:
             context.uuid,
         )
 
-        # Apply user-edited data to context
+        # Apply user-reviewed data to context
         update_data = final_data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             if key in CONTEXT_FIELDS:
@@ -275,10 +302,9 @@ class TreatmentContextService:
         new_draft_data: dict,
     ) -> dict:
         """
-        If there is a pending draft for this context,
-        concatenates its content into the new draft data
-        and marks the old draft as applied (without
-        applying to context).
+        If there is a pending draft for this context, merges its
+        add/remove lists with the new draft data (deduplicating) and
+        marks the old draft as applied (without applying to context).
         """
         draft_result = await db.execute(
             select(TreatmentContextDraft)
@@ -296,24 +322,17 @@ class TreatmentContextService:
             return new_draft_data
 
         logger.info(
-            "Concatenando draft pendente %s ao novo draft",
+            "Mesclando draft pendente %s ao novo draft",
             pending_draft.uuid,
         )
 
         merged = {}
         for field in CONTEXT_FIELDS:
-            old_val = getattr(pending_draft, field) or ""
-            new_val = new_draft_data.get(field) or ""
-            if old_val and new_val and old_val != new_val:
-                merged[field] = f"{old_val}\n\nNova sugestão: {new_val}"
-            elif new_val:
-                merged[field] = new_val
-            elif old_val:
-                merged[field] = old_val
-            else:
-                merged[field] = None
+            old_diff = getattr(pending_draft, field)
+            new_diff = new_draft_data.get(field)
+            merged[field] = _merge_diffs(old_diff, new_diff)
 
-        # Mark old draft as applied (without applying)
+        # Mark old draft as applied (without applying to context)
         pending_draft.is_applied = True
         db.add(pending_draft)
         await db.flush()
@@ -328,8 +347,8 @@ class TreatmentContextService:
         user_uuid: str,
     ) -> TreatmentContextDraft:
         """
-        Orchestrates the AI call to generate a context
-        update draft from a new treatment record.
+        Orchestrates the AI call to generate a context update draft
+        (structured add/remove diffs) from a new treatment record.
         """
         logger.info(
             "Gerando context draft para tratamento %s (prontuário %s)",
@@ -341,7 +360,7 @@ class TreatmentContextService:
             db, treatment_uuid, user_uuid
         )
 
-        # Build current context dict
+        # Build current context dict (list[str] per field)
         current_ctx = {}
         for field in CONTEXT_FIELDS:
             current_ctx[field] = getattr(context, field)
@@ -384,7 +403,7 @@ class TreatmentContextService:
             draft_data = {}
 
         # Merge with any pending draft
-        merged_data = await TreatmentContextService._merge_pending_draft_into(  # noqa: E501
+        merged_data = await TreatmentContextService._merge_pending_draft_into(
             db, context, draft_data
         )
 
@@ -438,7 +457,7 @@ class TreatmentContextService:
         return context
 
     @staticmethod
-    async def generate_context_from_history(  # noqa: PLR0913
+    async def generate_context_from_history(  # noqa: PLR0913, PLR0912
         db: AsyncSession,
         treatment_uuid: UUID,
         user_uuid: str,
@@ -446,8 +465,8 @@ class TreatmentContextService:
         include_existing_records: bool,
     ):
         """
-        Orchestrates the AI call to generate the full context.
-        Finally resets is_update_scheduled = False.
+        Orchestrates the AI call to generate the full context as a draft
+        with list[str] per field. Resets is_update_scheduled = False at end.
         """
         from src.ai.chains.context_generation import (  # noqa: E402
             ContextGenerationChain,
@@ -521,6 +540,20 @@ class TreatmentContextService:
             if not isinstance(draft_data, dict):
                 draft_data = {}
 
+            # The generation result is list[str] per field — we wrap it as
+            # a draft with add=[...] and remove=[] so the user can review
+            # before applying.
+            wrapped_draft_data = {}
+            for field in CONTEXT_FIELDS:
+                bullets = draft_data.get(field)
+                if bullets:
+                    wrapped_draft_data[field] = {
+                        "add": bullets,
+                        "remove": [],
+                    }
+                else:
+                    wrapped_draft_data[field] = None
+
             # Clear ALL pending drafts before creating the new one
             draft_result = await db.execute(
                 select(TreatmentContextDraft).filter(
@@ -535,10 +568,6 @@ class TreatmentContextService:
                 db.add(pd)
             await db.flush()
 
-            # Draft FK requires a treatment_record_uuid. Let's just use the
-            # very first/last record, or if None exist, save directly to
-            # context instead.
-
             latest_record_result = await db.execute(
                 select(TreatmentRecord)
                 .filter(TreatmentRecord.treatment_uuid == str(treatment_uuid))
@@ -547,20 +576,16 @@ class TreatmentContextService:
             )
             latest_record = latest_record_result.scalars().first()
             if not latest_record:
-                # We cannot create a draft without a record!
-                # We must save directly to context
-                update_schema = TreatmentContextUpdate(**{
-                    k: v for k, v in draft_data.items() if k in CONTEXT_FIELDS
-                })
-                update_data = update_schema.model_dump(exclude_unset=True)
-                for key, value in update_data.items():
-                    setattr(context, key, value)
+                # No record exists — apply directly to context
+                for field in CONTEXT_FIELDS:
+                    bullets = draft_data.get(field)
+                    setattr(context, field, bullets or None)
             else:
                 await TreatmentContextService.create_draft(
                     db=db,
                     treatment_context_uuid=context.uuid,
                     treatment_record_uuid=latest_record.uuid,
-                    draft_data=draft_data,
+                    draft_data=wrapped_draft_data,
                 )
 
         finally:

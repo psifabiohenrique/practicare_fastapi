@@ -18,13 +18,23 @@ from src.settings import settings
 
 logger = logging.getLogger(__name__)
 
+CONTEXT_FIELDS = [
+    "life_dynamics",
+    "clinical_history",
+    "psychological_patterns",
+    "therapeutic_goals",
+    "medication_notes",
+]
 
-class ContextJSON(BaseModel):
-    life_dynamics: str | None = None
-    clinical_history: str | None = None
-    psychological_patterns: str | None = None
-    therapeutic_goals: str | None = None
-    medication_notes: str | None = None
+
+class ContextGenerationJSON(BaseModel):
+    """Full context output from the AI for generation — list[str] per field."""
+
+    life_dynamics: list[str] | None = None
+    clinical_history: list[str] | None = None
+    psychological_patterns: list[str] | None = None
+    therapeutic_goals: list[str] | None = None
+    medication_notes: list[str] | None = None
 
 
 def extract_json(text: str) -> str:
@@ -36,6 +46,33 @@ def extract_json(text: str) -> str:
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```$", "", text)
     return text.strip()
+
+
+def parse_generation_response(raw: dict) -> dict:
+    """
+    Validates and normalises the AI output for context generation.
+    Each field must be a list[str] or None.
+    If the AI returns a plain string (old format fallback), wrap it.
+    """
+    result = {}
+    for field in CONTEXT_FIELDS:
+        val = raw.get(field)
+        if not val:
+            result[field] = None
+        elif isinstance(val, list):
+            cleaned = [s for s in val if isinstance(s, str) and s.strip()]
+            result[field] = cleaned if cleaned else None
+        elif isinstance(val, str) and val.strip():
+            # Fallback: if the AI returned a string, split on newlines
+            lines = [
+                ln.lstrip("- ").strip()
+                for ln in val.splitlines()
+                if ln.strip()
+            ]
+            result[field] = lines if lines else None
+        else:
+            result[field] = None
+    return result
 
 
 class ContextGenerationChain:
@@ -56,7 +93,8 @@ class ContextGenerationChain:
         gender: str,
     ) -> AIResult:
         """
-        Generates a completely new clinical context from base material.
+        Generates a completely new clinical context as lists of bullet
+        strings per field (list[str] | None).
         """
         logger.info(
             f"Chamando LLM ({self.provider}) para GERAÇÃO "
@@ -95,12 +133,13 @@ class ContextGenerationChain:
 
                 content = response.choices[0].message.content or "{}"
                 logger.info(
-                    "Resposta OpenAI (Contexto). Tokens: In %s, Out %s",
+                    "Resposta OpenAI (Geração). Tokens: In %s, Out %s",
                     input_tokens,
                     output_tokens,
                 )
+                raw = json.loads(content)
                 return AIResult(
-                    content=json.loads(content),
+                    content=parse_generation_response(raw),
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                 )
@@ -127,16 +166,14 @@ class ContextGenerationChain:
                         response.usage_metadata.candidates_token_count  # noqa: E501
                         or 0
                     )
-                ctx = ContextJSON.model_validate_json(
-                    extract_json(response.text)
-                )
+                raw = json.loads(extract_json(response.text))
                 logger.info(
-                    "Resposta Google (Contexto). Tokens: In %s, Out %s",
+                    "Resposta Google (Geração). Tokens: In %s, Out %s",
                     input_tokens,
                     output_tokens,
                 )
                 return AIResult(
-                    content=ctx.model_dump(),
+                    content=parse_generation_response(raw),
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                 )
@@ -147,7 +184,7 @@ class ContextGenerationChain:
             socket.gaierror,
         ) as e:
             logger.error(
-                "Erro de rede ao chamar o LLM (%s) para contexto: %s",
+                "Erro de rede ao chamar o LLM (%s) para geração: %s",
                 self.provider,
                 e,
             )
@@ -155,7 +192,7 @@ class ContextGenerationChain:
 
         except Exception as e:
             logger.error(
-                "Erro inesperado ao atualizar contexto com %s: %s",
+                "Erro inesperado ao gerar contexto com %s: %s",
                 self.provider,
                 e,
                 exc_info=True,
