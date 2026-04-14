@@ -264,6 +264,18 @@ class TestAutomatedReportServiceProcessing:
             error_message="First failure",
         )
 
+    def test_format_treatment_context_empty(self):
+        # Test the static method directly
+        ctx = MagicMock()
+        ctx.clinical_history = []
+        ctx.psychological_patterns = []
+        ctx.therapeutic_goals = []
+        ctx.life_dynamics = []
+        ctx.medication_notes = []
+        
+        result = AutomatedReportService._format_treatment_context(ctx)
+        assert result is None
+
     @pytest.mark.asyncio
     @patch("src.services.automated_report_service.UsageStatisticService")
     @patch(

@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship
 
 try:
     from sqlalchemy import JSON
-except ImportError:
+except ImportError:  # pragma: no cover
     from sqlalchemy import Text as JSON
 
 from src.database import Base

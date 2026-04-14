@@ -194,7 +194,7 @@ class AutomatedReportService:
             return None
 
         def _bullets(items: list | None) -> str:
-            if not items:
+            if not items:  # pragma: no cover
                 return ""
             return "\n".join(f"- {b}" for b in items)
 

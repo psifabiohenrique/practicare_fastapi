@@ -222,6 +222,30 @@ class TestTreatmentContextService:
         assert mock_draft.is_applied is True
 
     @pytest.mark.asyncio
+    async def test_merge_pending_draft_into_no_changes(self, mock_db, mock_context, mock_draft):
+        res_mock = MagicMock()
+        res_mock.scalars.return_value.first.return_value = mock_draft
+        mock_db.execute.return_value = res_mock
+        
+        # Draft has empty dicts, new_data has empty dicts to reach line 60
+        # instead of the early return for None
+        empty_diff = {"add": [], "remove": []}
+        mock_draft.life_dynamics = empty_diff
+        mock_draft.clinical_history = empty_diff
+        mock_draft.psychological_patterns = empty_diff
+        mock_draft.therapeutic_goals = empty_diff
+        mock_draft.medication_notes = empty_diff
+        
+        new_data = {
+            "life_dynamics": empty_diff,
+            "clinical_history": empty_diff
+        }
+        merged = await TreatmentContextService._merge_pending_draft_into(mock_db, mock_context, new_data)
+        
+        # All fields should be None because _merge_diffs returned None for all at line 60
+        assert all(v is None for v in merged.values())
+
+    @pytest.mark.asyncio
     async def test_merge_pending_draft_into_old_only(self, mock_db, mock_context, mock_draft):
         res_mock = MagicMock()
         res_mock.scalars.return_value.first.return_value = mock_draft

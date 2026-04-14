@@ -88,10 +88,78 @@ class TestContextGenerationChain:
         with pytest.raises(AIFatalError, match="Erro desconhecido"):
             await chain.generate("m", "g")
 
+    @pytest.mark.asyncio
+    @patch("src.ai.chains.context_generation.AsyncOpenAI")
+    async def test_generate_openai_string_fallback(self, mock_openai):
+        mock_client = mock_openai.return_value
+        mock_resp = MagicMock()
+        mock_resp.usage.prompt_tokens = 10
+        mock_resp.usage.completion_tokens = 20
+        mock_resp.choices = [MagicMock()]
+        # AI returns a string instead of a list for clinical_history
+        mock_resp.choices[0].message.content = json.dumps({
+            "clinical_history": "- line 1\n- line 2",
+            "life_dynamics": ["test"]
+        })
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
+        
+        chain = ContextGenerationChain(provider="openai")
+        result = await chain.generate("material", "male")
+        
+        assert result.content["clinical_history"] == ["line 1", "line 2"]
+        assert result.content["life_dynamics"] == ["test"]
+
+    @pytest.mark.asyncio
+    @patch("src.ai.chains.context_generation.AsyncOpenAI")
+    async def test_generate_openai_invalid_type_fallback(self, mock_openai):
+        mock_client = mock_openai.return_value
+        mock_resp = MagicMock()
+        mock_resp.usage.prompt_tokens = 10
+        mock_resp.usage.completion_tokens = 20
+        mock_resp.choices = [MagicMock()]
+        # AI returns an integer instead of a list/string for clinical_history
+        mock_resp.choices[0].message.content = json.dumps({
+            "clinical_history": 123,
+            "life_dynamics": ["test"]
+        })
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
+        
+        chain = ContextGenerationChain(provider="openai")
+        result = await chain.generate("material", "male")
+        
+        assert result.content["clinical_history"] is None
+        assert result.content["life_dynamics"] == ["test"]
+
 class TestContextUpdateChain:
+
+
     def test_unsupported_provider(self):
         with pytest.raises(ValueError, match="Provider unknown not supported"):
             ContextUpdateChain(provider="unknown")
+
+    @pytest.mark.asyncio
+    @patch("src.ai.chains.context_update.AsyncOpenAI")
+    async def test_generate_openai_non_list_context(self, mock_openai):
+        mock_client = mock_openai.return_value
+        mock_resp = MagicMock()
+        mock_resp.usage.prompt_tokens = 5
+        mock_resp.usage.completion_tokens = 5
+        mock_resp.choices = [MagicMock()]
+        mock_resp.choices[0].message.content = json.dumps({"clinical_history": {"add": ["updated"], "remove": []}})
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
+        
+        chain = ContextUpdateChain(provider="openai")
+        # Pass a context where life_dynamics is not a list
+        result = await chain.generate({"life_dynamics": "Not a list"}, "new record", "male")
+        
+        assert result.content["clinical_history"] == {"add": ["updated"], "remove": []}
+
+    def test_parse_draft_response_non_dict_val(self):
+        from src.ai.chains.context_update import parse_draft_response
+        # AI returns a string instead of a dict for a field
+        raw = {"clinical_history": "Not a dict"}
+        result = parse_draft_response(raw)
+        assert result["clinical_history"] is None
 
     @pytest.mark.asyncio
     @patch("src.ai.chains.context_update.AsyncOpenAI")
@@ -105,7 +173,7 @@ class TestContextUpdateChain:
         mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
         
         chain = ContextUpdateChain(provider="openai")
-        result = await chain.generate({"old": "context"}, "new record", "male")
+        result = await chain.generate({"life_dynamics": ["bullet 1"]}, "new record", "male")
         
         assert result.content["clinical_history"] == {"add": ["updated"], "remove": []}
 
