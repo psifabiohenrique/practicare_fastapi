@@ -378,5 +378,7 @@ class TestTreatmentContextService:
                     "psychological_patterns": None,
                     "therapeutic_goals": None,
                     "medication_notes": None,
+                    "techniques": None,
+                    "requested_activities": None,
                 }
                 mock_create_draft.assert_called_with(db=mock_db, treatment_context_uuid=mock_context.uuid, treatment_record_uuid=mock_record.uuid, draft_data=expected_draft_data)
