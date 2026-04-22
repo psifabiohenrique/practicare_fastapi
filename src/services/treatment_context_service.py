@@ -35,6 +35,8 @@ CONTEXT_FIELDS = [
     "psychological_patterns",
     "therapeutic_goals",
     "medication_notes",
+    "techniques",
+    "requested_activities",
 ]
 
 

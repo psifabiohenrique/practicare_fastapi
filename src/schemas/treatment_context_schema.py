@@ -14,6 +14,8 @@ class TreatmentContextRead(BaseModel):
     psychological_patterns: ContextField = None
     therapeutic_goals: ContextField = None
     medication_notes: ContextField = None
+    techniques: ContextField = None
+    requested_activities: ContextField = None
     is_update_scheduled: bool
     created_at: datetime
     updated_at: datetime
@@ -27,6 +29,8 @@ class TreatmentContextUpdate(BaseModel):
     psychological_patterns: ContextField = None
     therapeutic_goals: ContextField = None
     medication_notes: ContextField = None
+    techniques: ContextField = None
+    requested_activities: ContextField = None
 
 
 class ContextFieldDiff(BaseModel):
@@ -45,6 +49,8 @@ class TreatmentContextDraftRead(BaseModel):
     psychological_patterns: ContextFieldDiff | None = None
     therapeutic_goals: ContextFieldDiff | None = None
     medication_notes: ContextFieldDiff | None = None
+    techniques: ContextFieldDiff | None = None
+    requested_activities: ContextFieldDiff | None = None
     is_applied: bool
     created_at: datetime
 
@@ -64,6 +70,8 @@ class TreatmentContextApplyDraft(BaseModel):
     psychological_patterns: ContextField = None
     therapeutic_goals: ContextField = None
     medication_notes: ContextField = None
+    techniques: ContextField = None
+    requested_activities: ContextField = None
 
 
 class TreatmentContextGenerate(BaseModel):

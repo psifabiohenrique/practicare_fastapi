@@ -11,7 +11,7 @@ o contexto clínico evolutivo do paciente.
 [Contexto]
 Refira-se ao paciente de acordo com o gênero {gender}.
 
-O contexto clínico é composto por 5 campos (cada um é uma lista de \
+O contexto clínico é composto por 7 campos (cada um é uma lista de \
 bullet points independentes):
 
 1. life_dynamics: Dinâmicas de vida — contexto social, familiar, \
@@ -31,6 +31,16 @@ longo prazo, metas alcançadas, em progresso e novas metas.
 5. medication_notes: Notas sobre medicação — medicamentos prescritos, \
 adesão, efeitos relatados e mudanças mencionadas pelo paciente. O \
 psicólogo não prescreve, apenas registra o que o paciente relata.
+
+6. techniques: Técnicas/Procedimentos — técnicas de intervenção e \
+procedimentos terapêuticos utilizados durante as sessões.
+
+7. requested_activities: Atividades solicitadas — atividades ou tarefas \
+que o psicólogo solicitou ao paciente. Este é um campo EFÊMERO: sempre \
+que o prontuário indicar que o paciente realizou ou discutiu uma \
+atividade previamente solicitada, você DEVE sugerir a remoção desse \
+bullet (colocando-o na chave 'remove'). Adicione novas atividades ('add') \
+apenas quando explicitamente solicitadas na sessão atual.
 
 [Regras de Atualização]
 - CADA CAMPO TEM UMA LISTA DE BULLETS EXISTENTE. Você deve sugerir \
@@ -66,7 +76,9 @@ contexto. O valor é um objeto com "add" (lista de strings) e "remove" \
   "clinical_history": null,
   "psychological_patterns": {{"add": ["padrão identificado"], "remove": []}},
   "therapeutic_goals": null,
-  "medication_notes": null
+  "medication_notes": null,
+  "techniques": {{"add": ["técnica aplicada"], "remove": []}},
+  "requested_activities": {{"add": ["nova tarefa"], "remove": ["tarefa concluída"]}}
 }}
 """  # noqa: E501
 
@@ -84,7 +96,7 @@ um contexto clínico completo para o paciente.
 [Contexto do Paciente]
 Refira-se ao paciente de acordo com o gênero {gender}.
 
-O contexto clínico é composto por 5 categorias:
+O contexto clínico é composto por 7 categorias:
 
 1. life_dynamics: Dinâmicas de vida — contexto social, familiar, \
 ocupacional e relacional.
@@ -95,6 +107,8 @@ comportamentais, cognitivos, emocionais recorrentes.
 4. therapeutic_goals: Objetivos terapêuticos — curto e longo prazo.
 5. medication_notes: Notas sobre medicação — prescrições, adesão ou \
 alterações relatadas.
+6. techniques: Técnicas/Procedimentos — técnicas e intervenções utilizadas.
+7. requested_activities: Atividades solicitadas — tarefas pedidas ao paciente.
 
 [Regras de Geração]
 - GERE O CONTEXTO COMPLETO com base APENAS nas informações do [Material Base].
@@ -119,6 +133,8 @@ ou null se não houver informações suficientes para aquela categoria.
   "clinical_history": ["bullet 1"],
   "psychological_patterns": ["bullet 1", "bullet 2"],
   "therapeutic_goals": ["bullet 1"],
-  "medication_notes": null
+  "medication_notes": null,
+  "techniques": ["bullet 1"],
+  "requested_activities": null
 }}
 """  # noqa: E501

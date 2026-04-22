@@ -21,7 +21,7 @@ Preencha os seguintes campos. Cada campo, deve ser um único parágrafo contendo
 
 1. Resumo do Atendimento:
 
-Elabore um resumo conciso dos principais tópicos discutidos na sessão, focando nos relatos do paciente sobre seu estado emocional, eventos recentes, dificuldades e progressos mencionados. Descreva a interação de forma neutra e factual.
+Elabore um resumo conciso dos principais tópicos discutidos na sessão, focando nos relatos do paciente sobre seu estado emocional, eventos recentes, dificuldades e progressos mencionados. Descreva a interação de forma neutra e factual. IMPORTANTE: Se a transcrição indicar que o paciente realizou, tentou realizar ou discutiu uma atividade/tarefa solicitada em sessões anteriores, registre isso explicitamente neste resumo.
 
 2. Análise Técnica (AC e TCC):
 
@@ -35,7 +35,7 @@ Infira e descreva, com base na atuação do psicólogo captada no áudio, quais 
 
 Este campo tem duas partes:
 
-Solicitações do Psicólogo: Com base na transcrição, descreva quaisquer tarefas, exercícios ou reflexões que o psicólogo tenha explicitamente solicitado que o paciente realizasse até o próximo atendimento (ex.: "diário de pensamentos", "prática de atividade agradável"). Inicie com frases como "O psicólogo solicitou que o paciente..." ou "Foi orientada a prática de...".
+Solicitações do Psicólogo: Com base na transcrição, descreva claramente QUAISQUER NOVAS tarefas, exercícios ou reflexões que o psicólogo tenha explicitamente solicitado que o paciente realize até o próximo atendimento (ex.: "diário de pensamentos", "prática de atividade agradável"). Inicie com frases como "O psicólogo solicitou que o paciente..." ou "Foi orientada a prática de...". Dê ênfase a essas novas solicitações para que fiquem bem claras.
 
 Sugestões de Procedimentos: Com base na análise da sessão, sugira procedimentos técnicos a serem considerados para os próximos atendimentos. Estas são sugestões do agente de IA, fundamentadas na AC/TCC, para a continuidade do processo terapêutico (ex.: "Sugere-se a introdução de técnicas de reestruturação cognitiva para os pensamentos automáticos identificados" ou "Pode ser benéfico implementar um exercício de hierarquia de exposição"). Procure dar um exemplo prático de como o psicólogo pode implementar esses procedimentos (ex.: quando o paciente mostrar uma distorção cognitiva, como sou incapaz dê, faça um exame de evidências conduzindo-o a enfraquecer a distorção)
 

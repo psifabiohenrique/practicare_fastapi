@@ -35,6 +35,8 @@ class TreatmentContext(Base):
     psychological_patterns = Column(JSON, nullable=True)
     therapeutic_goals = Column(JSON, nullable=True)
     medication_notes = Column(JSON, nullable=True)
+    techniques = Column(JSON, nullable=True)
+    requested_activities = Column(JSON, nullable=True)
 
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(
@@ -77,6 +79,8 @@ class TreatmentContextDraft(Base):
     psychological_patterns = Column(JSON, nullable=True)
     therapeutic_goals = Column(JSON, nullable=True)
     medication_notes = Column(JSON, nullable=True)
+    techniques = Column(JSON, nullable=True)
+    requested_activities = Column(JSON, nullable=True)
 
     is_applied = Column(Boolean, default=False, nullable=False)
 
