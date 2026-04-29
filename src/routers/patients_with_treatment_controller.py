@@ -5,6 +5,7 @@ from fastapi import APIRouter, Query, status
 
 from src.models import Gender, TreatmentStatus, Weekdays
 from src.routers.deps import CurrentUser, SessionDB
+from src.schemas.pagination_schema import PaginatedResponse
 from src.schemas.patient_with_treatment_schema import (
     PatientWithTreatmentCreate,
     PatientWithTreatmentUpdate,
@@ -67,7 +68,7 @@ async def get_daily_patients_with_treatment(
     )
 
 
-@router.get("", response_model=list[TreatmentWithPatientRead])
+@router.get("", response_model=PaginatedResponse[TreatmentWithPatientRead])
 async def get_patients_with_treatment(  # noqa: PLR0913
     *,
     db: SessionDB,
@@ -86,7 +87,10 @@ async def get_patients_with_treatment(  # noqa: PLR0913
     Supports pagination, filtering by gender/weekday,
     sorting by name/birth_date, and searching by name.
     """
-    return await PatientWithTreatmentService.get_treatments_with_user_uuid(
+    (
+        items,
+        total,
+    ) = await PatientWithTreatmentService.get_treatments_with_user_uuid(
         db=db,
         user_uuid=current_user.uuid,
         skip=skip,
@@ -97,6 +101,9 @@ async def get_patients_with_treatment(  # noqa: PLR0913
         weekday=weekday,
         status=status,
         search=search,
+    )
+    return PaginatedResponse.create(
+        items=items, total=total, skip=skip, limit=limit
     )
 
 

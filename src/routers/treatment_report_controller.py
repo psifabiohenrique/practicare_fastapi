@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, status
 
 from src.routers.deps import CurrentUser, SessionDB
+from src.schemas.pagination_schema import PaginatedResponse
 from src.schemas.treatment_report_schema import (
     AutomatedReportCreate,
     ReportStatus,
@@ -22,7 +23,8 @@ router = APIRouter(prefix="/treatment-reports", tags=["Treatment reports"])
 
 
 @router.get(
-    "/treatment/{treatment_uuid}", response_model=list[TreatmentReportRead]
+    "/treatment/{treatment_uuid}",
+    response_model=PaginatedResponse[TreatmentReportRead],
 )
 async def list_treatment_reports(  # noqa: PLR0913, PLR0917
     treatment_uuid: UUID,
@@ -32,13 +34,16 @@ async def list_treatment_reports(  # noqa: PLR0913, PLR0917
     limit: int = 100,
     include_archived: bool = False,
 ) -> any:
-    return await TreatmentReportService.get_treatment_reports(
+    items, total = await TreatmentReportService.get_treatment_reports(
         db,
         treatment_uuid,
         current_user.uuid,
         skip,
         limit,
         include_archived=include_archived,
+    )
+    return PaginatedResponse.create(
+        items=items, total=total, skip=skip, limit=limit
     )
 
 

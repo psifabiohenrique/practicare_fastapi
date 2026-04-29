@@ -18,6 +18,7 @@ from fastapi import (
 from src.database import SessionLocal
 from src.models.treatment_record_model import RecordStatus
 from src.routers.deps import CurrentUser, SessionDB
+from src.schemas.pagination_schema import PaginatedResponse
 from src.schemas.treatment_record_schema import (
     AutomatedRecordInitializeResponse,
     InternalTreatmentRecordUpdate,
@@ -34,7 +35,8 @@ logger = logging.getLogger(__name__)
 
 
 @router.get(
-    "/treatment/{treatment_uuid}", response_model=list[TreatmentRecordRead]
+    "/treatment/{treatment_uuid}",
+    response_model=PaginatedResponse[TreatmentRecordRead],
 )
 async def list_treatment_records(  # noqa: PLR0913, PLR0917
     treatment_uuid: UUID,
@@ -44,13 +46,16 @@ async def list_treatment_records(  # noqa: PLR0913, PLR0917
     limit: int = 100,
     include_archived: bool = False,
 ) -> any:
-    return await TreatmentRecordService.get_treatment_records(
+    items, total = await TreatmentRecordService.get_treatment_records(
         db,
         treatment_uuid,
         current_user.uuid,
         skip,
         limit,
         include_archived=include_archived,
+    )
+    return PaginatedResponse.create(
+        items=items, total=total, skip=skip, limit=limit
     )
 
 

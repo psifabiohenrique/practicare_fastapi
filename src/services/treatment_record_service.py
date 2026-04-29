@@ -75,6 +75,11 @@ class TreatmentRecordService:
         if end_date:
             query = query.filter(TreatmentRecord.date <= end_date)
 
+        # Get total count for pagination
+        count_query = select(func.count()).select_from(query.subquery())
+        total_result = await db.execute(count_query)
+        total = total_result.scalar() or 0
+
         if include_archived:
             query = (
                 query
@@ -91,7 +96,8 @@ class TreatmentRecordService:
             )
 
         result = await db.execute(query)
-        return list(result.scalars().all())
+        items = list(result.scalars().all())
+        return items, total
 
     @staticmethod
     async def create_treatment_record(

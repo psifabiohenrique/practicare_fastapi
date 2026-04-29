@@ -2,7 +2,7 @@ import logging
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -71,6 +71,11 @@ class TreatmentReportService:
         if end_date:
             query = query.filter(TreatmentReport.issue_date <= end_date)
 
+        # Get total count for pagination
+        count_query = select(func.count()).select_from(query.subquery())
+        total_result = await db.execute(count_query)
+        total = total_result.scalar() or 0
+
         query = (
             query
             .order_by(TreatmentReport.issue_date.desc())
@@ -78,7 +83,8 @@ class TreatmentReportService:
             .limit(limit)
         )
         result = await db.execute(query)
-        return list(result.scalars().all())
+        items = list(result.scalars().all())
+        return items, total
 
     @staticmethod
     async def create_treatment_report(

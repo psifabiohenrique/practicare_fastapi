@@ -1,3 +1,4 @@
+from .pagination_schema import PaginatedResponse as PaginatedResponse
 from .patient_schema import PatientCreate as PatientCreate
 from .patient_schema import PatientRead as PatientRead
 from .patient_schema import PatientUpdate as PatientUpdate

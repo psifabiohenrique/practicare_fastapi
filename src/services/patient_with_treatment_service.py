@@ -142,13 +142,19 @@ class PatientWithTreatmentService:
             else:
                 query = query.order_by(col.asc())
 
+        # Get total count for pagination
+        count_query = select(func.count()).select_from(query.subquery())
+        total_result = await db.execute(count_query)
+        total = total_result.scalar() or 0
+
         result = await db.execute(
             query
             .options(joinedload(Treatment.patient))
             .offset(skip)
             .limit(limit)
         )
-        return list(result.scalars().all())
+        items = list(result.scalars().all())
+        return items, total
 
     @staticmethod
     async def get_daily_treatments(
