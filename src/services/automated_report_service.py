@@ -213,9 +213,7 @@ class AutomatedReportService:
                 f"Objetivos Terapêuticos:\n{_bullets(ctx.therapeutic_goals)}"
             )
         if ctx.life_dynamics:
-            parts.append(
-                f"Dinâmicas de Vida:\n{_bullets(ctx.life_dynamics)}"
-            )
+            parts.append(f"Dinâmicas de Vida:\n{_bullets(ctx.life_dynamics)}")
         if ctx.medication_notes:
             parts.append(
                 f"Notas de Medicação:\n{_bullets(ctx.medication_notes)}"

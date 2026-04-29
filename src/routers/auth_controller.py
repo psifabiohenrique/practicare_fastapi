@@ -15,6 +15,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.rate_limit import limiter
 from src.database import get_db
 from src.schemas.auth_schema import LoginRequest
 from src.schemas.message_schema import Details, Message
@@ -29,7 +30,9 @@ SessionDB = Annotated[AsyncSession, Depends(get_db)]
 
 
 @router.post("/login", response_model=TokenCSRF)
+@limiter.limit(settings.RATE_LIMIT_HIGH)
 async def login_session(
+    request: Request,
     db: SessionDB,
     response: Response,
     form_data: LoginRequest,
@@ -75,7 +78,8 @@ async def login_session(
 
 
 @router.post("/logout", response_model=Message)
-async def logout_session(db: SessionDB, request: Request, response: Response):
+@limiter.limit(settings.RATE_LIMIT_HIGH)
+async def logout_session(request: Request, db: SessionDB, response: Response):
     session_uuid = request.cookies.get("session_uuid")
     if session_uuid:
         logger.info(
@@ -96,7 +100,9 @@ async def logout_session(db: SessionDB, request: Request, response: Response):
 
 
 @router.post("/login-jwt", response_model=Token)
+@limiter.limit(settings.RATE_LIMIT_HIGH)
 async def login_jwt(
+    request: Request,
     db: SessionDB,
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -127,7 +133,9 @@ async def login_jwt(
 
 
 @router.post("/refresh-jwt", response_model=Token)
+@limiter.limit(settings.RATE_LIMIT_HIGH)
 async def refresh_token_jwt(
+    request: Request,
     db: SessionDB,
     response: Response,
     refresh_token: Annotated[str | None, Cookie()] = None,
@@ -173,6 +181,7 @@ async def refresh_token_jwt(
 
 
 @router.post("/logout-jwt", response_model=Details)
-async def logout_jwt(response: Response) -> any:
+@limiter.limit(settings.RATE_LIMIT_HIGH)
+async def logout_jwt(request: Request, response: Response) -> any:
     response.delete_cookie("refresh_token")
     return Details(detail="Successfully logged out")

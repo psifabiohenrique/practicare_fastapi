@@ -1,8 +1,9 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 
+from src.core.rate_limit import limiter
 from src.routers.deps import CurrentUser, SessionDB
 from src.schemas.treatment_context_schema import (
     TreatmentContextApplyDraft,
@@ -14,6 +15,7 @@ from src.schemas.treatment_context_schema import (
 from src.services.treatment_context_service import (
     TreatmentContextService,
 )
+from src.settings import settings
 
 router = APIRouter(
     prefix="/treatment-contexts",
@@ -55,7 +57,9 @@ async def get_context_with_draft(
     "/treatment/{treatment_uuid}",
     response_model=TreatmentContextRead,
 )
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def update_context(
+    request: Request,
     treatment_uuid: UUID,
     schema: TreatmentContextUpdate,
     db: SessionDB,
@@ -78,7 +82,9 @@ async def update_context(
     "/draft/{draft_uuid}/apply",
     response_model=TreatmentContextRead,
 )
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def apply_draft(
+    request: Request,
     draft_uuid: UUID,
     schema: TreatmentContextApplyDraft,
     db: SessionDB,
@@ -101,7 +107,9 @@ async def apply_draft(
     "/draft/{draft_uuid}/reject",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def reject_draft(
+    request: Request,
     draft_uuid: UUID,
     db: SessionDB,
     current_user: CurrentUser,
@@ -124,7 +132,9 @@ async def reject_draft(
     status_code=status.HTTP_202_ACCEPTED,
     response_model=TreatmentContextRead,
 )
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def generate_context(
+    request: Request,
     treatment_uuid: UUID,
     schema: TreatmentContextGenerate,
     db: SessionDB,

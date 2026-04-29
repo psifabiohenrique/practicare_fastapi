@@ -1,8 +1,9 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Request, status
 
+from src.core.rate_limit import limiter
 from src.models import Gender, TreatmentStatus, Weekdays
 from src.routers.deps import CurrentUser, SessionDB
 from src.schemas.pagination_schema import PaginatedResponse
@@ -14,6 +15,7 @@ from src.schemas.patient_with_treatment_schema import (
 from src.services.patient_with_treatment_service import (
     PatientWithTreatmentService,
 )
+from src.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +29,10 @@ router = APIRouter(
     response_model=TreatmentWithPatientRead,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def create_patient_with_treatment(
     *,
+    request: Request,
     db: SessionDB,
     current_user: CurrentUser,
     schema: PatientWithTreatmentCreate,
@@ -124,8 +128,10 @@ async def get_patient_with_treatment(
 
 
 @router.patch("/{treatment_uuid}", response_model=TreatmentWithPatientRead)
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def update_patient_with_treatment(
     *,
+    request: Request,
     db: SessionDB,
     current_user: CurrentUser,
     treatment_uuid: UUID,
@@ -154,8 +160,10 @@ async def update_patient_with_treatment(
 
 
 @router.post("/{treatment_uuid}", response_model=TreatmentWithPatientRead)
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def delete_patient_with_treatment(
     *,
+    request: Request,
     db: SessionDB,
     current_user: CurrentUser,
     treatment_uuid: str,

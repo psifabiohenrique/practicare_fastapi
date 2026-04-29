@@ -2,8 +2,9 @@ import logging
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, status
+from fastapi import APIRouter, BackgroundTasks, Request, status
 
+from src.core.rate_limit import limiter
 from src.routers.deps import CurrentUser, SessionDB
 from src.schemas.pagination_schema import PaginatedResponse
 from src.schemas.treatment_report_schema import (
@@ -15,6 +16,7 @@ from src.schemas.treatment_report_schema import (
 )
 from src.services.automated_report_service import AutomatedReportService
 from src.services.treatment_report_service import TreatmentReportService
+from src.settings import settings
 from src.tasks.report_generation import generate_report_task
 
 logger = logging.getLogger(__name__)
@@ -63,7 +65,9 @@ async def get_treatment_report(
     response_model=TreatmentReportRead,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def create_treatment_report(
+    request: Request,
     schema: TreatmentReportCreate,
     db: SessionDB,
     current_user: CurrentUser,
@@ -83,7 +87,9 @@ async def create_treatment_report(
 
 
 @router.patch("/{treatment_report_uuid}", response_model=TreatmentReportRead)
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def update_treatment_report(
+    request: Request,
     treatment_report_uuid: UUID,
     schema: TreatmentReportUpdate,
     db: SessionDB,
@@ -105,7 +111,9 @@ async def update_treatment_report(
     "/{treatment_report_uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def delete_treatment_report(
+    request: Request,
     treatment_report_uuid: UUID,
     db: SessionDB,
     current_user: CurrentUser,
@@ -126,7 +134,9 @@ async def delete_treatment_report(
     "/treatments/{treatment_uuid}/automated-report",
     response_model=TreatmentReportRead,
 )
-async def create_automated_report(
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
+async def create_automated_report(  # noqa: PLR0913, PLR0917
+    request: Request,
     treatment_uuid: UUID,
     schema: AutomatedReportCreate,
     db: SessionDB,

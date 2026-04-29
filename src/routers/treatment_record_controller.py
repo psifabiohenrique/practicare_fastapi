@@ -11,10 +11,12 @@ from fastapi import (
     Body,
     File,
     HTTPException,
+    Request,
     UploadFile,
     status,
 )
 
+from src.core.rate_limit import limiter
 from src.database import SessionLocal
 from src.models.treatment_record_model import RecordStatus
 from src.routers.deps import CurrentUser, SessionDB
@@ -28,6 +30,7 @@ from src.schemas.treatment_record_schema import (
 )
 from src.services.automated_record_service import AutomatedRecordService
 from src.services.treatment_record_service import TreatmentRecordService
+from src.settings import settings
 from src.tasks.record_generation import transcribe_audio
 
 router = APIRouter(prefix="/treatment-records", tags=["Treatment records"])
@@ -75,7 +78,9 @@ async def get_treatment_record(
     response_model=TreatmentRecordRead,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def create_treatment_record(
+    request: Request,
     schema: TreatmentRecordCreate,
     db: SessionDB,
     current_user: CurrentUser,
@@ -96,7 +101,9 @@ async def create_treatment_record(
     "/treatments/{treatment_uuid}/automated-record",
     response_model=AutomatedRecordInitializeResponse,
 )
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def upload_audio(
+    request: Request,
     treatment_uuid: UUID,
     db: SessionDB,
     current_user: CurrentUser,
@@ -123,7 +130,9 @@ async def upload_audio(
     "/treatments/{treatment_record_uuid}/automated-record-reload",
     response_model=AutomatedRecordInitializeResponse,
 )
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def reload_audio(
+    request: Request,
     treatment_record_uuid: UUID,
     db: SessionDB,
     current_user: CurrentUser,
@@ -153,7 +162,9 @@ async def reload_audio(
 
 
 @router.post("/automated-record/{job_uuid}/chunk")
-async def upload_audio_chunk(
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
+async def upload_audio_chunk(  # noqa: PLR0913, PLR0917
+    request: Request,
     job_uuid: UUID,
     chunk_index: int,
     db: SessionDB,
@@ -253,7 +264,9 @@ async def process_audio_upload_background(
 
 
 @router.post("/automated-record/{job_uuid}/finalize")
-async def finalize_audio_upload(
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
+async def finalize_audio_upload(  # noqa: PLR0913, PLR0917
+    request: Request,
     job_uuid: UUID,
     total_chunks: int,
     db: SessionDB,
@@ -299,7 +312,9 @@ async def finalize_audio_upload(
 
 
 @router.patch("/{treatment_record_uuid}", response_model=TreatmentRecordRead)
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def update_treatment_record(
+    request: Request,
     treatment_record_uuid: UUID,
     schema: TreatmentRecordUpdate,
     db: SessionDB,
@@ -325,7 +340,9 @@ async def update_treatment_record(
     "/{treatment_record_uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def delete_treatment_record(
+    request: Request,
     treatment_record_uuid: UUID,
     db: SessionDB,
     current_user: CurrentUser,

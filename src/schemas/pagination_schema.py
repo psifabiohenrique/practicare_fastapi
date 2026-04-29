@@ -22,5 +22,5 @@ class PaginatedResponse(BaseModel, Generic[T]):
             total=total,
             page=current_page,
             size=limit,
-            pages=pages
+            pages=pages,
         )

@@ -1,11 +1,13 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 
+from src.core.rate_limit import limiter
 from src.routers.deps import CurrentUser, SessionDB
 from src.schemas.user_schema import UserCreate, UserRead, UserUpdate
 from src.services.user_service import UserService
+from src.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +15,10 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def create_user(*, db: SessionDB, user_in: UserCreate) -> any:
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
+async def create_user(
+    *, request: Request, db: SessionDB, user_in: UserCreate
+) -> any:
     logger.info(f"Criando novo usuário: {user_in.email}")
     return await UserService.create_user(db, user_in=user_in)
 
@@ -45,8 +50,10 @@ async def read_user_by_uuid(
 
 
 @router.patch("/{user_uuid}", response_model=UserRead)
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def update_user(
     *,
+    request: Request,
     db: SessionDB,
     user_uuid: UUID,
     user_in: UserUpdate,
@@ -65,8 +72,10 @@ async def update_user(
 
 
 @router.delete("/{user_uuid}", response_model=UserRead)
+@limiter.limit(settings.RATE_LIMIT_MEDIUM)
 async def delete_user(
     *,
+    request: Request,
     db: SessionDB,
     user_uuid: UUID,
     current_user: CurrentUser,

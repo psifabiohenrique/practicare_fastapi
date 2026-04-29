@@ -4,6 +4,9 @@ import sys
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler  # noqa: PLC2701
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from src.core.bootstrap import init_storage_dirs
 from src.core.exceptions import (
@@ -16,6 +19,7 @@ from src.core.exceptions import (
 )
 from src.core.logging_config import setup_logging
 from src.core.middleware import CorrelationIdMiddleware
+from src.core.rate_limit import limiter
 from src.routers import (
     auth_controller,
     dashboard_controller,
@@ -42,7 +46,11 @@ app = FastAPI(
     dependencies=[Depends(csrf_protect)],
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(SlowAPIMiddleware)
 
 origins = [str(url).rstrip("/") for url in settings.ALLOWED_ORIGINS]
 app.add_middleware(

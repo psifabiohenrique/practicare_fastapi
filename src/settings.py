@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[AnyHttpUrl] = "*"
     PRODUCTION: bool = False
 
+    # Rate Limits
+    RATE_LIMIT_LOW: str = "100/minute"
+    RATE_LIMIT_MEDIUM: str = "30/minute"
+    RATE_LIMIT_HIGH: str = "5/minute"
+
     model_config = SettingsConfigDict(env_file=".env")
 
 
