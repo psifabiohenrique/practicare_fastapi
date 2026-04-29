@@ -46,7 +46,8 @@ async def test_list_treatment_records(session_client, db_session):
     response = client.get(f"/treatment-records/treatment/{treatment.uuid}")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
-    assert len(data) == batch_size
+    assert len(data["items"]) == batch_size
+    assert data["total"] == batch_size
 
 
 @patch("src.tasks.context_update.generate_context_draft_task.delay")

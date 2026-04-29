@@ -20,11 +20,15 @@ async def test_pagination(session_client, db_session):
     limit = 2
     response = client.get(f"/patients-with-treatment?skip=0&limit={limit}")
     assert response.status_code == HTTPStatus.OK
-    assert len(response.json()) == limit
+    data = response.json()
+    assert len(data["items"]) == limit
+    assert data["total"] == 5
 
     response = client.get(f"/patients-with-treatment?skip=2&limit={limit}")
     assert response.status_code == HTTPStatus.OK
-    assert len(response.json()) == limit
+    data = response.json()
+    assert len(data["items"]) == limit
+    assert data["total"] == 5
 
 
 async def test_ordering_by_name(session_client, db_session):
@@ -48,14 +52,14 @@ async def test_ordering_by_name(session_client, db_session):
     response = client.get(
         "/patients-with-treatment?order_by=name&order_dir=asc",
     )
-    data = response.json()
+    data = response.json()["items"]
     assert data[0]["patient"]["first_name"] == "Alice"
     assert data[1]["patient"]["first_name"] == "Zelda"
 
     response = client.get(
         "/patients-with-treatment?order_by=name&order_dir=desc",
     )
-    data = response.json()
+    data = response.json()["items"]
     assert data[0]["patient"]["first_name"] == "Zelda"
     assert data[1]["patient"]["first_name"] == "Alice"
 
@@ -87,7 +91,7 @@ async def test_filtering_by_gender(session_client, db_session):
     response = client.get(
         f"/patients-with-treatment?gender={Gender.MALE.value}",
     )
-    data = response.json()
+    data = response.json()["items"]
     assert len(data) == 1
     assert data[0]["patient"]["gender"] == Gender.MALE.value
 
@@ -113,7 +117,7 @@ async def test_search_by_name(session_client, db_session):
     response = client.get(
         "/patients-with-treatment?search=Jon",
     )
-    data = response.json()
+    data = response.json()["items"]
     assert len(data) == 1
     assert data[0]["patient"]["first_name"] == "Jonathan"
 

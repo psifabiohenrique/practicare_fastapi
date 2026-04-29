@@ -145,12 +145,28 @@ class TestPatientWithTreatmentServiceRetrieval:
     async def test_get_treatments_with_user_uuid_filtering(
         self, mock_db, mock_treatment
     ):
+        # Mock for count query
+        count_mock = MagicMock()
+        count_mock.scalar.return_value = 1
+
+        # Mock for items query
         result_mock = MagicMock()
         result_mock.scalars.return_value.all.return_value = [mock_treatment]
-        mock_db.execute.return_value = result_mock
+
+        # Each call to get_treatments_with_user_uuid now executes 2 queries: count and items
+        mock_db.execute.side_effect = [
+            count_mock,
+            result_mock,  # first call
+            count_mock,
+            result_mock,  # second call
+            count_mock,
+            result_mock,  # third call
+            count_mock,
+            result_mock,  # fourth call
+        ]
 
         # Test with various filters to trigger different branches
-        result = await (
+        items, total = await (
             PatientWithTreatmentService.get_treatments_with_user_uuid(
                 mock_db,
                 user_uuid=mock_treatment.user_uuid,
@@ -163,7 +179,8 @@ class TestPatientWithTreatmentServiceRetrieval:
             )
         )
 
-        assert result == [mock_treatment]
+        assert items == [mock_treatment]
+        assert total == 1
 
         # Test birth_date sorting (asc)
         await PatientWithTreatmentService.get_treatments_with_user_uuid(

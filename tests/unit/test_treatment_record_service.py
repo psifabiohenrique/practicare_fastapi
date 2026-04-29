@@ -55,11 +55,17 @@ class TestTreatmentRecordServiceCRUD:
     async def test_get_treatment_records(
         self, mock_get_treatment, mock_db, mock_record, mock_treatment
     ):
+        # Mock count query
+        count_mock = MagicMock()
+        count_mock.scalar.return_value = 1
+        
+        # Mock items query
         result_mock = MagicMock()
         result_mock.scalars.return_value.all.return_value = [mock_record]
-        mock_db.execute.return_value = result_mock
+        
+        mock_db.execute.side_effect = [count_mock, result_mock]
 
-        records = await TreatmentRecordService.get_treatment_records(
+        items, total = await TreatmentRecordService.get_treatment_records(
             mock_db,
             mock_treatment.uuid,
             "user-123",
@@ -67,7 +73,8 @@ class TestTreatmentRecordServiceCRUD:
             end_date=date(2023, 12, 31),
         )
 
-        assert records == [mock_record]
+        assert items == [mock_record]
+        assert total == 1
         mock_get_treatment.assert_called_once()
 
     @pytest.mark.asyncio
@@ -77,18 +84,25 @@ class TestTreatmentRecordServiceCRUD:
     async def test_get_treatment_records_include_archived(
         self, mock_get_treatment, mock_db, mock_record, mock_treatment
     ):
+        # Mock count query
+        count_mock = MagicMock()
+        count_mock.scalar.return_value = 1
+
+        # Mock items query
         result_mock = MagicMock()
         result_mock.scalars.return_value.all.return_value = [mock_record]
-        mock_db.execute.return_value = result_mock
 
-        records = await TreatmentRecordService.get_treatment_records(
+        mock_db.execute.side_effect = [count_mock, result_mock]
+
+        items, total = await TreatmentRecordService.get_treatment_records(
             mock_db,
             mock_treatment.uuid,
             "user-123",
             include_archived=True
         )
 
-        assert records == [mock_record]
+        assert items == [mock_record]
+        assert total == 1
 
     @pytest.mark.asyncio
     @patch(

@@ -55,11 +55,17 @@ class TestTreatmentReportService:
     async def test_get_treatment_reports(
         self, mock_get_treatment, mock_db, mock_report, mock_treatment
     ):
+        # Mock count query
+        count_mock = MagicMock()
+        count_mock.scalar.return_value = 1
+
+        # Mock items query
         result_mock = MagicMock()
         result_mock.scalars.return_value.all.return_value = [mock_report]
-        mock_db.execute.return_value = result_mock
 
-        reports = await TreatmentReportService.get_treatment_reports(
+        mock_db.execute.side_effect = [count_mock, result_mock]
+
+        items, total = await TreatmentReportService.get_treatment_reports(
             mock_db,
             mock_treatment.uuid,
             "user-123",
@@ -67,7 +73,8 @@ class TestTreatmentReportService:
             end_date=date(2023, 3, 1),
         )
 
-        assert reports == [mock_report]
+        assert items == [mock_report]
+        assert total == 1
         mock_get_treatment.assert_called_once()
 
     @pytest.mark.asyncio

@@ -43,7 +43,8 @@ async def test_list_treatment_reports(session_client, db_session):
     response = client.get(f"/treatment-reports/treatment/{treatment.uuid}")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
-    assert len(data) == batch_size
+    assert len(data["items"]) == batch_size
+    assert data["total"] == batch_size
 
 
 async def test_create_treatment_report(session_client, db_session):

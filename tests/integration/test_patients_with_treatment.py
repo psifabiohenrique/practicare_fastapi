@@ -55,8 +55,10 @@ async def test_list_my_patients_with_treatment(session_client, db_session):
     response = client.get("/patients-with-treatment")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
-    assert len(data) == number_of_treatments
-    for item in data:
+    assert "items" in data
+    assert data["total"] == number_of_treatments
+    assert len(data["items"]) == number_of_treatments
+    for item in data["items"]:
         assert item["user_uuid"] == str(user.uuid)
 
 
