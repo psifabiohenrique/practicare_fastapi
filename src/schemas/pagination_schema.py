@@ -16,7 +16,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     @classmethod
     def create(cls, items: list[T], total: int, skip: int, limit: int):
         pages = math.ceil(total / limit) if limit > 0 else 0
-        current_page = (skip // limit) + 1 if limit > 0 else 1
+        current_page = (skip // limit) + 1 if total > 0 and limit > 0 else 0
         return cls(
             items=items,
             total=total,
