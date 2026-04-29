@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from uuid import uuid4
-from fastapi import status
+from fastapi import status, Request
 from src.routers.treatment_context_controller import (
     get_context_with_draft,
     update_context,
@@ -28,7 +28,8 @@ async def test_get_context_with_draft(mock_service, mock_db, mock_user):
 async def test_update_context(mock_service, mock_db, mock_user):
     mock_service.return_value = MagicMock()
     schema = TreatmentContextUpdate(life_dynamics=["new"])
-    res = await update_context(uuid4(), schema, mock_db, mock_user)
+    request = MagicMock(spec=Request)
+    res = await update_context(request, uuid4(), schema, mock_db, mock_user)
     assert res is not None
 
 @pytest.mark.asyncio
@@ -36,14 +37,16 @@ async def test_update_context(mock_service, mock_db, mock_user):
 async def test_apply_draft(mock_service, mock_db, mock_user):
     mock_service.return_value = MagicMock()
     schema = TreatmentContextApplyDraft(life_dynamics=["final"])
-    res = await apply_draft(uuid4(), schema, mock_db, mock_user)
+    request = MagicMock(spec=Request)
+    res = await apply_draft(request, uuid4(), schema, mock_db, mock_user)
     assert res is not None
 
 @pytest.mark.asyncio
 @patch("src.routers.treatment_context_controller.TreatmentContextService.reject_draft")
 async def test_reject_draft(mock_service, mock_db, mock_user):
     mock_service.return_value = None
-    await reject_draft(uuid4(), mock_db, mock_user)
+    request = MagicMock(spec=Request)
+    await reject_draft(request, uuid4(), mock_db, mock_user)
     mock_service.assert_called_once()
 
 @pytest.mark.asyncio
@@ -51,5 +54,6 @@ async def test_reject_draft(mock_service, mock_db, mock_user):
 async def test_generate_context(mock_service, mock_db, mock_user):
     mock_service.return_value = MagicMock()
     schema = TreatmentContextGenerate(historical_notes="notes", include_existing_records=True)
-    res = await generate_context(uuid4(), schema, mock_db, mock_user)
+    request = MagicMock(spec=Request)
+    res = await generate_context(request, uuid4(), schema, mock_db, mock_user)
     assert res is not None

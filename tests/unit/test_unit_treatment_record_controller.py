@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi import Request
 
 from src.models.treatment_record_model import RecordStatus
 from src.routers.treatment_record_controller import (
@@ -254,5 +255,6 @@ from src.routers.treatment_record_controller import delete_treatment_record
 @pytest.mark.asyncio
 async def test_delete_treatment_record_endpoint(mock_db, mock_user):
     with patch("src.routers.treatment_record_controller.TreatmentRecordService.delete_treatment_record", new_callable=AsyncMock) as mock_service:
-        await delete_treatment_record(uuid4(), mock_db, mock_user)
+        request = MagicMock(spec=Request)
+        await delete_treatment_record(request, uuid4(), mock_db, mock_user)
         mock_service.assert_called_once()
