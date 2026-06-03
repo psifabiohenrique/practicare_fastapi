@@ -50,9 +50,11 @@ graph TD
 ## ✨ Funcionalidades Implementadas
 
 ### 1. Autenticação e Segurança
-- Autenticação JWT com `access_token` e `refresh_token`.
-- Proteção contra CSRF e CORS configurado.
-- Hashing de senhas seguro com Argon2.
+- **Sistema de Sessão**: Autenticação baseada em estado com `session_uuid` (Cookie HttpOnly).
+- **Proteção CSRF**: Mecanismo de Double Submit Cookie para proteção contra ataques CSRF.
+- **Segurança de Cookies**: Uso de flags `HttpOnly`, `Secure` e `SameSite` para mitigar ataques XSS e CSRF.
+- **Hashing de Senhas**: Uso do algoritmo Argon2 para armazenamento seguro de credenciais.
+- **JWT (Legacy)**: Suporte legado a tokens mantido para compatibilidade, mas descontinuado em favor das sessões.
 
 ### 2. Gestão Clínica
 - CRUD completo de pacientes e tratamentos.
