@@ -1,169 +1,111 @@
 # Practicare FastAPI
 
-O **Practicare** é um sistema de desenvolvido inicialmente como projeto de aprendizagem para aprimorar minhas habilidades e conhecimentos em desenvolvimento de software. Ele é composto por este projeto [**Practicare FastAPI**](https://github.com/psifabiohenrique/practicare_fastapi) e o [**Practicare Frontend**](https://github.com/psifabiohenrique/practicare_frontend).
+O **Practicare** é um sistema desenvolvido para aprimorar a gestão de saúde, integrando automação por Inteligência Artificial para otimizar o fluxo de trabalho de profissionais da saúde. Ele é composto por este projeto [**Practicare FastAPI**](https://github.com/psifabiohenrique/practicare_fastapi) e o [**Practicare Frontend**](https://github.com/psifabiohenrique/practicare_frontend).
 
-O **Practicare FastAPI** foi desenvolvido utilizando FastAPI, um framework web moderno e de alta performance para Python. A escolha desse framework foi feita devido à sua crescente adoção no mercado de trabalho, devido ao seu bom suporte a typehints (permitindo um estudo mais declarativo sobre tipagem em Python) e devido ao seu carater menos opinativo, permitindo maior flexibilidade na implementação arquitetural, o que permite estudar melhor os fundamentos do desenvolvimento web.
-
-<!--
-[COMENTÁRIO: Espaço para Logotipo ou Banner do Projeto]
-
--->
+O **Practicare FastAPI** utiliza o framework FastAPI para oferecer uma API de alta performance, com tipagem robusta e processamento assíncrono, servindo como o motor de inteligência e persistência do ecossistema Practicare.
 
 ## 🚀 Tecnologias Utilizadas
 
-O projeto utiliza um conjunto de tecnologias modernas para garantir performance e manutenibilidade:
+O projeto utiliza um stack moderno focado em performance, escalabilidade e produtividade:
 
 - **FastAPI**: Framework web moderno e de alta performance para Python.
-- **SQLAlchemy**: Toolkit SQL e ORM para mapeamento de banco de dados.
-- **Alembic**: Ferramenta de migrações leve para SQLAlchemy.
-- **Pydantic**: Validação de dados e gestão de configurações.
-- **PyJWT**: Implementação de JSON Web Tokens para autenticação.
-- **Argon2**: Algoritmo de hashing de senhas seguro (via `pwdlib`).
-- **Pytest**: Framework de testes para garantir a qualidade do código.
-- **Ruff**: Linter e formatador de código extremamente rápido.
-- **uv**: Gerenciador de dependências Python ultra-veloz.
+- **SQLAlchemy (Async)**: Toolkit SQL e ORM com suporte a operações assíncronas.
+- **Alembic**: Gerenciamento de migrações de banco de dados.
+- **Celery & Redis**: Processamento de tarefas em segundo plano (IA e Transcrição).
+- **LangChain**: Orquestração de cadeias de IA com suporte a múltiplos provedores.
+- **Google Gemini & OpenAI**: Modelos de linguagem de última geração para automação clínica.
+- **Pydantic v2**: Validação de dados rigorosa e gestão de configurações.
+- **Pytest & Testcontainers**: Testes automatizados com banco de dados real em containers.
+- **uv**: Gerenciador de dependências e ambiente Python ultra-veloz.
+- **Docker & Docker Compose**: Padronização do ambiente de desenvolvimento e infraestrutura.
 
 ## 🏗️ Arquitetura
 
-O projeto segue uma arquitetura organizada por responsabilidades, facilitando a escalabilidade:
+A aplicação segue uma arquitetura modular baseada em serviços e processamento assíncrono:
 
 ```mermaid
 graph TD
-    A[Client] --> B[FastAPI APP]
-    B --> C[Routers]
-    C --> D[Services/Dependencies]
-    D --> E[Models/SQLAlchemy]
-    E --> F[Database]
-    D --> G[Schemas/Pydantic]
-    G --> B
+    Client[Client/Frontend] --> API[FastAPI APP]
+    API --> Routers[Routers/Controllers]
+    Routers --> Services[Services Layer]
+    Services --> DB[(PostgreSQL)]
+    Services --> AI[AI Chains - LangChain]
+    Services --> Broker{Redis}
+    Broker --> Worker[Celery Worker]
+    Worker --> AI
+    Worker --> DB
+    AI --> LLM[Gemini / OpenAI]
+    Services --> Storage[Audio Storage]
 ```
 
-- **`src/main.py`**: Ponto de entrada da aplicação, onde o app FastAPI é instanciado e as rotas e middlewares são registrados.
-- **`src/routers/`**: Define os endpoints da API, agrupados por funcionalidade (auth, users, patients).
-- **`src/services/`**: (Opcional/Implementado conforme necessidade) Contém a lógica de negócio separada dos endpoints.
-- **`src/models.py`**: Define os modelos de dados utilizando SQLAlchemy ORM.
-- **`src/schemas/`**: Define os modelos de dados Pydantic para validação de entrada e saída (DTOs).
-- **`src/security.py`**: Contém utilitários para hashing de senhas e geração/validação de tokens JWT.
-- **`src/database.py`**: Configuração da conexão com o banco de dados e sessão.
+### Estrutura de Pastas Principal:
+- **`src/routers/`**: Endpoints da API organizados por domínio.
+- **`src/services/`**: Lógica de negócio e orquestração de fluxos.
+- **`src/ai/`**: Implementação das cadeias de IA, prompts e integração com LLMs.
+- **`src/tasks/`**: Definição de tarefas assíncronas do Celery.
+- **`src/models/`**: Definições das tabelas SQLAlchemy (ORM).
+- **`src/schemas/`**: Modelos Pydantic para validação e serialização (DTOs).
+- **`src/core/`**: Configurações centrais, middlewares e utilitários globais.
 
-## ✨ Funcionalidades
+## ✨ Funcionalidades Implementadas
 
 ### 1. Autenticação e Segurança
+- Autenticação JWT com `access_token` e `refresh_token`.
+- Proteção contra CSRF e CORS configurado.
+- Hashing de senhas seguro com Argon2.
 
-- Login e geração de `access_token` e `refresh_token`.
-- Middleware CORS configurado.
-- Controle de acesso baseado em JWT.
-- Hashing de senhas com Argon2.
+### 2. Gestão Clínica
+- CRUD completo de pacientes e tratamentos.
+- Vínculo inteligente entre pacientes, tratamentos e registros.
 
-### 2. Gestão de Usuários
+### 3. Automação por IA (Recurso Principal)
+- **Transcrição de Áudio**: Conversão automática de áudios de consultas em texto estruturado.
+- **Prontuários Automatizados**: Geração de registros clínicos (records) a partir de transcrições ou notas.
+- **Relatórios Inteligentes**: Criação de relatórios de evolução (reports) baseados no histórico do tratamento.
+- **Processamento Assíncrono**: Garantia de que a API permaneça rápida enquanto a IA processa grandes volumes de dados.
 
-- CRUD completo de usuários.
-- Diferentes níveis de acesso ou papéis (Roles). (a implementar...)
-
-### 3. Gestão de Pacientes e Tratamentos
-
-- Listagem de pacientes com filtros avançados.
-- Vínculo de tratamentos a pacientes em uma única unidade lógica.
-- Ordenação, paginação e busca.
-
-### 4. Gestão de Prontuários (A implementar...)
-
-- Listagem de prontuários com filtros avançados.
-- Vínculo de prontuários a tratamentos em uma única unidade lógica.
-- Ordenação, paginação e busca.
-
-### 5. Gestão de Relatórios (A implementar...)
-
-- Listagem de relatórios com filtros avançados.
-- Vínculo de relatórios a tratamentos em uma única unidade lógica.
-- Ordenação, paginação e busca.
-
-### 6. Gestão de Agendamentos (A implementar...)
-
-- Listagem de agendamentos com filtros avançados.
-- Vínculo de agendamentos a tratamentos em uma única unidade lógica.
-- Ordenação, paginação e busca.
-
-### 7. Gestão de Prescrições (A implementar...)
-
-- Listagem de prescrições com filtros avançados.
-- Vínculo de prescrições a tratamentos em uma única unidade lógica.
-- Ordenação, paginação e busca.
-
-<!--
-[COMENTÁRIO: Espaço para Screenshot da documentação Swagger]
-Sugestão: Imagem do endpoint /docs mostrando as rotas organizadas.
--->
+### 4. Monitoramento e Dashboards
+- Painel de controle com estatísticas de atendimento.
+- Rastreamento de uso de recursos de IA para controle de custos e performance.
 
 ## 🛠️ Como Executar
 
 ### Pré-requisitos
-
 - Python 3.13+
-- [uv](https://github.com/astral-sh/uv) (Recomendado)
+- [uv](https://github.com/astral-sh/uv)
+- Docker e Docker Compose
 
 ### Configuração do Ambiente
 
 1. Clone o repositório.
-2. Crie um arquivo `.env` na raiz do projeto baseado no `.env.exemple`:
-
-```bash
-cp .env.exemple .env
-```
+2. Configure as variáveis de ambiente:
+   ```bash
+   cp .env.exemple .env
+   ```
+   *Certifique-se de preencher as chaves de API (`GOOGLE_API_KEY`, `OPENAI_API_KEY`) e as URLs de banco/redis.*
 
 3. Instale as dependências:
+   ```bash
+   uv sync
+   ```
 
-```bash
-uv sync
-```
+4. Suba a infraestrutura (Postgres & Redis):
+   ```bash
+   docker compose up -d
+   ```
 
-4. Migre o banco de dados:
+5. Migre o banco de dados:
+   ```bash
+   alembic upgrade head
+   ```
 
-```bash
-alembic upgrade head
-```
+### Comandos de Execução (via taskipy)
 
-5. Entre no ambiente virtual:
-
-```bash
-source .venv/bin/activate # Linux/Mac
-.venv\Scripts\activate # Windows
-```
-
-### Comandos Úteis (via taskipy)
-
-- **Rodar em Desenvolvimento**:
-  ```bash
-  task run
-  ```
-- **Executar Testes**:
-  ```bash
-  task test
-  ```
-- **Formatar Código**:
-  ```bash
-  task format
-  ```
-- **Linter**:
-  ```bash
-  task lint
-  ```
-
-## 🧪 Testes e Cobertura
-
-O projeto possui uma suíte de testes abrangente utilizando `pytest`. Para rodar os testes e gerar um relatório de cobertura HTML:
-
-```bash
-task test
-```
-
-Após a execução, abra o arquivo `htmlcov/index.html` no seu navegador para visualizar o relatório detalhado.
-
-<!--
-[COMENTÁRIO: Espaço para Imagem do Relatório de Cobertura]
-Sugestão: Screenshot do relatório de cobertura do Coverage.py mostrando alta porcentagem de testes.
--->
+- **API (Desenvolvimento)**: `task run`
+- **Worker Celery**: `task celery`
+- **Dashboard de Tarefas (Flower)**: `task flower`
+- **Testes**: `task test`
+- **Formatação/Lint**: `task format` / `task lint`
 
 ---
-
 Desenvolvido com ❤️ para a gestão de saúde moderna.

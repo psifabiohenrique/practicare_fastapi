@@ -35,10 +35,6 @@ services:
     networks:
       - practicare-network
 
-networks:
-  practicare-network:
-    driver: bridge
-
   celery_worker:
     build: .
     command: celery -A src.celery_app worker -l info --concurrency=1
@@ -70,6 +66,10 @@ networks:
       - "6379:6379"
     networks:
       - practicare-network
+
+networks:
+  practicare-network:
+    driver: bridge
 
       
 volumes:
